@@ -133,11 +133,15 @@ describe('Eval_String', function() {
     
     it(`getFunctionArguments() for FunctionCall arguments`, function() {
         const program = `eval(foo(a));
-                         eval();`;
+                         eval();
+                         eval(eval(eval(a)));
+                         eval(foo(1+bar(a)))`;
         const block = new Functions.AST(ASTUtils.parse(program));
 
         expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'CallExpression', value: 'foo(a)'}]);
         expect(block.getFunctionArguments(1)).to.deep.equal([]);
+        expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'CallExpression', value: 'eval((eval(a)))'}]);
+        expect(block.getFunctionArguments(3)).to.deep.equal([{type: 'CallExpression', value: 'foo((1+(bar(a))))'}]);
     });
 });
 

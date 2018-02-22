@@ -36,15 +36,25 @@ function parseProgram(program, verbose){
 			}
 			if (astNode.isEval(i)) {
 				var args = astNode.getFunctionArguments(i);
+				//console.log(args)
 				if (args.length == 1) {
 					if (args[0].type == "String") {
-						console.log("Pattern Detected: eval(STRING) => [" + args[0].value + "]");
+						console.log("Pattern Detected: eval(STRING) => eval[" + args[0].value + "]");
 					} else if (args[0].type == "Identifier") {
 						var ref_value = varMap.get(args[0].value);
 						if (ref_value.type == "String") {
 							console.log("Pattern Detected: eval(Object->STRING) => [" + args[0].value + "] ==> eval(" + ref_value.value + ")");
 						}
-					}
+					} else if (args[0].type == "BinaryExpression") {
+						var ref_value = varMap.get(args[0].value);
+						console.log("Pattern Detected: eval(BinaryExpression) => eval[" + args[0].value + "]");
+					} else if (args[0].type == "UnaryExpression") {
+						var ref_value = varMap.get(args[0].value);
+						console.log("Pattern Detected: eval(UnaryExpression) => eval[" + args[0].value + "]");
+					} else if (args[0].type == "CallExpression") {
+						var ref_value = varMap.get(args[0].value);
+						console.log("Pattern Detected: eval(CallExpression) => eval[" + args[0].value + "]");
+					} 
 				}
 			}
 		}
@@ -57,11 +67,9 @@ function parseProgram(program, verbose){
 var program0 = 
 `	eval("xxx");`;
 var program1 = 
-`	var a = "alert(a)";
-	var b = "eval(b)";
-	eval("helloworld");
-	eval(a);
-	eval(b)`;
+`	eval("helloworld");
+	eval(1+1);
+	eval(foo(1+bar()))`;
 var program2 = 
 `	b = "alert(b)";
 	a = b; 

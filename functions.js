@@ -66,17 +66,14 @@ AST.prototype.getFunctionArguments= function(index) {
 	//assert isExpressionStatement()
 	const expression = this._node.body[index].expression;
 	var args = [];
-	
 	if (expression.arguments.length > 0) {
 		for (var i in expression.arguments) {
-			// console.log(expression.arguments[i])
-			// BinaryExpression
 			if (expression.arguments[i].type == "BinaryExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
-				args.push({type: "BinaryExpression", value: exprArgs.getValueFromBinaryExpression(false)});
+				args.push({type: "BinaryExpression", value: exprArgs.getValueFromBinaryExpression(this._node, false)});
 			} else if (expression.arguments[i].type == "UnaryExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
-				args.push({type: "UnaryExpression", value: exprArgs.getValueFromUnaryExpression(false)});
+				args.push({type: "UnaryExpression", value: exprArgs.getValueFromUnaryExpression(this._node, false)});
 			} else if (expression.arguments[i].type == "CallExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
 				args.push({type: "CallExpression", value: exprArgs.getValueFromCallExpression(this._node, false)});
@@ -107,30 +104,34 @@ function Expr(expr) {
   this._expr = expr;
 }
 
-Expr.prototype.getValueFromBinaryExpression=function(inner, verbose=false) {
-	//assert isExpressionStatement()
-	const expression = this._expr;
-	if (verbose) console.log("BinaryExpression:\n", expression, "\n")
+Expr.prototype.getArg=function(node, inner, verbose=false) {
+	var arg;
+	if (this._expr.type == "Literal") {
+		arg = this._expr.value;
+	} else if (this._expr.type == "Identifier") {
+		arg = this._expr.name;
+	} else if (this._expr.type == "BinaryExpression") {
+		var expr = new Expr(this._expr);
+		arg = expr.getValueFromBinaryExpression(node, true);
+	} else if (this._expr.type == "UnaryExpression") {
+		var expr = new Expr(this._expr);
+		arg = expr.getValueFromUnaryExpression(node, true);
+	} else if (this._expr.type == "CallExpression") {
+		var expr = new Expr(this._expr);
+		arg = expr.getValueFromCallExpression(node, true);
+	}
+	return arg;
+}
 
-	var fstArg, sndArg;
-	// first Arg
-	if (this._expr.left.type == "Literal") {
-		fstArg = this._expr.left.value;
-	} else if (this._expr.left.type == "Identifier") {
-		fstArg = this._expr.left.name;
-	} else if (this._expr.left.type == "BinaryExpression") {
-		var fstExpr = new Expr(this._expr.left);
-		fstArg = fstExpr.getValueFromBinaryExpression(true);
-	}
-	// second Arg
-	if (this._expr.right.type == "Literal") {
-		sndArg = this._expr.right.value;
-	} else if (this._expr.right.type == "Identifier") {
-		sndArg = this._expr.right.name;
-	} else if (this._expr.right.type == "BinaryExpression") {
-		var sndExpr = new Expr(this._expr.right);
-		sndArg = sndExpr.getValueFromBinaryExpression(true);
-	}
+
+Expr.prototype.getValueFromBinaryExpression=function(node, inner, verbose=false) {
+	//assert isExpressionStatement()
+	if (verbose) console.log("BinaryExpression:\n", this._expr, "\n")
+
+	const fstExpr = new Expr(this._expr.left);
+	const sndExpr = new Expr(this._expr.right);
+	const fstArg = fstExpr.getArg(node, false);
+	const sndArg = sndExpr.getArg(node, false);
 
 	var expr;
 	if (inner) {
@@ -143,24 +144,12 @@ Expr.prototype.getValueFromBinaryExpression=function(inner, verbose=false) {
 	return expr;
 }
 
-Expr.prototype.getValueFromUnaryExpression=function(inner, verbose=false) {
+Expr.prototype.getValueFromUnaryExpression=function(node, inner, verbose=false) {
 	//assert isExpressionStatement()
-	const expression = this._expr;
-	if (verbose) console.log("UnaryExpression:\n", expression.argument, "\n")
+	if (verbose) console.log("UnaryExpression:\n", this._expr.argument, "\n")
 
-	var arg;
-	// Arg
-	if (this._expr.argument.type == "Literal") {
-		arg = this._expr.argument.value;
-	} else if (this._expr.argument.type == "Identifier") {
-		arg = this._expr.argument.name;
-	} else if (this._expr.argument.type == "BinaryExpression") {
-		var Arg = new Expr(this._expr.argument);
-		arg = Arg.getValueFromBinaryExpression(true);
-	} else if (this._expr.argument.type == "UnaryExpression") {
-		var Arg = new Expr(this._expr.argument);
-		arg = Arg.getValueFromUnaryExpression(true);
-	}
+	const expression = new Expr(this._expr.argument);
+	const arg = expression.getArg(node, false);
 
 	var expr;
 	if (inner) {
@@ -175,31 +164,16 @@ Expr.prototype.getValueFromUnaryExpression=function(inner, verbose=false) {
 
 Expr.prototype.getValueFromCallExpression=function(node, inner, verbose=false) {
 	//assert isExpressionStatement()
-	const expression = this._expr;
-	if (verbose) console.log("CallExpression:\n", expression, "\n")
+	if (verbose) console.log("CallExpression:\n", this._expr, "\n")
 
-	var funcName = expression.callee.name;
-	var args = expression.arguments;
+	const funcName = this._expr.callee.name;
+	const args = this._expr.arguments;
 	
 	var argList = "";
 	if (args.length > 0) {
 		for (var i in args) {
-			// BinaryExpression
-			if (args[i].type == "BinaryExpression") {
-				var exprArgs = new Expr(args[i]);
-				argList += exprArgs.getValueFromBinaryExpression(false);
-			} else if (args[i].type == "UnaryExpression") {
-				var exprArgs = new Expr(args[i]);
-				argList += exprArgs.getValueFromUnaryExpression(false);
-			} else if (args[i].type == "CallExpression") {
-				var exprArgs = new Expr(args[i]);
-				argList += exprArgs.getValueFromCallExpression(false);
-			}
-			else {
-				var range = args[i].range
-				var token = ASTUtils.getTokens(node,range[0],range[1])[0];
-				argList +=  token.value;
-			}
+			const exprArg = new Expr(args[i]);
+			argList += exprArg.getArg(node, false);
 		}
 	}
 
