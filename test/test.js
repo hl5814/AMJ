@@ -1,90 +1,141 @@
 // unit tests for functions.js
-var HashMap = require('hashmap');
-var chai = require('chai');
-var expect = chai.expect; // using the "expect" style of Chai
-var Functions = require('../functions');
+const HashMap = require('hashmap');
+const ASTUtils = require("esprima-ast-utils");        // load esprima-ast-utils
+const chai = require('chai');
+const expect = chai.expect; // using the "expect" style of Chai
+const Functions = require('../functions');
+
+// *****************************
+// * AST Pattern Check Functions
+// *****************************
+describe('AST Block Type', function() {
+    it(`isVariableDeclaration()`, function() {
+        const program = `var a = 1;
+                         var a,b = "test";
+                         var a = eval();
+                         b = 1 + 2`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.isVariableDeclaration(0)).to.equal(true);
+        expect(block.isVariableDeclaration(1)).to.equal(true);
+        expect(block.isVariableDeclaration(2)).to.equal(true);
+        expect(block.isVariableDeclaration(3)).to.equal(false);
+    });
+
+    it(`isExpressionStatement()`, function() {
+        const program = `eval("myString");
+                         a = unescape();
+                         var a,b = "test";
+                         b = 1 + 2`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.isExpressionStatement(0)).to.equal(true);
+        expect(block.isExpressionStatement(1)).to.equal(true);
+        expect(block.isExpressionStatement(2)).to.equal(false);
+        expect(block.isExpressionStatement(3)).to.equal(true);
+    });
+});
+
+describe('AST VariableDeclaration', function() {
+    it(`getAllVariableNames()`, function() {
+        const program = `var a = 1;
+                         var a,b = "test";
+                         var c = a;`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.getAllVariableNames(0)).to.deep.equal([["a", {type: "Numeric",value: "1"}]]);
+        expect(block.getAllVariableNames(1)).to.deep.equal([["a", {type: "undefined",value: "undefined"}],
+                                                            ["b", {type: "String",value: `"test"`}]]);
+        expect(block.getAllVariableNames(2)).to.deep.equal([["c", {type: "Identifier",value: "a"}]]);
+
+    });
+});
+
+describe('AST AssignmentExpression', function() {
+
+    const program = `a = 1;
+                     b = a`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+    it(`isAssignmentExpression()`, function() {
+        expect(block.isAssignmentExpression(0)).to.equal(true);
+        expect(block.isAssignmentExpression(1)).to.equal(true);
+
+    });
+
+    it(`getEqualAssignmentLeftRight()`, function() {
+        expect(block.getEqualAssignmentLeftRight(0)).to.deep.equal(["a", {type: 'Numeric', value: "1" }]);
+        expect(block.getEqualAssignmentLeftRight(1)).to.deep.equal(["b", {type: 'Identifier', value: 'a' }]);
+
+    });
+});
+
 
 // *****************************
 // * Token Pattern Check Functions
 // *****************************
-describe('Assign_Tokens', function() {
-    const empty_tokens = new Functions.Tokens([]);
-    const obj_assign_tokens = new Functions.Tokens([{type: "Identifier",value: "a"},
-                                                   {type: "Punctuator",value: "="},
-                                                   {type: "Identifier",value: "b"}]);
-    const str_assign_tokens = new Functions.Tokens([{type: "Identifier",value: "a"},
-                                                    {type: "Punctuator",value: "="},
-                                                    {type: "String",value: "xxx"}]);
-    const seq_tokens = new Functions.Tokens([{type: "Identifier",value: "a"},
-                                             {type: "Punctuator",value: ";"},
-                                             {type: "Identifier",value: "b"}]);
 
-    it(`isAssignment() should return ture iff tokens are any assignment {Identifier Punctuator[=]}`, function() {
-        expect(empty_tokens.isAssignment()).to.equal(false);
-        expect(obj_assign_tokens.isAssignment()).to.equal(true);
-        expect(str_assign_tokens.isAssignment()).to.equal(true);
-        expect(seq_tokens.isAssignment()).to.equal(false);
+describe('Eval_String', function() {
+    it(`isEval()`, function() {
+        const program = `eval();eval(a);
+                         eval("test")`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.isEval(0)).to.deep.equal(true);
+        expect(block.isEval(1)).to.deep.equal(true);
+        expect(block.isEval(2)).to.deep.equal(true);
     });
 
-    it(`isObjAssignment() should return ture iff tokens are object assignment {Identifier Punctuator[=] Identifier}`, function() {
-        expect(empty_tokens.isObjAssignment()).to.equal(false);
-        expect(obj_assign_tokens.isObjAssignment()).to.equal(true);
-        expect(str_assign_tokens.isObjAssignment()).to.equal(false);
+    it(`getFunctionArguments() for empty/single argument`, function() {
+        const program = `eval();eval(a);
+                         eval("test")`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.getFunctionArguments(0)).to.deep.equal([]);
+        expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'Identifier', value: 'a' }]);
+        expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'String', value: '"test"' }]);
+    });
+
+    it(`getFunctionArguments() for multiple arguments`, function() {
+        const program = `eval(1,2);eval(a,b);
+                         eval("test1", "test2")`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'Numeric', value: '1'},
+                                                             {type: 'Numeric', value: '2'}]);
+
+        expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'Identifier', value: 'a' },
+                                                             {type: 'Identifier', value: 'b' }]);
+        expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'String', value: '"test1"' },
+                                                             {type: 'String', value: '"test2"' }]);
+    });
+
+    it(`getFunctionArguments() for special arguments`, function() {
+        const program = `eval(1+1);
+                         eval(1+a+"test");
+                         eval(1+a,"test"-a-1);
+                         eval(-a);
+                         eval(-(-a));
+                         eval(-(1+a))`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'BinaryExpression', value: '1+1'}]);
+        expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'BinaryExpression', value: '(1+a)+test'}]);
+        expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'BinaryExpression', value: '1+a'},
+                                                             {type: 'BinaryExpression', value: '(test-a)-1'}]);
+        expect(block.getFunctionArguments(3)).to.deep.equal([{type: 'UnaryExpression', value: '-a'}]);
+        expect(block.getFunctionArguments(4)).to.deep.equal([{type: 'UnaryExpression', value: '-(-a)'}]);
+        expect(block.getFunctionArguments(5)).to.deep.equal([{type: 'UnaryExpression', value: '-(1+a)'}]);
     });
 });
 
-describe('Eval_Tokens', function() {
-    it(`isEval() should return ture iff tokens are {Identifier[eval] Punctuator['('] Identifier Punctuator[')']}`, function() {
-        const eval_str_tokens = new Functions.Tokens([{type: "Identifier",value: "eval"},
-            					 			          {type: "Punctuator",value: "("},
-            					 			          {type: "String",value: "xxx"},
-            					 			          {type: "Punctuator",value: ")"}]);
-        const eval_list_tokens = new Functions.Tokens([{type: "Identifier",value: "eval"},
-            					 			           {type: "Punctuator",value: "["},
-            					 			           {type: "String",value: "xxx"},
-        						 			           {type: "Punctuator",value: "]"}]);
-        expect(eval_str_tokens.isEval()).to.equal(true);
-        expect(eval_list_tokens.isEval()).to.equal(false);
-    });
-});
 
 // *****************************
 // * Variable Value HashMap Functions
 // *****************************
 describe('VariableMap', function() {
-    var varMap = new Functions.VariableMap(new HashMap());
-
-    const str_valueA = {type: "String", value: "alert(a)" };
-    const str_valueB = {type: "String", value: "alert(b)" };
-    const undefined_value = {type:"undefined", value:"undefined"};
-    const objectB = {type: "Identifier", value: "b" };
-
-    it(`get() should return undefined if key doens't exist in the hashmap`, function() {
-        expect(varMap.get("a", objectB)).to.equal(undefined);
-    });
-
-    it(`updateValueVarMap() should store the (key,value) in to the hash map if key is fresh, override if key exists`, function() {
-    	varMap.updateValueVarMap("a", str_valueA)
-        expect(varMap._varMap.get("a")).to.deep.equal(str_valueA);
-
-        varMap.updateValueVarMap("a", str_valueB)
-        expect(varMap._varMap.get("a")).to.deep.equal(str_valueB);
-    });
-
-    it(`updateObjVarMap() should store the (key, {type:"undefined",value:"undefined"}) if the object on RHS doesn't exist in the varMap`, function() {
-        varMap.updateObjVarMap("a", objectB)
-        expect(varMap._varMap.get("a")).to.deep.equal(undefined_value);
-    });
-
-    it(`updateObjVarMap() should store the (key, {type:"undefined",value:"undefined"}) if the object on RHS doesn't exist in the varMap`, function() {
-        varMap.updateValueVarMap("b", str_valueB)
-        varMap.updateObjVarMap("a", objectB)
-        expect(varMap._varMap.get("a")).to.deep.equal(str_valueB);
-    });
+    //TODO:updateVariable
 });
-
-
-
 
 
 
