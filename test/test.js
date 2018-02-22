@@ -22,6 +22,25 @@ describe('AST Block Type', function() {
         expect(block.isVariableDeclaration(3)).to.equal(false);
     });
 
+    it(`isFunctionDeclaration()`, function() {
+        const program = `function foo(){
+                             var a = "alert(a)";
+                             return a;
+                          }`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.isFunctionDeclaration(0)).to.equal(true);
+    });
+
+    it(`isBlockStatement()`, function() {
+        const program = `{
+                            var a = "alert(a)";
+                          }`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.isBlockStatement(0)).to.equal(true);
+    });
+
     it(`isExpressionStatement()`, function() {
         const program = `eval("myString");
                          a = unescape();
@@ -51,6 +70,8 @@ describe('AST VariableDeclaration', function() {
     });
 });
 
+
+
 describe('AST AssignmentExpression', function() {
 
     const program = `a = 1;
@@ -73,15 +94,25 @@ describe('AST AssignmentExpression', function() {
 
 
 
-describe('Eval_String', function() {
-    it(`isEval()`, function() {
+describe('Get Function Arguments', function() {
+    it(`isFunction()`, function() {
         const program = `eval();eval(a);
                          eval("test")`;
         const block = new Functions.AST(ASTUtils.parse(program));
 
-        expect(block.isEval(0)).to.deep.equal(true);
-        expect(block.isEval(1)).to.deep.equal(true);
-        expect(block.isEval(2)).to.deep.equal(true);
+        expect(block.isFunction("eval", 0)).to.deep.equal(true);
+        expect(block.isFunction("eval", 1)).to.deep.equal(true);
+        expect(block.isFunction("eval", 2)).to.deep.equal(true);
+    });
+
+    it(`getFunctionName()`, function() {
+        const program = `function foo(){
+                             var a = "alert(a)";
+                             return a;
+                          }`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.getFunctionName(0)).to.deep.equal("foo");
     });
 
     it(`getFunctionArguments() for empty/single argument`, function() {

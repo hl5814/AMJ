@@ -10,9 +10,22 @@ AST.prototype.isVariableDeclaration= function(index) {
 	return  (this._node.body[index].type == "VariableDeclaration");
 };
 
+AST.prototype.isFunctionDeclaration= function(index) {
+	return  (this._node.body[index].type == "FunctionDeclaration");
+};
+
 AST.prototype.isExpressionStatement= function(index) {
 	return  (this._node.body[index].type == "ExpressionStatement");
 };
+
+AST.prototype.isBlockStatement= function(index) {
+	return  (this._node.body[index].type == "BlockStatement");
+};
+
+AST.prototype.getFunctionName= function(index) {
+	return  this._node.body[index].id.name;
+};
+
 
 AST.prototype.getAllVariableNames= function(index, verbose=false) {
 	const allDeclarations = this._node.body[index].declarations;
@@ -56,10 +69,10 @@ AST.prototype.getEqualAssignmentLeftRight= function(index) {
 	}
 };
 
-AST.prototype.isEval= function(index) {
+AST.prototype.isFunction= function(funcName, index) {
 	//assert isExpressionStatement()
 	const expression = this._node.body[index].expression;
-	return (expression.type == 'CallExpression' &&  expression.callee.name == "eval");
+	return (expression.type == 'CallExpression' &&  expression.callee.name == funcName);
 };
 
 AST.prototype.getFunctionArguments= function(index) {
@@ -84,7 +97,6 @@ AST.prototype.getFunctionArguments= function(index) {
 				args.push({ type: token.type, value: token.value});
 			}
 		}
-		//console.log(args);
 		return args;
 	} else {
 		return []
