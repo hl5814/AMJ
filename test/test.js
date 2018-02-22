@@ -71,9 +71,7 @@ describe('AST AssignmentExpression', function() {
 });
 
 
-// *****************************
-// * Token Pattern Check Functions
-// *****************************
+
 
 describe('Eval_String', function() {
     it(`isEval()`, function() {
@@ -110,22 +108,36 @@ describe('Eval_String', function() {
                                                              {type: 'String', value: '"test2"' }]);
     });
 
-    it(`getFunctionArguments() for special arguments`, function() {
+    it(`getFunctionArguments() for BinaryExpression arguments`, function() {
         const program = `eval(1+1);
                          eval(1+a+"test");
-                         eval(1+a,"test"-a-1);
-                         eval(-a);
-                         eval(-(-a));
-                         eval(-(1+a))`;
+                         eval(1+a,"test"-a-1)`;
         const block = new Functions.AST(ASTUtils.parse(program));
 
         expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'BinaryExpression', value: '1+1'}]);
         expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'BinaryExpression', value: '(1+a)+test'}]);
         expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'BinaryExpression', value: '1+a'},
                                                              {type: 'BinaryExpression', value: '(test-a)-1'}]);
-        expect(block.getFunctionArguments(3)).to.deep.equal([{type: 'UnaryExpression', value: '-a'}]);
-        expect(block.getFunctionArguments(4)).to.deep.equal([{type: 'UnaryExpression', value: '-(-a)'}]);
-        expect(block.getFunctionArguments(5)).to.deep.equal([{type: 'UnaryExpression', value: '-(1+a)'}]);
+    });
+
+    it(`getFunctionArguments() for UnaryExpression arguments`, function() {
+        const program = `eval(-a);
+                         eval(-(-a));
+                         eval(-(1+a))`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'UnaryExpression', value: '-a'}]);
+        expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'UnaryExpression', value: '-(-a)'}]);
+        expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'UnaryExpression', value: '-(1+a)'}]);
+    });
+    
+    it(`getFunctionArguments() for FunctionCall arguments`, function() {
+        const program = `eval(foo(a));
+                         eval();`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'CallExpression', value: 'foo(a)'}]);
+        expect(block.getFunctionArguments(1)).to.deep.equal([]);
     });
 });
 

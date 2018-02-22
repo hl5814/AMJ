@@ -68,8 +68,8 @@ AST.prototype.getFunctionArguments= function(index) {
 	var args = [];
 	
 	if (expression.arguments.length > 0) {
-		//console.log(expression)
 		for (var i in expression.arguments) {
+			// console.log(expression.arguments[i])
 			// BinaryExpression
 			if (expression.arguments[i].type == "BinaryExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
@@ -77,6 +77,9 @@ AST.prototype.getFunctionArguments= function(index) {
 			} else if (expression.arguments[i].type == "UnaryExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
 				args.push({type: "UnaryExpression", value: exprArgs.getValueFromUnaryExpression(false)});
+			} else if (expression.arguments[i].type == "CallExpression") {
+				var exprArgs = new Expr(expression.arguments[i]);
+				args.push({type: "CallExpression", value: exprArgs.getValueFromCallExpression(this._node, false)});
 			}
 			else {
 				var range = expression.arguments[i].range
@@ -89,7 +92,6 @@ AST.prototype.getFunctionArguments= function(index) {
 	} else {
 		return []
 	}
-
 };
 
 AST.prototype.isAssignmentExpression= function(index) {
@@ -137,7 +139,7 @@ Expr.prototype.getValueFromBinaryExpression=function(inner, verbose=false) {
 		expr = "" + fstArg + "" + this._expr.operator + "" + sndArg + "";
 	}
 
-	if (verbose) console.log("inner:[", inner, "]       expr:[", expr, "]")
+	if (verbose) console.log("inner:[", inner, "]       expr:[", expr, "]");
 	return expr;
 }
 
@@ -167,9 +169,52 @@ Expr.prototype.getValueFromUnaryExpression=function(inner, verbose=false) {
 		expr = "" + this._expr.operator + "" + arg + "";
 	}
 
-	if (verbose) console.log("inner:[", inner, "]       expr:[", expr, "]")
+	if (verbose) console.log("inner:[", inner, "]       expr:[", expr, "]");
 	return expr;
 }
+
+Expr.prototype.getValueFromCallExpression=function(node, inner, verbose=false) {
+	//assert isExpressionStatement()
+	const expression = this._expr;
+	if (verbose) console.log("CallExpression:\n", expression, "\n")
+
+	var funcName = expression.callee.name;
+	var args = expression.arguments;
+	
+	var argList = "";
+	if (args.length > 0) {
+		for (var i in args) {
+			// BinaryExpression
+			if (args[i].type == "BinaryExpression") {
+				var exprArgs = new Expr(args[i]);
+				argList += exprArgs.getValueFromBinaryExpression(false);
+			} else if (args[i].type == "UnaryExpression") {
+				var exprArgs = new Expr(args[i]);
+				argList += exprArgs.getValueFromUnaryExpression(false);
+			} else if (args[i].type == "CallExpression") {
+				var exprArgs = new Expr(args[i]);
+				argList += exprArgs.getValueFromCallExpression(false);
+			}
+			else {
+				var range = args[i].range
+				var token = ASTUtils.getTokens(node,range[0],range[1])[0];
+				argList +=  token.value;
+			}
+		}
+	}
+
+	var expr;
+	if (inner) {
+		expr = "(" + funcName + "(" + argList + ")" + ")";
+	} else {
+		expr = "" + funcName + "(" + argList + ")" + "";
+	}
+
+	if (verbose) console.log("inner:[", inner, "]       expr:[", expr, "]");
+	return expr;
+}
+
+
 
 // *****************************
 // * Variable Value HashMap Functions
