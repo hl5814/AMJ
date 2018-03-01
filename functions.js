@@ -82,6 +82,7 @@ AST.prototype.isAssignmentExpression= function(index) {
 
 AST.prototype.getEqualAssignmentLeftRight= function(index, verbose=false) {
 	//assert isExpressionStatement()
+	//TODO:recursive check
 	const expression = this._node.body[index].expression;
 	if (expression.operator == '=') {
 		if (verbose) console.log(">>> getEqualAssignmentLeftRight\n>>>",expression)
@@ -113,14 +114,22 @@ AST.prototype.getEqualAssignmentLeftRight= function(index, verbose=false) {
 			var rhs = expression.right;
 			// left:
 			var lhs_computed = lhs.computed;
-			var lhs_object = lhs.object.name;
-			var lhs_property = lhs.property.value;
-
-			//right
-			var range = rhs.range;
-			var token = ASTUtils.getTokens(this._node,range[0],range[1])[0];
-
-			return [lhs_object+"["+lhs_property+"]" , { type: token.type, value: token.value}];
+			if (lhs.computed) {
+				//ComputedMemberExpression
+				var lhs_object = lhs.object.name;
+				var lhs_property = lhs.property.value;
+				var range = rhs.range;
+				var token = ASTUtils.getTokens(this._node,range[0],range[1])[0];
+				return [lhs_object+"["+lhs_property+"]" , { type: token.type, value: token.value}];
+			} else {
+				//StaticMemberExpression
+				var lhs_object = lhs.object.name;
+				var lhs_property = lhs.property.name;
+				var range = rhs.range;
+				var token = ASTUtils.getTokens(this._node,range[0],range[1])[0];
+				return [lhs_object+"."+lhs_property , { type: token.type, value: token.value}];
+			}
+			
 		}
 	}
 };
@@ -139,7 +148,7 @@ AST.prototype.getCalleeName= function(index) {
 };
 
 
-AST.prototype.getFunctionArguments= function(index) {
+AST.prototype.getFunctionArguments= function(index, varMap) {
 	//assert isExpressionStatement()
 	const expression = this._node.body[index].expression;
 	var args = [];
@@ -156,7 +165,7 @@ AST.prototype.getFunctionArguments= function(index) {
 				args.push({type: "CallExpression", value: exprArgs.getValueFromCallExpression(this._node, "",false)});
 			} else if (expression.arguments[i].type == "MemberExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
-				args.push({type: "MemberExpression", value: exprArgs.getValueFromMemberExpression(this._node, "",false)});
+				args.push({type: "MemberExpression", value: exprArgs.getValueFromMemberExpression(this._node, "", varMap, false)});
 			} else {
 				var range = expression.arguments[i].range
 				var token = ASTUtils.getTokens(this._node,range[0],range[1])[0];
@@ -220,7 +229,6 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, inner, ver
 
 		var range = element.range;
 		var token = ASTUtils.getTokens(node,range[0],range[1])[0];
-		//console.log [identifier, { type: token.type, value: token.value }];
 		if (token.type == "String") {
 			element.type = 'String';
 		}
@@ -231,9 +239,20 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, inner, ver
 	return elem_array;
 }
 
-Expr.prototype.getValueFromMemberExpression=function(node, identifier, inner, verbose=false) {
+Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, inner, verbose=false) {
 	var identifier = this._expr.object.name;
-	return identifier+"["+this._expr.property.value+"]"
+	if (this._expr.computed) {
+		//TODO: lookup a in varMap for x[a]
+		var val = this._expr.property.value;
+		if (this._expr.property.type == "Identifier") {
+			var ref_value = varMap.get(this._expr.property.name, verbose);
+			val = ref_value.value;
+		}
+		return identifier+"["+val+"]";
+	} else {
+		return identifier+"."+this._expr.property.name;
+	}
+	
 }
 
 Expr.prototype.getValueFromNexExpression=function(node, identifier, inner, verbose=false) {

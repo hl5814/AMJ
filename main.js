@@ -66,7 +66,7 @@ function parseProgram(program, scope, verbose){
 					user_defined_funName = var_value.value;
 				}
 				if (funcNames.indexOf(funcName) != -1 || funcNames.indexOf(user_defined_funName) != -1) {
-					var args = astNode.getFunctionArguments(i);
+					var args = astNode.getFunctionArguments(i, varMap);
 					// JS will ignore extra parameters, if function is defined with only one parameter
 					// Attacker might add more unused parameters to confuse the detector
 					if (args.length >= 1) {
