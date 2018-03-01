@@ -55,18 +55,17 @@ describe('AST Block Type', function() {
     });
 });
 
-describe('AST VariableDeclaration', function() {
-    it(`getAllVariableNames()`, function() {
-        const program = `var a = 1;
-                         var a,b = "test";
-                         var c = a;`;
-        const block = new Functions.AST(ASTUtils.parse(program));
+describe('AST getVariableInitValue', function() {
+    it(`getVariableInitValue()`, function() {
+        const program = `var a = 1,b = "test",c = 1+1,d = 1 + "STR",e=a+1;`;
 
-        expect(block.getAllVariableNames(0)).to.deep.equal([["a", {type: "Numeric",value: "1"}]]);
-        expect(block.getAllVariableNames(1)).to.deep.equal([["a", {type: "undefined",value: "undefined"}],
-                                                            ["b", {type: "String",value: `"test"`}]]);
-        expect(block.getAllVariableNames(2)).to.deep.equal([["c", {type: "Identifier",value: "a"}]]);
-
+        const astNode = new Functions.AST(ASTUtils.parse(program));
+        var declaration_blocks = astNode.getAllDeclarationBlocks(0);
+        expect(astNode.getVariableInitValue(0, declaration_blocks[0])).to.deep.equal(["a", {type: "Numeric",value: "1"}]);
+        expect(astNode.getVariableInitValue(0, declaration_blocks[1])).to.deep.equal(["b", {type: "String",value: '"test"'}]);
+        expect(astNode.getVariableInitValue(0, declaration_blocks[2])).to.deep.equal(["c", {type: "Expression",value: "(1+1)"}]);
+        expect(astNode.getVariableInitValue(0, declaration_blocks[3])).to.deep.equal(["d", {type: "Expression",value: "(1+STR)"}]);
+        expect(astNode.getVariableInitValue(0, declaration_blocks[4])).to.deep.equal(["e", {type: "Expression",value: "(a+1)"}]);
     });
 });
 
