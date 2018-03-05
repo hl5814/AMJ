@@ -239,7 +239,7 @@ Expr.prototype.getArg=function(node, identifier, inner, verbose=false) {
 		arg = expr.getValueFromCallExpression(node, identifier, true);
 	} else if (this._expr.type == "NewExpression") {
 		var expr = new Expr(this._expr);
-		arg = expr.getValueFromNexExpression(node, identifier, true);
+		arg = expr.getValueFromNewExpression(node, identifier, true);
 	} else if (this._expr.type == "ArrayExpression") {
 		var expr = new Expr(this._expr);
 		elem_array = expr.getValueFromArrayExpression(node, identifier, true);
@@ -282,7 +282,7 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 	
 }
 
-Expr.prototype.getValueFromNexExpression=function(node, identifier, inner, verbose=false) {
+Expr.prototype.getValueFromNewExpression=function(node, identifier, inner, verbose=false) {
 	//assert isExpressionStatement()
 	if (verbose) console.log("NewExpression:\n", this._expr, "\n")
 	const callee = this._expr.callee;
