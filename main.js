@@ -50,10 +50,16 @@ function parseProgram(program, scope, verbose){
 		}
 		else if (astNode.isExpressionStatement(i)) {
 			if (astNode.isAssignmentExpression(i)) {
-				var var_value = astNode.getEqualAssignmentLeftRight(i);
+				var var_value = astNode.getEqualAssignmentLeftRight(i, varMap);
 				//console.log(var_value)
+
 				varMap.updateVariable(var_value[0], var_value[1], verbose);
 			} else {
+				//console.log(ast.body[i].expression.callee.object);
+				//console.log(ast.body[i].expression.callee.property);
+				console.log(ast.body[i].expression)
+
+
 				//List of malicious pre-defined functions
 				var funcNames = ["eval", "unescape", "replace", "write", "atob", "btoa",
 								 "setTimeout", "setInterval", "fromCharCode"];
@@ -67,6 +73,7 @@ function parseProgram(program, scope, verbose){
 				}
 				if (funcNames.indexOf(funcName) != -1 || funcNames.indexOf(user_defined_funName) != -1) {
 					var args = astNode.getFunctionArguments(i, varMap);
+					console.log(">>>", args);
 					// JS will ignore extra parameters, if function is defined with only one parameter
 					// Attacker might add more unused parameters to confuse the detector
 					if (args.length >= 1) {
@@ -75,6 +82,7 @@ function parseProgram(program, scope, verbose){
 						} else if (args[0].type == "Identifier" ||
 								   args[0].type == "MemberExpression") {
 							var ref_value = varMap.get(args[0].value, verbose);
+							console.log(">>>>",ref_value)
 							if (ref_value && ref_value.type == "String") {
 								console.log("Pattern Found in " + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_value.value + ")");
 							} else if (ref_value && ref_value.type == "Expression") {
