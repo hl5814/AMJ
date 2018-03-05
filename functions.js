@@ -291,11 +291,13 @@ Expr.prototype.getValueFromNexExpression=function(node, identifier, inner, verbo
 	var elem_array = [];
 	for (var e in elements) {
 		var element = elements[e];
-		var arg = new Expr(element);
-		var val = arg.getArg(node, identifier, false);
+		var element_expr = new Expr(element);
+		var val = element_expr.getArg(node, identifier, false);
+		var token = element_expr.getToken(node);
+		if (token.type == "String") element.type = "String";
 		//TODO check callee.name
 		// elem_array.push([identifier + "_" + callee.name + "["+e+"]", { type: element.type, value: val }]);
-		console.log("<",element);
+		console.log("<",element, "<",val);
 		elem_array.push([identifier + "["+e+"]", { type: element.type, value: val }]);
 	}
 	return elem_array;
