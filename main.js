@@ -25,6 +25,8 @@ function parseProgram(program, scope, verbose){
 	console.log(scope + ":\n" + program);
 	const ast = ASTUtils.parse(program);
 	const varMap = new Functions.VariableMap(new HashMap());
+	varMap.setVariable('eval', { type: 'Function', value: 'eval' } );
+
 
 	// iterate through each AST node
 	for (var i in ast.body){
@@ -35,7 +37,7 @@ function parseProgram(program, scope, verbose){
 		if (astNode.isVariableDeclaration(i)) {
 			var declaration_blocks = astNode.getAllDeclarationBlocks(i);
 			for (var block in declaration_blocks) {
-				var variableName_Type = astNode.getVariableInitValue(i, declaration_blocks[block], verbose);
+				var variableName_Type = astNode.getVariableInitValue(i, declaration_blocks[block], varMap, verbose);
 				if (variableName_Type[1].type == "ArrayExpression" || 
 					variableName_Type[1].type == "NewExpression") {
 					var array_elems = variableName_Type[1].value;
@@ -54,13 +56,11 @@ function parseProgram(program, scope, verbose){
 		else if (astNode.isExpressionStatement(i)) {
 			if (astNode.isAssignmentExpression(i)) {
 				var var_value = astNode.getEqualAssignmentLeftRight(i, varMap);
-				//console.log(var_value)
 
 				varMap.updateVariable(var_value[0], var_value[1], verbose);
 			} else {
 				//console.log(ast.body[i].expression.callee.object);
 				//console.log(ast.body[i].expression.callee.property);
-				// console.log(ast.body[i].expression)
 
 
 				//List of malicious pre-defined functions

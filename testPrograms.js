@@ -47,6 +47,9 @@ var program7 =`
 	a("test");`
 var program8 = 
 `	var D = function foo(){};`;
+var program9 =
+`	a = "test";
+	eval(a);`;
 //TODO: undefined variables
 // var program_undefined_b = 
 // `	var a = "alert()";
@@ -55,4 +58,4 @@ var program8 =
 
 exports.programs = [program0,program1,program2,program3,
 					program4,program5,program6,program7,
-					program8]
+					program8,program9];

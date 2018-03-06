@@ -35,7 +35,7 @@ AST.prototype.getAllDeclarationBlocks=function(index, verbose=false) {
 	return this._node.body[index].declarations;
 }
 
-AST.prototype.getVariableInitValue=function(index, block, verbose=false) {
+AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false) {
 	const identifier = block.id.name;
 	const expression = new Expr(block.init);
 	if (block.init == null){
@@ -52,9 +52,25 @@ AST.prototype.getVariableInitValue=function(index, block, verbose=false) {
 		return [identifier, { type: 'ArrayExpression', value: args }];
 	} else if (block.init.type == "NewExpression"){
 		return [identifier, { type: 'NewExpression', value: args }];
+	} else if (block.init.type == "FunctionExpression"){ 
+		const id = (new Expr(block.init.id)).getArg();
+		return [identifier, { type: 'Function', value: id }];
 	} else {
 		if (verbose) console.log(">>>getVariableInitValue->Expression");
-		return [identifier, { type: 'Expression', value: args }];
+		// check if is pre-defined functions, e.g. eval, atob, etc.
+		var var_value = varMap.get(args, verbose);
+		if (var_value != undefined){
+			return [identifier, var_value];
+		} else {
+			var token = (new Expr(block.init)).getToken(this._node);
+			//undefined variable, we set the init value to undefined and update varMap
+			if (token.type == "Identifier"){
+				varMap.setVariable(token.value, { type: 'undefined', value: 'undefined' });
+				return [identifier, { type: 'undefined', value: 'undefined' }];
+			}
+			return [identifier, { type: 'Expression', value: args }];
+		}
+		
 	}
 }
 
@@ -150,8 +166,8 @@ AST.prototype.isFunction= function(funcName, index) {
 
 AST.prototype.getCalleeName= function(index) {
 	//assert isExpressionStatement()
-	const expression = this._node.body[index].expression;
-	return expression.callee.name;
+	const callee_expr = new Expr(this._node.body[index].expression.callee);
+	return callee_expr.getArg(this._node, "", false);
 };
 
 AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
