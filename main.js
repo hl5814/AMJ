@@ -31,11 +31,11 @@ function parseProgram(program, scope, verbose){
 		var astNode = new Functions.AST(ast);
 
 		//console.log(ast.body[i])
-		if (verbose) console.log("======================\n", ast.body[i],"\n======================\n");
+		if (verbose && (ast.body[i].type != "Line")) console.log("======================\n", ast.body[i],"\n======================\n");
 		if (astNode.isVariableDeclaration(i)) {
 			var declaration_blocks = astNode.getAllDeclarationBlocks(i);
 			for (var block in declaration_blocks) {
-				var variableName_Type = astNode.getVariableInitValue(i, declaration_blocks[block]);
+				var variableName_Type = astNode.getVariableInitValue(i, declaration_blocks[block], verbose);
 				if (variableName_Type[1].type == "ArrayExpression" || 
 					variableName_Type[1].type == "NewExpression") {
 					var array_elems = variableName_Type[1].value;
@@ -43,6 +43,9 @@ function parseProgram(program, scope, verbose){
 						varMap.setVariable(array_elems[e][0], array_elems[e][1], verbose);
 					}
 				} else {
+					if (variableName_Type[1].type == "Expression") {
+						console.log("Pattern Found in " + scope + ", Init Variable by Expression:" + variableName_Type[0] + "=" +variableName_Type[1].value);
+					}
 					varMap.setVariable(variableName_Type[0], variableName_Type[1], verbose);
 				}
 				if (verbose) varMap.printMap();
@@ -57,7 +60,7 @@ function parseProgram(program, scope, verbose){
 			} else {
 				//console.log(ast.body[i].expression.callee.object);
 				//console.log(ast.body[i].expression.callee.property);
-				console.log(ast.body[i].expression)
+				// console.log(ast.body[i].expression)
 
 
 				//List of malicious pre-defined functions
@@ -67,13 +70,12 @@ function parseProgram(program, scope, verbose){
 
 				var var_value = varMap.get(funcName, verbose);
 				var user_defined_funName = "";
-				if (var_value != undefined){
+				if (var_value != undefined && var_value.value != funcName){
 					console.log("Malicious Function Call Catched:[", funcName, "] -> [", var_value.value, "]")
 					user_defined_funName = var_value.value;
 				}
 				if (funcNames.indexOf(funcName) != -1 || funcNames.indexOf(user_defined_funName) != -1) {
 					var args = astNode.getFunctionArguments(i, varMap);
-					console.log(">>>", args);
 					// JS will ignore extra parameters, if function is defined with only one parameter
 					// Attacker might add more unused parameters to confuse the detector
 					if (args.length >= 1) {
@@ -82,7 +84,7 @@ function parseProgram(program, scope, verbose){
 						} else if (args[0].type == "Identifier" ||
 								   args[0].type == "MemberExpression") {
 							var ref_value = varMap.get(args[0].value, verbose);
-							console.log(">>>>",ref_value)
+							//get value of nested memberexpression e.g. a="str"; Array[0] = a;
 							if (ref_value && ref_value.type == "String") {
 								console.log("Pattern Found in " + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_value.value + ")");
 							} else if (ref_value && ref_value.type == "Expression") {
@@ -106,6 +108,7 @@ function parseProgram(program, scope, verbose){
 			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, false);
 		}
 	}
+	console.log("-------------------------------------------\n")
 	if (verbose) varMap.printMap();
 }
 
