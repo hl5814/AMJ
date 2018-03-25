@@ -55,24 +55,42 @@ function parseProgram(program, scope, verbose){
 		}
 		else if (astNode.isExpressionStatement(i)) {
 			if (astNode.isAssignmentExpression(i)) {
-				var var_value = astNode.getEqualAssignmentLeftRight(i, varMap);
-
+				var var_value = astNode.getAssignmentLeftRight(i, varMap, verbose);
+				if (var_value[1].type == "BitwiseOperationExpression" ||
+					var_value[1].type == "FunctionCall") {
+					console.log("Malicious Assigment Found in:" + scope + ", "+var_value[1].type +":" + var_value[0] + "=" +var_value[1].value);
+				}
 				varMap.updateVariable(var_value[0], var_value[1], verbose);
-			} else {
+			} else if (astNode.isUpdateExpression(i)) {
+				var var_value = astNode.getUpdateExpression(i, varMap, verbose);
+			} else if (astNode.isCallExpression(i) || astNode.isExpressionStatement(i)) {
 				//console.log(ast.body[i].expression.callee.object);
 				//console.log(ast.body[i].expression.callee.property);
 
 
 				//List of malicious pre-defined functions
 				var funcNames = ["eval", "unescape", "replace", "write", "atob", "btoa",
-								 "setTimeout", "setInterval", "fromCharCode"];
-				var funcName = astNode.getCalleeName(i);
+								 "setTimeout", "setInterval", "fromCharCode", "toString", "charCodeAt"];
+				var funcName = "";
+				if (astNode._node.body[i].expression.callee) {
+					funcName = astNode.getCalleeName(i);
+				} else {
 
+				}
+				
 				var var_value = varMap.get(funcName, verbose);
 				var user_defined_funName = "";
 				if (var_value != undefined && var_value.value != funcName){
-					console.log("Malicious Function Call Catched:[", funcName, "] -> [", var_value.value, "]")
+					console.log("Malicious Function Call Found:[", funcName, "] -> [", var_value.value, "]")
 					user_defined_funName = var_value.value;
+				}
+				if (funcName != funcName.substring(funcName.lastIndexOf(".")+1)){
+					var args = astNode.getFunctionArguments(i, varMap);
+					var argStr = "";
+					for (var a in args) {
+						argStr += args[a].value
+					}
+					console.log("Malicious Function Call Found:", funcName + "("+argStr+")");
 				}
 				if (funcNames.indexOf(funcName) != -1 || funcNames.indexOf(user_defined_funName) != -1) {
 					var args = astNode.getFunctionArguments(i, varMap);
@@ -90,15 +108,13 @@ function parseProgram(program, scope, verbose){
 							} else if (ref_value && ref_value.type == "Expression") {
 								console.log("Pattern Found in " + scope + ": "+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_value.value + ")");
 							}
-						} else if (args[0].type == "BinaryExpression") {
-							console.log("Pattern Found in " + scope + ": "+funcName+"(BinaryExpression) => "+funcName+"[" + args[0].value + "]");
-						} else if (args[0].type == "UnaryExpression") {
-							console.log("Pattern Found in " + scope + ": "+funcName+"(UnaryExpression) => "+funcName+"[" + args[0].value + "]");
-						} else if (args[0].type == "CallExpression") {
-							console.log("Pattern Found in " + scope + ": "+funcName+"(CallExpression) => "+funcName+"[" + args[0].value + "]");
-						} 
+						} else if (args[0].type == "BinaryExpression" || args[0].type == "UnaryExpression" || args[0].type == "CallExpression") {
+							console.log("Pattern Found in " + scope + ": "+funcName+"(" + args[0].type + ") => "+funcName+"[" + args[0].value + "]");
+						}
 					}
 				}
+			} else {
+				console.log("??", astNode._node.body[i].type)
 			}
 		} 
 		else if (astNode.isFunctionDeclaration(i)) {

@@ -1,4 +1,4 @@
 
-// var x = 1+"test";
-//eval(x);
-document.write("str");
+for (i = 0; i < 5; i++) {
+    i.toString();
+}

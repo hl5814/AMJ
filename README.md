@@ -9,31 +9,6 @@ mocha test
 detections and analysiss of drive-
 
 
-1) how to deal with undefined variables
-	b = "test";
-	eval(b);
-// we can assume attacker will only use eval on string, otherwise pointless
-// we can put different weight on features
-
-
-2) for binary expressions, should I store value or raw [for now and future]
-	var x = 1 + 1 + 1;
-    var x = a + b;
-
- >>> BinaryExpression {
-  type: 'BinaryExpression',
-  operator: '+',
-  left: Literal { type: 'Literal', value: 1, raw: '1', range: [ 12670, 12671 ] },
-  right: Literal { type: 'Literal', value: 1, raw: '1', range: [ 12672, 12673 ] },
-  range: [ 12670, 12673 ] }
-
-varMap:
- [ [ 'a', { type: 'Literal', value: '1+1' } ] ] 
-or 
- [ [ 'a', { type: 'Numeric', value: '2' } ] ] 
-or 
-// better for symbolic execution
- [ [ 'a', { type: 'Numeric', value: '2', raw: '1+1' } ] ] 
 
 
 
@@ -68,6 +43,10 @@ or
  		document[write]
  		.
 TODO: array related expressions
-TODO: URL detection
+
+
+1) Build basic machine learning model using current features
+2) Extend more features
+
 
 

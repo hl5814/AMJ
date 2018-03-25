@@ -7,7 +7,6 @@ function AST(node) {
 }
 
 AST.prototype.isVariableDeclaration= function(index) {
-	//TODO: declarations types: 
 	return  (this._node.body[index].type == "VariableDeclaration");
 };
 
@@ -93,66 +92,93 @@ AST.prototype.getAllVariableNames= function(index, verbose=false) {
 	return varaibleName_InitValue;
 };
 
-AST.prototype.isAssignmentExpression= function(index) {
-	//assert isExpressionStatement()
-	const expression = this._node.body[index].expression;
-	return  (expression.type == "AssignmentExpression");
-};
+AST.prototype.getUpdateExpression= function(index, varMap, verbose=false) {
+	if (verbose)console.log("update Expression: e.g. ++ -- operations")
+	// const expression = this._node.body[index].expression;
+	// var arg = new Expr(expression.argument);
+	// var identifier = arg.getIdentifier(varMap);
+	// var operator = expression.operator;
+	// console.log(arg)
+}
 
-AST.prototype.getEqualAssignmentLeftRight= function(index, varMap, verbose=false) {
+AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 	//assert isExpressionStatement()
 	//TODO:recursive check
 	const expression = this._node.body[index].expression;
-	//console.log("left:>>>",expression.left)
-	// console.log("right:>>>",expression.right)
 	var lhs = new Expr(expression.left);
 	var identifier = lhs.getIdentifier(varMap);
 	//var left_expr = new Expr(expression.left.property);
 	//var val = left_expr.getArg(this._node, identifier, false);
-	if (verbose) console.log("identifier:", identifier)
-	if (expression.operator == '=') {
-		if (verbose) console.log(">>> getEqualAssignmentLeftRight\n>>>",expression)
-		if (expression.left.type == "Identifier") {
-			var lhs = expression.left;
-			var rhs = expression.right;
-			if (rhs.type == "BinaryExpression") {
-				//TODO:Factor out as function
-				if (rhs.left.type == "Identifier" && rhs.right.type == "Literal") {
-					var varName = lhs.name;
-					var val = rhs.left.name + rhs.operator + rhs.right.value;
-					if (val.length > 30) {
-						val = val.substring(1, 30) + "...";
-					}
-					return [varName, { type: "String", value: val}];
-				} else if (rhs.left.type == "Literal" && rhs.right.type == "Literal"){
-					var varName = lhs.name;
-					var val = rhs.left.value + rhs.operator + rhs.right.value;
-					return [varName, { type: "Literal", value: val}];
-				}
-			} else {
-				var varName = lhs.name;
-				var token = (new Expr(rhs)).getToken(this._node);
-				return [varName, { type: token.type, value: token.value}];
+	if (verbose) console.log("identifier:", identifier);
+	if (verbose) console.log(">>> getEqualAssignmentLeftRight\n>>>",expression);
+
+	if (expression.left.type == "Identifier") {
+		var lhs = expression.left;
+		var varName = lhs.name;
+		var rhs = expression.right;
+		var binaryOPs = ["+=", "-=", "|=", "&=", "*=", "/=", "%="];
+		if (binaryOPs.indexOf(expression.operator) != -1) {
+			var val = (new Expr(rhs)).getArg(this._node, identifier, false);
+			var lhs_type_value = varMap.get(lhs.name, verbose);
+			if (lhs_type_value == undefined) {
+				//update varMap if variable undefined
+				varMap.setVariable(lhs.name, { type: undefined, value: undefined } );
+				lhs_type_value = { type: undefined, value: undefined };
 			}
-		} else if (expression.left.type == "MemberExpression") {
-			var lhs = expression.left;
-			var rhs = expression.right;
-			// left:
-			var lhs_computed = lhs.computed;
-			if (lhs.computed) {
-				//ComputedMemberExpression
-				var lhs_object = lhs.object.name;
-				var lhs_property = new Expr(lhs.property);
-				var token = (new Expr(rhs)).getToken(this._node);
-				return [lhs_object+"["+lhs_property.getArg(this._node, identifier, false)+"]" , { type: token.type, value: token.value}];
-			} else {
-				//StaticMemberExpression
-				var lhs_object = lhs.object.name;
-				var lhs_property = lhs.property.name;
-				var token = (new Expr(rhs)).getToken(this._node);
-				return [lhs_object+"."+lhs_property , { type: token.type, value: token.value}];
+			if (lhs_type_value.type == "String"){
+				return [varName, { type: "String", value: "(" + lhs_type_value.value + expression.operator + val + ")"}];
+			} else if (rhs.type == "CallExpression"){
+				return [varName, { type: "FunctionCall", value: "(" + lhs_type_value.value + expression.operator + val + ")"}];
 			}
+			return [varName, { type: "Expression", value: "(" + lhs_type_value.value + expression.operator + val + ")"}];
+		} else if (rhs.type == "BinaryExpression") {
 			
+			var arg = new Expr(rhs);
+			var val = arg.getArg(this._node, identifier, false);
+
+			var token = (new Expr(rhs.left)).getToken(this._node);
+			if (rhs.left.type == "Identifier") {
+				var ref_value = varMap.get(rhs.left.name, verbose);
+				token.type = ref_value.type;
+			}
+
+			if (token.type == "String") {
+				if (val.length > 30) {
+					val = val.substring(1, 30) + "...";
+				}
+				return [varName, { type: "String", value: val}];
+			}
+
+			bitOperators = [">>", "<<", "|", "&", "^", "~", ">>>"];
+			if (bitOperators.indexOf(rhs.operator) != -1) {
+				return [varName, { type: "BitwiseOperationExpression", value: val}];
+			}
+			return [varName, { type: "Expression", value: val}];
+		} else if (rhs.type == "CallExpression") {
+			var arg = new Expr(rhs);
+			var val = arg.getArg(this._node, identifier, false);
+			return [varName, { type: "FunctionCall", value: val}];
+		}else {
+			var token = (new Expr(rhs)).getToken(this._node);
+			return [varName, { type: token.type, value: token.value}];
+		}
+	} else if (expression.left.type == "MemberExpression") {
+		var lhs = expression.left;
+		var rhs = expression.right;
+		// left:
+		var lhs_computed = lhs.computed;
+		if (lhs.computed) {
+			//ComputedMemberExpression
+			var lhs_object = lhs.object.name;
+			var lhs_property = new Expr(lhs.property);
+			var token = (new Expr(rhs)).getToken(this._node);
+			return [lhs_object+"["+lhs_property.getArg(this._node, identifier, false)+"]" , { type: token.type, value: token.value}];
+		} else {
+			//StaticMemberExpression
+			var lhs_object = lhs.object.name;
+			var lhs_property = lhs.property.name;
+			var token = (new Expr(rhs)).getToken(this._node);
+			return [lhs_object+"."+lhs_property , { type: token.type, value: token.value}];
 		}
 	}
 };
@@ -204,6 +230,13 @@ AST.prototype.isAssignmentExpression= function(index) {
 	const expression = this._node.body[index].expression;
 	return  (expression.type == "AssignmentExpression");
 };
+
+AST.prototype.isUpdateExpression= function(index) {
+	//assert isExpressionStatement()
+	const expression = this._node.body[index].expression;
+	return  (expression.type == "UpdateExpression");
+};
+
 
 // *****************************
 // * Expression Functions
