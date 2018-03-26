@@ -20,14 +20,13 @@ var readFile = options.readFromFile;
 var testNumber = (options.testNumber == undefined) ? -1 : options.testNumber;
 
 //===============================MainProgram=================================
+const init_varMap = new Functions.VariableMap(new HashMap());
+init_varMap.setVariable('eval', { type: 'Function', value: 'eval' } );
 
-function parseProgram(program, scope, verbose){
+function parseProgram(program, scope, varMap, verbose){
 	console.log(scope + ":\n" + program);
 	const ast = ASTUtils.parse(program);
-	const varMap = new Functions.VariableMap(new HashMap());
-	varMap.setVariable('eval', { type: 'Function', value: 'eval' } );
-
-
+	
 	// iterate through each AST node
 	for (var i in ast.body){
 		var astNode = new Functions.AST(ast);
@@ -46,7 +45,7 @@ function parseProgram(program, scope, verbose){
 					}
 				} else {
 					if (variableName_Type[1].type == "Expression") {
-						console.log("Pattern Found in " + scope + ", Init Variable by Expression:" + variableName_Type[0] + "=" +variableName_Type[1].value);
+						console.log("=# Pattern Found in " + scope + ", Init Variable by Expression:" + variableName_Type[0] + "=" +variableName_Type[1].value);
 					}
 					varMap.setVariable(variableName_Type[0], variableName_Type[1], verbose);
 				}
@@ -58,7 +57,7 @@ function parseProgram(program, scope, verbose){
 				var var_value = astNode.getAssignmentLeftRight(i, varMap, verbose);
 				if (var_value[1].type == "BitwiseOperationExpression" ||
 					var_value[1].type == "FunctionCall") {
-					console.log("Malicious Assigment Found in:" + scope + ", "+var_value[1].type +":" + var_value[0] + "=" +var_value[1].value);
+					console.log("=# Malicious Assigment Found in:" + scope + ", "+var_value[1].type +":" + var_value[0] + "=" +var_value[1].value);
 				}
 				varMap.updateVariable(var_value[0], var_value[1], verbose);
 			} else if (astNode.isUpdateExpression(i)) {
@@ -73,7 +72,7 @@ function parseProgram(program, scope, verbose){
 								 "setTimeout", "setInterval", "fromCharCode", "toString", "charCodeAt"];
 				var funcName = "";
 				if (astNode._node.body[i].expression.callee) {
-					funcName = astNode.getCalleeName(i);
+					funcName = astNode.getCalleeName(i, varMap);
 				} else {
 
 				}
@@ -81,7 +80,7 @@ function parseProgram(program, scope, verbose){
 				var var_value = varMap.get(funcName, verbose);
 				var user_defined_funName = "";
 				if (var_value != undefined && var_value.value != funcName){
-					console.log("Malicious Function Call Found:[", funcName, "] -> [", var_value.value, "]")
+					console.log("=# Malicious Function Call Found:[", funcName, "] -> [", var_value.value, "]")
 					user_defined_funName = var_value.value;
 				}
 				if (funcName != funcName.substring(funcName.lastIndexOf(".")+1)){
@@ -90,7 +89,7 @@ function parseProgram(program, scope, verbose){
 					for (var a in args) {
 						argStr += args[a].value
 					}
-					console.log("Malicious Function Call Found:", funcName + "("+argStr+")");
+					console.log("=# Malicious Function Call Found:", funcName + "("+argStr+")");
 				}
 				if (funcNames.indexOf(funcName) != -1 || funcNames.indexOf(user_defined_funName) != -1) {
 					var args = astNode.getFunctionArguments(i, varMap);
@@ -98,30 +97,39 @@ function parseProgram(program, scope, verbose){
 					// Attacker might add more unused parameters to confuse the detector
 					if (args.length >= 1) {
 						if (args[0].type == "String") {
-							console.log("Pattern Found in " + scope + ": " + funcName + "(STRING) => " + funcName + "[" + args[0].value + "]");
+							console.log("=# Pattern Found in " + scope + ": " + funcName + "(STRING) => " + funcName + "[" + args[0].value + "]");
 						} else if (args[0].type == "Identifier" ||
 								   args[0].type == "MemberExpression") {
 							var ref_value = varMap.get(args[0].value, verbose);
 							//get value of nested memberexpression e.g. a="str"; Array[0] = a;
 							if (ref_value && ref_value.type == "String") {
-								console.log("Pattern Found in " + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_value.value + ")");
+								console.log("=# Pattern Found in " + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_value.value + ")");
 							} else if (ref_value && ref_value.type == "Expression") {
-								console.log("Pattern Found in " + scope + ": "+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_value.value + ")");
+								console.log("=# Pattern Found in " + scope + ": "+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_value.value + ")");
 							}
 						} else if (args[0].type == "BinaryExpression" || args[0].type == "UnaryExpression" || args[0].type == "CallExpression") {
-							console.log("Pattern Found in " + scope + ": "+funcName+"(" + args[0].type + ") => "+funcName+"[" + args[0].value + "]");
+							console.log("=# Pattern Found in " + scope + ": "+funcName+"(" + args[0].type + ") => "+funcName+"[" + args[0].value + "]");
 						}
 					}
 				}
 			} else {
 				console.log("??", astNode._node.body[i].type)
 			}
-		} 
-		else if (astNode.isFunctionDeclaration(i)) {
+		} else if (astNode.isFunctionDeclaration(i)) {
 			// TODO:function without name
 			funcName = astNode.getFunctionName(i);
 			varMap.setVariable(funcName, { type: 'Identifier', value: funcName });
-			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, false);
+			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, varMap, verbose);
+		} else if (astNode.isIfStatement(i)) {
+			var branchExprs = astNode.parseIfStatement(i, varMap, verbose);
+			for (var b in branchExprs){
+				parseProgram(branchExprs[b], "if_statements", varMap, verbose);
+			}
+		} else if (astNode.isForStatement(i)) {
+			var bodyExprs = astNode.parseForStatement(i, varMap, verbose);
+			for (var b in bodyExprs){
+				parseProgram(bodyExprs[b], "for_statements", varMap, verbose);
+			}
 		}
 	}
 	console.log("-------------------------------------------\n")
@@ -132,15 +140,15 @@ function parseProgram(program, scope, verbose){
 
 if (readFile) {
 	var program = fs.readFileSync("user.js", "utf8");
-	parseProgram(program, "User_Program", verbose);
+	parseProgram(program, "User_Program", init_varMap, verbose);
 } else {
 	var testPrograms = require('./testPrograms');
 	if (testNumber == -1) {
 		for (var t in testPrograms.programs) {
-			parseProgram(testPrograms.programs[t], "Program"+t, verbose);
+			parseProgram(testPrograms.programs[t], "Program"+t, init_varMap, verbose);
 		}
 	} else {
-		parseProgram(testPrograms.programs[testNumber], "Program"+testNumber, verbose);
+		parseProgram(testPrograms.programs[testNumber], "Program"+testNumber, init_varMap, verbose);
 	}
 	
 }

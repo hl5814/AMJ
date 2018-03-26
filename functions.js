@@ -18,6 +18,14 @@ AST.prototype.isExpressionStatement= function(index) {
 	return  (this._node.body[index].type == "ExpressionStatement");
 };
 
+AST.prototype.isIfStatement=function(index){
+	return  (this._node.body[index].type == "IfStatement");
+};
+
+AST.prototype.isForStatement=function(index){
+	return  (this._node.body[index].type == "ForStatement");
+};
+
 AST.prototype.isCallExpression= function(index) {
 	return  (this._node.body[index].type == "CallExpression");
 };
@@ -34,13 +42,23 @@ AST.prototype.getAllDeclarationBlocks=function(index, verbose=false) {
 	return this._node.body[index].declarations;
 }
 
+AST.prototype.parseIfStatement=function(index, varMap, verbose=false){
+	const ifExpr = new Expr(this._node.body[index]);
+	return ifExpr.parseIfStatementExpr(this._node, varMap, [], verbose);
+}
+
+AST.prototype.parseForStatement=function(index, varMap, verbose=false){
+	const forExpr = new Expr(this._node.body[index]);
+	return forExpr.parseForStatementExpr(this._node, varMap, [], verbose);
+}
+
 AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false) {
 	const identifier = block.id.name;
 	const expression = new Expr(block.init);
 	if (block.init == null){
 		return [identifier, { type: 'undefined', value: 'undefined' }];
 	}
-	const args = expression.getArg(this._node, identifier, false, verbose); 
+	const args = expression.getArg(this._node, identifier, varMap, false, verbose); 
 	if (verbose) console.log("getVariableInitValue>>>",identifier, args, block);
 	if (block.init == null){
 		return [identifier, { type: 'undefined', value: 'undefined' }];
@@ -52,7 +70,7 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 	} else if (block.init.type == "NewExpression"){
 		return [identifier, { type: 'NewExpression', value: args }];
 	} else if (block.init.type == "FunctionExpression"){ 
-		const id = (new Expr(block.init.id)).getArg();
+		const id = (new Expr(block.init.id)).getArg(this._node, identifier, varMap, false, verbose);
 		return [identifier, { type: 'Function', value: id }];
 	} else {
 		if (verbose) console.log(">>>getVariableInitValue->Expression");
@@ -118,7 +136,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		var rhs = expression.right;
 		var binaryOPs = ["+=", "-=", "|=", "&=", "*=", "/=", "%="];
 		if (binaryOPs.indexOf(expression.operator) != -1) {
-			var val = (new Expr(rhs)).getArg(this._node, identifier, false);
+			var val = (new Expr(rhs)).getArg(this._node, identifier, varMap, false);
 			var lhs_type_value = varMap.get(lhs.name, verbose);
 			if (lhs_type_value == undefined) {
 				//update varMap if variable undefined
@@ -134,7 +152,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		} else if (rhs.type == "BinaryExpression") {
 			
 			var arg = new Expr(rhs);
-			var val = arg.getArg(this._node, identifier, false);
+			var val = arg.getArg(this._node, identifier, varMap, false);
 
 			var token = (new Expr(rhs.left)).getToken(this._node);
 			if (rhs.left.type == "Identifier") {
@@ -156,7 +174,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			return [varName, { type: "Expression", value: val}];
 		} else if (rhs.type == "CallExpression") {
 			var arg = new Expr(rhs);
-			var val = arg.getArg(this._node, identifier, false);
+			var val = arg.getArg(this._node, identifier, varMap, false);
 			return [varName, { type: "FunctionCall", value: val}];
 		}else {
 			var token = (new Expr(rhs)).getToken(this._node);
@@ -172,7 +190,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			var lhs_object = lhs.object.name;
 			var lhs_property = new Expr(lhs.property);
 			var token = (new Expr(rhs)).getToken(this._node);
-			return [lhs_object+"["+lhs_property.getArg(this._node, identifier, false)+"]" , { type: token.type, value: token.value}];
+			return [lhs_object+"["+lhs_property.getArg(this._node, identifier, varMap, false)+"]" , { type: token.type, value: token.value}];
 		} else {
 			//StaticMemberExpression
 			var lhs_object = lhs.object.name;
@@ -190,10 +208,10 @@ AST.prototype.isFunction= function(funcName, index) {
 	return (expression.type == 'CallExpression' &&  expression.callee.name == funcName);
 };
 
-AST.prototype.getCalleeName= function(index) {
+AST.prototype.getCalleeName= function(index, varMap) {
 	//assert isExpressionStatement()
 	const callee_expr = new Expr(this._node.body[index].expression.callee);
-	return callee_expr.getArg(this._node, "", false);
+	return callee_expr.getArg(this._node, "", varMap, false);
 };
 
 AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
@@ -204,13 +222,19 @@ AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
 		for (var i in expression.arguments) {
 			if (expression.arguments[i].type == "BinaryExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
-				args.push({type: "BinaryExpression", value: exprArgs.getValueFromBinaryExpression(this._node, "",verbose)});
+				console.log(exprArgs._expr.left)
+				var token = (new Expr(exprArgs._expr.left)).getToken(this._node);
+				if (token.type == "String") {
+					args.push({type: "String", value: exprArgs.getValueFromBinaryExpression(this._node, "", varMap,verbose)});
+				} else {
+					args.push({type: "BinaryExpression", value: exprArgs.getValueFromBinaryExpression(this._node, "", varMap,verbose)});
+				}
 			} else if (expression.arguments[i].type == "UnaryExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
-				args.push({type: "UnaryExpression", value: exprArgs.getValueFromUnaryExpression(this._node, "",verbose)});
+				args.push({type: "UnaryExpression", value: exprArgs.getValueFromUnaryExpression(this._node, "", varMap,verbose)});
 			} else if (expression.arguments[i].type == "CallExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
-				args.push({type: "CallExpression", value: exprArgs.getValueFromCallExpression(this._node, "",verbose)});
+				args.push({type: "CallExpression", value: exprArgs.getValueFromCallExpression(this._node, "", varMap,verbose)});
 			} else if (expression.arguments[i].type == "MemberExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
 				args.push({type: "MemberExpression", value: exprArgs.getValueFromMemberExpression(this._node, "", varMap, verbose)});
@@ -262,7 +286,7 @@ Expr.prototype.getToken=function(node, verbose=false){
 	return  token;
 }
 
-Expr.prototype.getArg=function(node, identifier, inner, verbose=false) {
+Expr.prototype.getArg=function(node, identifier, varMap,inner, verbose=false) {
 	if (verbose) console.log("inner?", inner, this._expr);
 	var arg,elem_array;
 	if (verbose) console.log("getArg>>>",this._expr);
@@ -279,30 +303,30 @@ Expr.prototype.getArg=function(node, identifier, inner, verbose=false) {
 		arg = this._expr.name;
 	} else if (this._expr.type == "BinaryExpression") {
 		var expr = new Expr(this._expr);
-		arg = expr.getValueFromBinaryExpression(node, identifier, true);
+		arg = expr.getValueFromBinaryExpression(node, identifier, varMap,true);
 	} else if (this._expr.type == "UnaryExpression") {
 		var expr = new Expr(this._expr);
-		arg = expr.getValueFromUnaryExpression(node, identifier, true);
+		arg = expr.getValueFromUnaryExpression(node, identifier, varMap,true);
 	} else if (this._expr.type == "CallExpression") {
 		var expr = new Expr(this._expr);
-		arg = expr.getValueFromCallExpression(node, identifier, true, verbose);
+		arg = expr.getValueFromCallExpression(node, identifier, varMap,true, verbose);
 	} else if (this._expr.type == "NewExpression") {
 		var expr = new Expr(this._expr);
-		arg = expr.getValueFromNewExpression(node, identifier, true);
+		arg = expr.getValueFromNewExpression(node, identifier, varMap,true);
 	} else if (this._expr.type == "ArrayExpression") {
 		var expr = new Expr(this._expr);
-		elem_array = expr.getValueFromArrayExpression(node, identifier, true);
+		elem_array = expr.getValueFromArrayExpression(node, identifier, varMap,true);
 		return elem_array;
 	} else if (this._expr.type == "MemberExpression") {
 		var expr = new Expr(this._expr);
-		elem_array = expr.getValueFromMemberExpression(node, identifier, true);
+		elem_array = expr.getValueFromMemberExpression(node, identifier, varMap, true);
 		return elem_array;
 	} 
 	return arg;
 }
 
 
-Expr.prototype.getValueFromArrayExpression=function(node, identifier, inner, verbose=false) {
+Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
 	if (verbose) console.log("ArrayExpression:\n", this._expr, "\n")
 	const elements = this._expr.elements;
@@ -314,7 +338,7 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, inner, ver
 			element.type = 'String';
 		}
 		var arg = new Expr(element);
-		var val = arg.getArg(node, identifier, false);
+		var val = arg.getArg(node, identifier, varMap, false);
 		elem_array.push([identifier+"["+e+"]", { type: element.type, value: val }]);
 	}
 	return elem_array;
@@ -327,6 +351,7 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 		//TODO: lookup a in varMap for x[a]
 		var val = this._expr.property.value;
 		if (this._expr.property.type == "Identifier") {
+			console.log(varMap)
 			var ref_value = varMap.get(this._expr.property.name, verbose);
 			val = ref_value.value;
 		}
@@ -337,7 +362,42 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 	
 }
 
-Expr.prototype.getValueFromNewExpression=function(node, identifier, inner, verbose=false) {
+Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=false) {
+	var init = new Expr(this._expr.init);
+	var body = new Expr(this._expr.body);
+	blockRanges.push(ASTUtils.getCode(init._expr));
+	blockRanges.push(ASTUtils.getCode(body._expr).slice(1,-1));
+	return blockRanges;
+}
+
+Expr.prototype.parseIfStatementExpr=function(node, varMap, blockRanges,verbose=false) {
+	var ifBranch = new Expr(this._expr.consequent);
+	var elseBranch = new Expr(this._expr.alternate);
+
+	var ifBranchBlocks = ifBranch.parseIfBranches(node, varMap, [], verbose);
+	for (var i = 0; i < ifBranchBlocks.length; i++){
+		blockRanges.push(ifBranchBlocks[i]);
+	}
+	if (this._expr.alternate) {
+		var elseBranchBlocks = elseBranch.parseIfBranches(node, varMap, [], verbose);
+		for (var i = 0; i < elseBranchBlocks.length; i++){
+			blockRanges.push(elseBranchBlocks[i]);
+		}
+	}
+	return blockRanges;
+}
+
+Expr.prototype.parseIfBranches=function(node, varMap, blockRanges, verbose=false) {
+	if (this._expr.type == "IfStatement") {
+		var innerResult = this.parseIfStatementExpr(node,varMap, [], verbose);
+		return blockRanges.concat.apply([], innerResult);
+	} else {
+		blockRanges.push(ASTUtils.getCode(this._expr).slice(1,-1));
+		return blockRanges;
+	}
+}
+
+Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
 	if (verbose) console.log("NewExpression:\n", this._expr, "\n")
 	const callee = this._expr.callee;
@@ -347,7 +407,7 @@ Expr.prototype.getValueFromNewExpression=function(node, identifier, inner, verbo
 	for (var e in elements) {
 		var element = elements[e];
 		var element_expr = new Expr(element);
-		var val = element_expr.getArg(node, identifier, false);
+		var val = element_expr.getArg(node, identifier, varMap, false);
 		var token = element_expr.getToken(node);
 		if (token.type == "String") element.type = "String";
 		//TODO check callee.name
@@ -358,14 +418,14 @@ Expr.prototype.getValueFromNewExpression=function(node, identifier, inner, verbo
 	return elem_array;
 }
 
-Expr.prototype.getValueFromBinaryExpression=function(node, identifier, inner, verbose=false) {
+Expr.prototype.getValueFromBinaryExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
 	if (verbose) console.log("BinaryExpression:\n", this._expr, "\n");
 
 	const fstExpr = new Expr(this._expr.left);
 	const sndExpr = new Expr(this._expr.right);
-	const fstArg = fstExpr.getArg(node, identifier, false);
-	const sndArg = sndExpr.getArg(node, identifier, false);
+	const fstArg = fstExpr.getArg(node, identifier, varMap, false);
+	const sndArg = sndExpr.getArg(node, identifier, varMap, false);
 
 	var expr;
 	if (inner) {
@@ -378,12 +438,12 @@ Expr.prototype.getValueFromBinaryExpression=function(node, identifier, inner, ve
 	return expr;
 }
 
-Expr.prototype.getValueFromUnaryExpression=function(node, identifier, inner, verbose=false) {
+Expr.prototype.getValueFromUnaryExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
 	if (verbose) console.log("UnaryExpression:\n", this._expr.argument, "\n");
 
 	const expression = new Expr(this._expr.argument);
-	const arg = expression.getArg(node, identifier, false);
+	const arg = expression.getArg(node, identifier, varMap, false);
 
 	var expr;
 	if (inner) {
@@ -396,20 +456,20 @@ Expr.prototype.getValueFromUnaryExpression=function(node, identifier, inner, ver
 	return expr;
 }
 
-Expr.prototype.getValueFromCallExpression=function(node, identifier, inner, verbose=false) {
+Expr.prototype.getValueFromCallExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
 	if (verbose) console.log("CallExpression:\n", this._expr, "\n");
 
 	var callee_expr = new Expr(this._expr.callee);
 
-	const funcName = callee_expr.getArg(node, identifier, false);
+	const funcName = callee_expr.getArg(node, identifier, varMap, false);
 	const args = this._expr.arguments;
 
 	var argList = "";
 	if (args.length > 0) {
 		for (var i in args) {
 			const exprArg = new Expr(args[i]);
-			argList += exprArg.getArg(node, identifier, false);
+			argList += exprArg.getArg(node, identifier, varMap, false);
 		}
 	}
 
