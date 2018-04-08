@@ -31,13 +31,7 @@ var program5 =
 		}
 		eval(test);
 	}
-	eval(test);
-	var b = 1;
-	var c = "c";
-	function foo(){var a = 1+1;};
-	var d = c;
-	eval(d);
-	function bar(){var x = "2"};`;
+	eval(test);`;
 var program6 =`
 	var a = eval;
 	function a(){};

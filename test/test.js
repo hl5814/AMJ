@@ -55,19 +55,19 @@ describe('AST Block Type', function() {
     });
 });
 
-describe('AST getVariableInitValue', function() {
-    it(`getVariableInitValue()`, function() {
-        const program = `var a = 1,b = "test",c = 1+1,d = 1 + "STR",e=a+1;`;
-
-        const astNode = new Functions.AST(ASTUtils.parse(program));
-        var declaration_blocks = astNode.getAllDeclarationBlocks(0);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[0])).to.deep.equal(["a", {type: "Numeric",value: "1"}]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[1])).to.deep.equal(["b", {type: "String",value: '"test"'}]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[2])).to.deep.equal(["c", {type: "Expression",value: "(1+1)"}]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[3])).to.deep.equal(["d", {type: "Expression",value: "(1+STR)"}]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[4])).to.deep.equal(["e", {type: "Expression",value: "(a+1)"}]);
-    });
-});
+// describe('AST getVariableInitValue', function() {
+//     it(`getVariableInitValue()`, function() {
+//         const program = `var a = 1,b = "test",c = 1+1,d = 1 + "STR",e=a+1;`;
+//         var init_varMap = new Functions.VariableMap(new HashMap());
+//         const astNode = new Functions.AST(ASTUtils.parse(program));
+//         var declaration_blocks = astNode.getAllDeclarationBlocks(0);
+//         expect(astNode.getVariableInitValue(0, declaration_blocks[0],)).to.deep.equal(["a", [{type: "Numeric",value: "1"}]]);
+//         expect(astNode.getVariableInitValue(0, declaration_blocks[1])).to.deep.equal(["b", [{type: "String",value: '"test"'}]]);
+//         expect(astNode.getVariableInitValue(0, declaration_blocks[2])).to.deep.equal(["c", [{type: "Expression",value: "(1+1)"}]]);
+//         expect(astNode.getVariableInitValue(0, declaration_blocks[3])).to.deep.equal(["d", [{type: "Expression",value: "(1+STR)"}]]);
+//         expect(astNode.getVariableInitValue(0, declaration_blocks[4])).to.deep.equal(["e", [{type: "Expression",value: "(a+1)"}]]);
+//     });
+// });
 
 
 
@@ -84,8 +84,8 @@ describe('AST AssignmentExpression', function() {
     });
 
     it(`getEqualAssignmentLeftRight()`, function() {
-        expect(block.getEqualAssignmentLeftRight(0)).to.deep.equal(["a", {type: 'Numeric', value: "1" }]);
-        expect(block.getEqualAssignmentLeftRight(1)).to.deep.equal(["b", {type: 'Identifier', value: 'a' }]);
+        expect(block.getAssignmentLeftRight(0)).to.deep.equal(["a", [{type: 'Numeric', value: "1" }]]);
+        expect(block.getAssignmentLeftRight(1)).to.deep.equal(["b", [{type: 'Identifier', value: 'a' }]]);
 
     });
 });
@@ -145,9 +145,9 @@ describe('Get Function Arguments', function() {
         const block = new Functions.AST(ASTUtils.parse(program));
 
         expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'BinaryExpression', value: '1+1'}]);
-        expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'BinaryExpression', value: '(1+a)+test'}]);
+        expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'BinaryExpression', value: '(1+a)+\"test\"'}]);
         expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'BinaryExpression', value: '1+a'},
-                                                             {type: 'BinaryExpression', value: '(test-a)-1'}]);
+                                                             {type: 'String', value: '(\"test\"-a)-1'}]);
     });
 
     it(`getFunctionArguments() for UnaryExpression arguments`, function() {

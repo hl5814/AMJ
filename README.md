@@ -9,12 +9,19 @@ mocha test
 detections and analysiss of drive-
 
 
+// Count the number of occurences of patterns
+// where the patters are (more statically way)
 
+current varmap before entering branches
+strore possible values in varMap 
+[val1, [val2, val3]]
+
+//==> dynamically stage, profiling on the code
 
 
 Current Patterns:
-
-Malicious Function Calls:
+================================================================
+Direct Function Calls:
 	-> eval(object->String)
 	-> eval("STRING")
 	-> eval(function_calls)
@@ -33,14 +40,29 @@ Malicious Operations:
 
 Malicious Initialization:
 	-> expression
-	-> TODO: functions
 	-> String
+	-> functionExpressions
 
 
+inner blocks check:
+	->if/else
+	->for
+	->for in
+	->while
+	->do while
 
+
+TODO:
 
 1) Build basic machine learning model using current features
 2) Extend more features
+
+symbolic execution? Execution for all
+
+
+
+change all places that calling varMap.get to parse a list
+
 
 
 
