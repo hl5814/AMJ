@@ -1,1 +1,0 @@
-=# Pattern Found in Program9: eval(Object->STRING) => [a] ==> eval("test")

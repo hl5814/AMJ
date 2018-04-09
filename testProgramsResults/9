@@ -1,1 +1,2 @@
-=# Pattern Found in Program9: eval(Object->STRING) => [a] ==> eval("test")
+=# Malicious Function Call Found:[ b ] -> [ eval ]
+=# Pattern Found in Program9: b(Object->STRING) => [a] ==> b("alert()")

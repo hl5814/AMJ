@@ -34,43 +34,51 @@ function parseProgram(program, scope, varMap, verbose){
 	for (var i in ast.body){
 		var astNode = new Functions.AST(ast);
 
-		//console.log(ast.body[i])
+		// console.log(ast.body[i])
 		if (verbose && (ast.body[i].type != "Line")) console.log("======================\n", ast.body[i],"\n======================\n");
 		if (astNode.isVariableDeclaration(i)) {
 			var declaration_blocks = astNode.getAllDeclarationBlocks(i);
 			for (var block in declaration_blocks) {
 				var variableName_Type = astNode.getVariableInitValue(i, declaration_blocks[block], varMap, verbose);
-				if (variableName_Type[1].type == "ArrayExpression" || 
-					variableName_Type[1].type == "NewExpression") {
-					var array_elems = variableName_Type[1].value;
-					for (var e in array_elems) {
-						varMap.setVariable(array_elems[e][0], array_elems[e][1], verbose);
-					}
-				} else {
-					if (variableName_Type[1].type == "Expression") {
-						console.log("=# Pattern Found in " + scope + ", Init Variable by "+variableName_Type[1].type +":" + variableName_Type[0] + "=" +variableName_Type[1].value);
-					} else if (variableName_Type[1].type == "FunctionExpression") {
-						console.log("=# Pattern Found in " + scope + ", Init Variable by "+variableName_Type[1].type +":" + variableName_Type[0] + "=" +variableName_Type[1].value);
-						var blocks = astNode.getFunctionBody(i);
-						for (var b in blocks){
-							parseProgram(blocks[b], variableName_Type[1].value, varMap, verbose);
+				var variableName_Types = variableName_Type[1];
+
+				for (var v in variableName_Types) {
+					if (variableName_Types[v].type == "ArrayExpression" || 
+						variableName_Types[v].type == "NewExpression") {
+						var array_elems = variableName_Types[v].value;
+						for (var e in array_elems) {
+							varMap.setVariable(array_elems[e][0], array_elems[e][1], verbose);
 						}
-						
+					} else {
+						if (variableName_Types[v].type == "Expression") {
+							console.log("=# Pattern Found in " + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
+						} else if (astNode.hasFunctionExpression(i)) {
+							console.log("=# Pattern Found in " + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
+							var blocks = astNode.getFunctionBodyFromFunctionExpression(i);
+							for (var b in blocks){
+								// parse function body
+								parseProgram(blocks[b], variableName_Types[v].value, varMap, verbose);
+							}
+						}
+						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					}
-					varMap.setVariable(variableName_Type[0], variableName_Type[1], verbose);
+					if (verbose) varMap.printMap();
 				}
-				if (verbose) varMap.printMap();
 			}
 		}
 		else if (astNode.isExpressionStatement(i)) {
 
 			if (astNode.isAssignmentExpression(i)) {
+
 				var var_values = astNode.getAssignmentLeftRight(i, varMap, verbose);
-				
+
 				for (var i in var_values[1]){
 					if (var_values[1][i].type == "BitwiseOperationExpression" ||
 						var_values[1][i].type == "FunctionCall") {
 						console.log("=# Malicious Assigment Found in:" + scope + ", "+var_values[1][i].type +":" + var_values[0] + "=" +var_values[1][i].value);
+					} else if (var_values[1][i].type == "FunctionExpression") {
+						//parse function body
+						parseProgram(var_values[1][i].value, var_values[1][i].value, varMap, verbose);
 					}
 				}
 
@@ -129,7 +137,6 @@ function parseProgram(program, scope, varMap, verbose){
 								} else if (args[0].type == "Identifier" ||
 										   args[0].type == "MemberExpression") {
 									var ref_values = varMap.get(args[0].value, verbose);
-
 									//get value of nested memberexpression e.g. a="str"; Array[0] = a;
 									for (var i in ref_values) {
 										if (ref_values[i] && ref_values[i].type == "String") {

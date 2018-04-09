@@ -13,11 +13,10 @@ var program2 =
 	a = "xxx";
 	eval(c);`;
 var program3 = 
-`	a = b; 
-	b = c; 
-	c = a;
-	a = "xxx";
-	eval(c);`;
+`	b=function a (){eval("str1.1");};
+	var b=function a (){eval("str1.2");};
+	c=function(){eval("str2.1");};
+	var c=function(){eval("str2.2");};`;
 var program4 = 
 `	var a = "test";
 	unescape(a)`;
@@ -49,13 +48,10 @@ var program8 =
 	}
 	a("test");`;
 var program9 =
-`	a = "test";
-	eval(a);`;
-//TODO: undefined variables
-// var program_undefined_b = 
-// `	var a = "alert()";
-// 	b = eval; 
-// 	b(a);`;
+`	var a = "alert()";
+	b = eval; 
+	b(a);`;
+
 
 exports.programs = [program0,program1,program2,program3,
 					program4,program5,program6,program7,

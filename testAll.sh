@@ -13,3 +13,5 @@ do
 		echo -e "\033[32m [PASS] \033[0m"
 	fi
 done
+
+rm testProgramsResults/temp_result testProgramsResults/temp_diff

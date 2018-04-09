@@ -2,6 +2,7 @@ node main.js
 node main.js -t 2
 node main.js -u -v
 
+<!-- unit test command for JSDetector -->
 mocha test
 
 // https://github.com/facebook/flow
