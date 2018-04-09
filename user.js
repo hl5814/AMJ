@@ -1,9 +1,10 @@
 
-var a = 0;
+function a(){};
+function b(){};
 if (1>2){
 	a=eval;
 } else {
-	a=2;
+	a=b;
 }
 
 a("test");

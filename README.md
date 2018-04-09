@@ -63,6 +63,29 @@ symbolic execution? Execution for all
 
 change all places that calling varMap.get to parse a list
 
+<!-- change varMap store all possible values when encounter if branches -->
+// for variables with multiple possible values (e.g. {key:a, value:[1, "string"]})
+// case 1:  [equal assignment a=b]
+// 		 ignore all possible values, replace with the new value on RHS
+//		 ==> {key:a, value:[b]}
+// case 2:  [update statements, a+=1, a=a+c]
+//		 update all branches with the corresponding value
+//		 ==> {key:a, value:[1+1, "string"+1]}
+//
+// same works for functions names
+// EXAMPLE: [Program8]
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

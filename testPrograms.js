@@ -7,7 +7,7 @@ var program1 =
 	eval(foo(1+bar()))`;
 var program2 = 
 `	b = "alert(b)";
-	a = b; 
+	a = b;
 	b = c; 
 	c = a;
 	a = "xxx";
@@ -40,7 +40,14 @@ var program7 =`
 	var a = eval;
 	a("test");`
 var program8 = 
-`	var D = function foo(){};`;
+`	function a(){};
+	function b(){};
+	if (1>2){
+		a=eval;
+	} else {
+		a=b;
+	}
+	a("test");`;
 var program9 =
 `	a = "test";
 	eval(a);`;
