@@ -138,32 +138,8 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 	}
 }
 
-AST.prototype.getAllVariableNames= function(index, verbose=false) {
-	const allDeclarations = this.getAllDeclarationBlocks(index);
-	var varaibleName_InitValue = [];
-
-	for (var d in allDeclarations) {
-		var declaration = allDeclarations[d];
-		var initValue = declaration.init;
-
-		if (initValue == null){
-			varaibleName_InitValue.push([declaration.id.name, { type: 'undefined', value: 'undefined' }]);
-		} else {
-			var token = (new Expr(declaration.init)).getToken(this._node);
-			varaibleName_InitValue.push([declaration.id.name, { type: token.type, value: token.value }]);
-		}
-	}
-	if (verbose) console.log(varaibleName_InitValue);
-	return varaibleName_InitValue;
-};
-
 AST.prototype.getUpdateExpression= function(index, varMap, verbose=false) {
 	if (verbose)console.log("update Expression: e.g. ++ -- operations")
-	// const expression = this._node.body[index].expression;
-	// var arg = new Expr(expression.argument);
-	// var identifier = arg.getIdentifier(varMap);
-	// var operator = expression.operator;
-	// console.log(arg)
 }
 
 AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
@@ -258,7 +234,6 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			var token = (new Expr(rhs)).getToken(this._node);
 			return [varName, [{ type: token.type, value: token.value}]];
 		}
-
 	} else if (expression.left.type == "MemberExpression") {
 		var lhs = expression.left;
 		var rhs = expression.right;
@@ -282,7 +257,6 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 
 AST.prototype.isFunction= function(funcName, index) {
 	//assert isExpressionStatement()
-	//TODO: function w/o name
 	const expression = this._node.body[index].expression;
 	return (expression.type == 'CallExpression' &&  expression.callee.name == funcName);
 };

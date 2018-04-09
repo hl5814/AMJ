@@ -70,7 +70,9 @@ describe('AST getVariableInitValue', function() {
                          i=new Array(1),
                          j=eval("test"),
                          k=function(){var a=1;},
-                         l=function a (){var a=1;};`;
+                         l=function a (){var a=1;},
+                         m=eval,
+                         n=N;`;
         const varMap = new Functions.VariableMap(new HashMap());
         const astNode = new Functions.AST(ASTUtils.parse(program));
         const declaration_blocks = astNode.getAllDeclarationBlocks(0);
@@ -104,8 +106,19 @@ describe('AST getVariableInitValue', function() {
         expect(astNode.getVariableInitValue(0, declaration_blocks[9], varMap)).to.deep.equal(["j", [{type: "Expression",value: "eval(\"test\")"}]]);
         expect(astNode.getVariableInitValue(0, declaration_blocks[10], varMap)).to.deep.equal(["k", [{type: "FunctionExpression",value: "function(){var a=1;}"}]]);
         expect(astNode.getVariableInitValue(0, declaration_blocks[11], varMap)).to.deep.equal(["l", [{type: "FunctionExpression",value: "a"}]]);
+    
+        varMap.setVariable("eval", [{ type: 'pre_Function', value: "eval" }] );
+
+        expect(astNode.getVariableInitValue(0, declaration_blocks[12], varMap)).to.deep.equal(["m", [{type: "pre_Function",value: "eval"}]]);
+        expect(astNode.getVariableInitValue(0, declaration_blocks[13], varMap)).to.deep.equal(["n", [{type: "undefined",value: "undefined"}]]);
     });
 });
+
+//TODO: getAssignmentLeftRight()
+
+
+
+
 
 describe('AST IfStatements', function() {
     const program = `if (1>2) {}
@@ -204,7 +217,7 @@ describe('AST Function', function() {
                          var a = "alert(a)";
                          return a;
                      }
-                     var a = function(){eval("test1");};
+                     var a = function(){eval("test1");}
                      var b = function c (){eval("test2");}`;
     const block = new Functions.AST(ASTUtils.parse(program));
 
@@ -308,15 +321,19 @@ describe('Get Function Arguments', function() {
         expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'CallExpression', value: 'eval((eval(a)))'}]);
         expect(block.getFunctionArguments(3)).to.deep.equal([{type: 'CallExpression', value: 'foo((1+(bar(a))))'}]);
     });
+
+    it(`getCalleeName() for FunctionCall arguments`, function() {
+        const program = `eval();
+                         unescape();
+                         atob(unescape());`;
+        const block = new Functions.AST(ASTUtils.parse(program));
+
+        expect(block.getCalleeName(0)).to.deep.equal("eval");
+        expect(block.getCalleeName(1)).to.deep.equal("unescape");
+        expect(block.getCalleeName(2)).to.deep.equal("atob");
+    });
 });
 
-
-// *****************************
-// * Variable Value HashMap Functions
-// *****************************
-describe('VariableMap', function() {
-    //TODO:updateVariable
-});
 
 
 

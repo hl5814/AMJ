@@ -85,6 +85,7 @@ function parseProgram(program, scope, varMap, verbose){
 				varMap.updateVariable(var_values[0], var_values[1], verbose);
 			} else if (astNode.isUpdateExpression(i)) {
 				var var_value = astNode.getUpdateExpression(i, varMap, verbose);
+				// no point to track ++, --
 			} else if (astNode.isCallExpression(i) || astNode.isExpressionStatement(i)) {
 				//console.log(ast.body[i].expression.callee.object);
 				//console.log(ast.body[i].expression.callee.property);
