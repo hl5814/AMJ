@@ -20,8 +20,8 @@ var testNumber = (options.testNumber == undefined) ? -1 : options.testNumber;
 //===============================MainProgram=================================
 var init_varMap = new Functions.VariableMap(new HashMap());
 
-var funcNames = ["eval", "unescape", "replace", "write", "atob", "btoa",
-				 "setTimeout", "setInterval", "fromCharCode", "toString", "charCodeAt"];
+var funcNames = ["eval", "unescape", "replace", "document.write", "atob", "btoa",
+				 "setTimeout", "setInterval", "toString", "String.fromCharCode"];
 for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
@@ -98,7 +98,6 @@ function parseProgram(program, scope, varMap, verbose){
 				}
 				
 				var var_values = varMap.get(funcName);
-
 
 				for (var v in var_values) {
 					if (var_values[v].type != "pre_Function") {

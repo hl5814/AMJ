@@ -76,7 +76,7 @@ change all places that calling varMap.get to parse a list
 // same works for functions names
 // EXAMPLE: [Program8]
 
-
+//TODO: add checks for function calls on object, e.g. XXX.toString().
 
 
 
