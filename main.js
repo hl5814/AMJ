@@ -8,14 +8,16 @@ const fs = require('fs');
 
 //===================parse command line arguments============================
 const optionDefinitions = [
-  { name: 'verbose',      alias: 'v', type: Boolean },
+  { name: 'verbose',      alias: 'v', type: Number },
   { name: 'readFromFile', alias: 'u', type: Boolean},
+  { name: 'weight',	 	  alias: 'w', type: Boolean},
   { name: 'testNumber',   alias: 't', type: Number }
 ]
 const options = commandLineArgs(optionDefinitions)
-var verbose = options.verbose;
-var readFile = options.readFromFile;
-var testNumber = (options.testNumber == undefined) ? -1 : options.testNumber;
+const readFile = options.readFromFile;
+const calcualteWeight = options.weight; 
+const testNumber = (options.testNumber == undefined) ? -1 : options.testNumber;
+const verbose = (options.verbose === undefined) ? 0 : (options.verbose === null)? 1 : 2;
 
 //===============================MainProgram=================================
 var init_varMap = new Functions.VariableMap(new HashMap());
@@ -26,8 +28,44 @@ for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
 
+// {key: featureType, value: x}
+var resultMap = new HashMap();
+
+
+const featureWeight = { "InitVariable" : 1,
+					    "Assignment"   : 2,
+						"FunctionCall" : 3,
+						"ExpressionOp" : 4,
+						"StringOp"	   : 5};
+
+function updateResultMap(resultMap, featureType) {
+	var prevValue = resultMap.get(featureType);
+	if (prevValue) {
+		resultMap.set(featureType, prevValue+1);
+	} else {
+		resultMap.set(featureType, 1);
+	}
+}
+
+function showResult(resultMap) {
+	var totalOccurances = 0;
+	var totalWeight     = 0;
+	console.log("Features \t|Occurances\t|TotalWeight");
+	console.log("--------------------------------------------")
+	resultMap.forEach(function(value, key){
+		var weight = value * featureWeight[key];
+		console.log(key, "\t|\t", value, "\t|\t", weight);
+		totalOccurances += value;
+		totalWeight += weight;
+	});
+	console.log("--------------------------------------------")
+	console.log("Total \t\t|\t", totalOccurances, "\t|\t", totalWeight);
+	console.log("("+totalOccurances+","+totalWeight+")")
+}
+
+
 function parseProgram(program, scope, varMap, verbose){
-	if (verbose) console.log(scope + ":\n" + program);
+	if (verbose>1) console.log(scope + ":\n" + program);
 	const ast = ASTUtils.parse(program);
 	
 	// iterate through each AST node
@@ -35,7 +73,7 @@ function parseProgram(program, scope, varMap, verbose){
 		var astNode = new Functions.AST(ast);
 
 		// console.log(ast.body[i])
-		if (verbose && (ast.body[i].type != "Line")) console.log("======================\n", ast.body[i],"\n======================\n");
+		if (verbose>1 && (ast.body[i].type != "Line")) console.log("======================\n", ast.body[i],"\n======================\n");
 		if (astNode.isVariableDeclaration(i)) {
 			var declaration_blocks = astNode.getAllDeclarationBlocks(i);
 			for (var block in declaration_blocks) {
@@ -51,9 +89,11 @@ function parseProgram(program, scope, varMap, verbose){
 						}
 					} else {
 						if (variableName_Types[v].type == "Expression") {
-							console.log("=# Pattern Found in " + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
+							if (verbose>0) console.log("=# Pattern Found in " + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
+							updateResultMap(resultMap, "InitVariable");
 						} else if (astNode.hasFunctionExpression(i)) {
-							console.log("=# Pattern Found in " + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
+							if (verbose>0) console.log("=# Pattern Found in " + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
+							updateResultMap(resultMap, "InitVariable");
 							var blocks = astNode.getFunctionBodyFromFunctionExpression(i);
 							for (var b in blocks){
 								// parse function body
@@ -62,7 +102,7 @@ function parseProgram(program, scope, varMap, verbose){
 						}
 						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					}
-					if (verbose) varMap.printMap();
+					if (verbose>1) varMap.printMap();
 				}
 			}
 		}
@@ -75,7 +115,8 @@ function parseProgram(program, scope, varMap, verbose){
 				for (var i in var_values[1]){
 					if (var_values[1][i].type == "BitwiseOperationExpression" ||
 						var_values[1][i].type == "FunctionCall") {
-						console.log("=# Malicious Assigment Found in:" + scope + ", "+var_values[1][i].type +":" + var_values[0] + "=" +var_values[1][i].value);
+						if (verbose>0) console.log("=# Malicious Assignment Found in:" + scope + ", "+var_values[1][i].type +":" + var_values[0] + "=" +var_values[1][i].value);
+						updateResultMap(resultMap, "Assignment");
 					} else if (var_values[1][i].type == "FunctionExpression") {
 						//parse function body
 						parseProgram(var_values[1][i].value, var_values[1][i].value, varMap, verbose);
@@ -107,7 +148,8 @@ function parseProgram(program, scope, varMap, verbose){
 					var user_defined_funName = "";
 
 					if (var_values != undefined && var_values[v].value != funcName && var_values[v].type == "pre_Function"){
-						console.log("=# Malicious Function Call Found:[", funcName, "] -> [", var_values[v].value, "]")
+						if (verbose>0) console.log("=# Malicious Function Call Found:[", funcName, "] -> [", var_values[v].value, "]")
+						updateResultMap(resultMap, "FunctionCall");
 						user_defined_funName = var_values[v].value;
 					}
 					if (funcName != funcName.substring(funcName.lastIndexOf(".")+1)){
@@ -116,7 +158,8 @@ function parseProgram(program, scope, varMap, verbose){
 						for (var a in args) {
 							argStr += args[a].value
 						}
-						console.log("=# Malicious Function Call Found:", funcName + "("+argStr+")");
+						if (verbose>0) console.log("=# Malicious Function Call Found:", funcName + "("+argStr+")");
+						updateResultMap(resultMap, "FunctionCall");
 					}
 
 					
@@ -130,23 +173,27 @@ function parseProgram(program, scope, varMap, verbose){
 							var args = astNode.getFunctionArguments(i, varMap);
 
 							// JS will ignore extra parameters, if function is defined with only one parameter
-							// Attacker might add more unused parameters to confuse the detector
+							// Attacker might add more unuse d parameters to confuse the detector
 							if (args.length >= 1) {
 								if (args[0].type == "String") {
-									console.log("=# Pattern Found in " + scope + ": " + funcName + "(STRING) => " + funcName + "[" + args[0].value + "]");
+									if (verbose>0) console.log("=# Pattern Found in " + scope + ": " + funcName + "(STRING) => " + funcName + "[" + args[0].value + "]");
+									updateResultMap(resultMap, "StringOp");
 								} else if (args[0].type == "Identifier" ||
 										   args[0].type == "MemberExpression") {
 									var ref_values = varMap.get(args[0].value, verbose);
 									//get value of nested memberexpression e.g. a="str"; Array[0] = a;
 									for (var i in ref_values) {
 										if (ref_values[i] && ref_values[i].type == "String") {
-											console.log("=# Pattern Found in " + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
+											if (verbose>0) console.log("=# Pattern Found in " + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
+											updateResultMap(resultMap, "StringOp");
 										} else if (ref_values[i] && ref_values[i].type == "Expression") {
-											console.log("=# Pattern Found in " + scope + ": "+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
+											if (verbose>0) console.log("=# Pattern Found in " + scope + ": "+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
+											updateResultMap(resultMap, "StringOp");
 										}
 									}							
 								} else if (args[0].type == "BinaryExpression" || args[0].type == "UnaryExpression" || args[0].type == "CallExpression") {
-									console.log("=# Pattern Found in " + scope + ": "+funcName+"(" + args[0].type + ") => "+funcName+"[" + args[0].value + "]");
+									if (verbose>0) console.log("=# Pattern Found in " + scope + ": "+funcName+"(" + args[0].type + ") => "+funcName+"[" + args[0].value + "]");
+									updateResultMap(resultMap, "ExpressionOp");
 								}
 							}
 						}
@@ -165,7 +212,6 @@ function parseProgram(program, scope, varMap, verbose){
 		} else if (astNode.isIfStatement(i)) {
 			var branchExprs = astNode.parseIfStatement(i, varMap, verbose);
 			// console.log(branchExprs);
-			
 
 			const emptyVarMap = new Functions.VariableMap(new HashMap());
 			varMap.copy(emptyVarMap);
@@ -208,8 +254,8 @@ function parseProgram(program, scope, varMap, verbose){
 			}
 		} 
 	}
-	if (verbose)  console.log("-------------------------------------------\n")
-	if (verbose) varMap.printMap();
+	if (verbose>1)  console.log("-------------------------------------------\n")
+	if (verbose>1) varMap.printMap();
 	return varMap.toList();
 }
 
@@ -230,8 +276,7 @@ if (readFile) {
 	
 }
 
-
-
+if (calcualteWeight) showResult(resultMap);
 
 
 

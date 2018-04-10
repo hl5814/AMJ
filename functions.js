@@ -139,7 +139,7 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 }
 
 AST.prototype.getUpdateExpression= function(index, varMap, verbose=false) {
-	if (verbose)console.log("update Expression: e.g. ++ -- operations")
+	if (verbose>1)console.log("update Expression: e.g. ++ -- operations")
 }
 
 AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
@@ -322,7 +322,7 @@ function Expr(expr) {
 }
 
 Expr.prototype.getIdentifier=function(varMap, verbose=false){
-	if (verbose) console.log("getIdentifier>>>",this._expr)
+	if (verbose>1) console.log("getIdentifier>>>",this._expr)
 	if (this._expr.type == "Identifier") {
 		return this._expr.name;
 	} else if (this._expr.type == "MemberExpression") {
@@ -379,7 +379,7 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 
 Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	if (verbose) console.log("ArrayExpression:\n", this._expr, "\n")
+	if (verbose>1) console.log("ArrayExpression:\n", this._expr, "\n")
 	const elements = this._expr.elements;
 	var elem_array = [];
 	for (var e in elements) {
@@ -464,7 +464,7 @@ Expr.prototype.parseIfBranches=function(node, varMap, blockRanges, verbose=false
 
 Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	if (verbose) console.log("NewExpression:\n", this._expr, "\n")
+	if (verbose>1) console.log("NewExpression:\n", this._expr, "\n")
 	const callee = this._expr.callee;
 	
 	const elements = this._expr.arguments;
@@ -485,7 +485,7 @@ Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inne
 
 Expr.prototype.getValueFromBinaryExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	if (verbose) console.log("BinaryExpression:\n", this._expr, "\n");
+	if (verbose>1) console.log("BinaryExpression:\n", this._expr, "\n");
 
 	const fstExpr = new Expr(this._expr.left);
 	const sndExpr = new Expr(this._expr.right);
@@ -499,13 +499,13 @@ Expr.prototype.getValueFromBinaryExpression=function(node, identifier, varMap, i
 		expr = "" + fstArg + "" + this._expr.operator + "" + sndArg + "";
 	}
 
-	if (verbose) console.log("inner:[", inner, "]       expr:[", expr, "]");
+	if (verbose>1) console.log("inner:[", inner, "]       expr:[", expr, "]");
 	return expr;
 }
 
 Expr.prototype.getValueFromUnaryExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	if (verbose) console.log("UnaryExpression:\n", this._expr.argument, "\n");
+	if (verbose>1) console.log("UnaryExpression:\n", this._expr.argument, "\n");
 
 	const expression = new Expr(this._expr.argument);
 	const arg = expression.getArg(node, identifier, varMap, true, verbose);
@@ -517,13 +517,13 @@ Expr.prototype.getValueFromUnaryExpression=function(node, identifier, varMap, in
 		expr = "" + this._expr.operator + "" + arg + "";
 	}
 
-	if (verbose) console.log("inner:[", inner, "]       expr:[", expr, "]");
+	if (verbose>1) console.log("inner:[", inner, "]       expr:[", expr, "]");
 	return expr;
 }
 
 Expr.prototype.getValueFromCallExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	if (verbose) console.log("CallExpression:\n", this._expr, "\n");
+	if (verbose>1) console.log("CallExpression:\n", this._expr, "\n");
 
 	var callee_expr = new Expr(this._expr.callee);
 
@@ -545,7 +545,7 @@ Expr.prototype.getValueFromCallExpression=function(node, identifier, varMap, inn
 		expr = "" + funcName + "(" + argList + ")" + "";
 	}
 
-	if (verbose) console.log("inner:[", inner, "]       expr:[", expr, "]");
+	if (verbose>1) console.log("inner:[", inner, "]       expr:[", expr, "]");
 
 	return expr;
 }
@@ -570,17 +570,17 @@ VariableMap.prototype.updateVariable = function(key, value, verbose=false) {
 	} else {
 		this._varMap.set(key, value);
 	}
-   	if (verbose) console.log("varMap:\n", this._varMap.entries(),"\n");
+   	if (verbose>1) console.log("varMap:\n", this._varMap.entries(),"\n");
 }
 
 VariableMap.prototype.setVariable = function(key, value, verbose=false) {
-	if (verbose) console.log("setVariable>>>", value);
+	if (verbose>1) console.log("setVariable>>>", value);
 	if (value.type == "Identifier") {
 		this._varMap.set(key, value);
 	} else {
 		this.updateVariable(key, value, verbose);
 	}
-   	if (verbose) console.log("varMap:\n", this._varMap.entries(),"\n");
+   	if (verbose>1) console.log("varMap:\n", this._varMap.entries(),"\n");
 }
 
 VariableMap.prototype.get = function(key) {
