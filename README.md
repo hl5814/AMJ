@@ -91,6 +91,7 @@ TODO:
 
 TODO: change data structure from list to set, when storing all type info in variable map
 otherwise, multiple same ?
+? change testAll script take command line argument to overrite all test cases expected results
 
 
 

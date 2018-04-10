@@ -1,2 +1,2 @@
-=# Malicious Function Call Found:[ a ] -> [ eval ]
-=# Pattern Found in Program8: a(STRING) => a["test"]
+FEATURE[FuncObfuscation] :[ a ] -> [ eval ]
+FEATURE[StringOp] in :Program8: a(STRING) => a["test"]

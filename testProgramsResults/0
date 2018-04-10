@@ -1,1 +1,1 @@
-=# Pattern Found in Program0: eval(STRING) => eval["xxx"]
+FEATURE[StringOp] in :Program0: eval(STRING) => eval["xxx"]

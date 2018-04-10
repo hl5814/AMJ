@@ -38,11 +38,12 @@ const scopeCoefficient = {  "main" 		: 1,
 							"while" 	: 2,
 							"function"	: 3};
 
-const featureWeight = { "InitVariable" : 1,
-					    "Assignment"   : 2,
-						"FunctionCall" : 3,
-						"ExpressionOp" : 4,
-						"StringOp"	   : 5};
+const featureWeight = { "InitVariable" 		: 1,
+					    "Assignment"   		: 2,
+						"FunctionCall" 		: 3,
+						"ExpressionOp" 		: 4,
+						"StringOp"	   		: 5,
+						"FuncObfuscation" 	: 5};
 
 function updateResultMap(resultMap, featureType, coef) {
 	var prevValue = resultMap.get(featureType);
@@ -94,10 +95,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						}
 					} else {
 						if (variableName_Types[v].type == "Expression") {
-							if (verbose>0) console.log("=# Pattern Found in " + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
+							if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
 							updateResultMap(resultMap, "InitVariable", coefficient);
 						} else if (astNode.hasFunctionExpression(i)) {
-							if (verbose>0) console.log("=# Pattern Found in " + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
+							if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
 							updateResultMap(resultMap, "InitVariable", coefficient);
 							var blocks = astNode.getFunctionBodyFromFunctionExpression(i);
 							for (var b in blocks){
@@ -120,7 +121,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				for (var i in var_values[1]){
 					if (var_values[1][i].type == "BitwiseOperationExpression" ||
 						var_values[1][i].type == "FunctionCall") {
-						if (verbose>0) console.log("=# Malicious Assignment Found in:" + scope + ", "+var_values[1][i].type +":" + var_values[0] + "=" +var_values[1][i].value);
+						if (verbose>0) console.log("FEATURE[Assignment] in :" + scope + ", "+var_values[1][i].type +":" + var_values[0] + "=" +var_values[1][i].value);
 						updateResultMap(resultMap, "Assignment", coefficient);
 					} else if (var_values[1][i].type == "FunctionExpression") {
 						//parse function body
@@ -153,8 +154,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					var user_defined_funName = "";
 
 					if (var_values != undefined && var_values[v].value != funcName && var_values[v].type == "pre_Function"){
-						if (verbose>0) console.log("=# Malicious Function Call Found:[", funcName, "] -> [", var_values[v].value, "]")
-						updateResultMap(resultMap, "FunctionCall", coefficient);
+						if (verbose>0) console.log("FEATURE[FuncObfuscation] :[", funcName, "] -> [", var_values[v].value, "]")
+						updateResultMap(resultMap, "FuncObfuscation", coefficient);
 						user_defined_funName = var_values[v].value;
 					}
 					if (funcName != funcName.substring(funcName.lastIndexOf(".")+1)){
@@ -163,7 +164,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						for (var a in args) {
 							argStr += args[a].value
 						}
-						if (verbose>0) console.log("=# Malicious Function Call Found:", funcName + "("+argStr+")");
+						if (verbose>0) console.log("FEATURE[FunctionCall] :", funcName + "("+argStr+")");
 						updateResultMap(resultMap, "FunctionCall", coefficient);
 					}
 
@@ -181,24 +182,24 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 							// Attacker might add more unuse d parameters to confuse the detector
 							if (args.length >= 1) {
 								if (args[0].type == "String") {
-									if (verbose>0) console.log("=# Pattern Found in " + scope + ": " + funcName + "(STRING) => " + funcName + "[" + args[0].value + "]");
+									if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": " + funcName + "(STRING) => " + funcName + "[" + args[0].value + "]");
 									updateResultMap(resultMap, "StringOp", coefficient);
 								} else if (args[0].type == "Identifier" ||
 										   args[0].type == "MemberExpression") {
 									var ref_values = varMap.get(args[0].value, verbose);
-									
+
 									//get value of nested memberexpression e.g. a="str"; Array[0] = a;
 									for (var i in ref_values) {
 										if (ref_values[i] && ref_values[i].type == "String") {
-											if (verbose>0) console.log("=# Pattern Found in " + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
+											if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
 											updateResultMap(resultMap, "StringOp", coefficient);
 										} else if (ref_values[i] && ref_values[i].type == "Expression") {
-											if (verbose>0) console.log("=# Pattern Found in " + scope + ": "+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
+											if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": "+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
 											updateResultMap(resultMap, "StringOp", coefficient);
 										}
 									}							
 								} else if (args[0].type == "BinaryExpression" || args[0].type == "UnaryExpression" || args[0].type == "CallExpression") {
-									if (verbose>0) console.log("=# Pattern Found in " + scope + ": "+funcName+"(" + args[0].type + ") => "+funcName+"[" + args[0].value + "]");
+									if (verbose>0) console.log("FEATURE[ExpressionOp] in :" + scope + ": "+funcName+"(" + args[0].type + ") => "+funcName+"[" + args[0].value + "]");
 									updateResultMap(resultMap, "ExpressionOp", coefficient);
 								}
 							}
