@@ -44,12 +44,12 @@ const featureWeight = { "InitVariable" : 1,
 						"ExpressionOp" : 4,
 						"StringOp"	   : 5};
 
-function updateResultMap(resultMap, featureType, coefficient) {
+function updateResultMap(resultMap, featureType, coef) {
 	var prevValue = resultMap.get(featureType);
 	if (prevValue) {
-		resultMap.set(featureType, [prevValue[0]+1,prevValue[1]+coefficient*featureWeight[featureType]]);
+		resultMap.set(featureType, [prevValue[0]+1, prevValue[1] + coef * featureWeight[featureType]]);
 	} else {
-		resultMap.set(featureType, [1,coefficient*featureWeight[featureType]]);
+		resultMap.set(featureType, [1, coef * featureWeight[featureType]]);
 	}
 }
 
@@ -223,7 +223,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, scopeCoefficient["function"], emptyVarMap, verbose);
 		} else if (astNode.isIfStatement(i)) {
 			var branchExprs = astNode.parseIfStatement(i, varMap, verbose);
-			// console.log(branchExprs);
 
 			const emptyVarMap = new Functions.VariableMap(new HashMap());
 			varMap.copy(emptyVarMap);
@@ -245,6 +244,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 							if (changeVarMap.get(key)) {
 								var alternative_value = changeVarMap.get(key);
 								changeVarMap.setVariable(key, alternative_value.concat(value));
+							} else if (varMap.get(key)){
+								var alternative_value = varMap.get(key);
+								changeVarMap.setVariable(key, alternative_value.concat(value));
 							} else {
 								changeVarMap.setVariable(key, value);
 							}
@@ -256,13 +258,65 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			}
 		} else if (astNode.isForStatement(i)) {
 			var bodyExprs = astNode.parseForStatement(i, varMap, verbose);
+
+			const emptyVarMap = new Functions.VariableMap(new HashMap());
+			varMap.copy(emptyVarMap);
+			const changeVarMap = new Functions.VariableMap(new HashMap());
+
 			for (var b in bodyExprs){
-				parseProgram(bodyExprs[b], "for_statements", scopeCoefficient["for"], varMap, verbose);
+				var subVarMapList = parseProgram(bodyExprs[b], "for_statements", scopeCoefficient["for"], emptyVarMap, verbose);
+				//TODO check list difference method
+				for (var l in subVarMapList) {
+					var key = subVarMapList[l].key;
+					var value = subVarMapList[l].value;
+					var prevValues = varMap.get(key);
+					for (var v in prevValues) {
+						if (prevValues[v] != value[0]) {						
+							// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
+							if (changeVarMap.get(key)) {
+								var alternative_value = changeVarMap.get(key);
+								changeVarMap.setVariable(key, alternative_value.concat(value));
+							} else if (varMap.get(key)){
+								var alternative_value = varMap.get(key);
+								changeVarMap.setVariable(key, alternative_value.concat(value));
+							} else {
+								changeVarMap.setVariable(key, value);
+							}
+						}
+					}
+				}
+				changeVarMap.multipleUpdate(varMap);
 			}
 		} else if (astNode.isWhileStatement(i)) {
 			var bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
+
+			const emptyVarMap = new Functions.VariableMap(new HashMap());
+			varMap.copy(emptyVarMap);
+			const changeVarMap = new Functions.VariableMap(new HashMap());
+
 			for (var b in bodyExprs){
-				parseProgram(bodyExprs[b], "while_statements", scopeCoefficient["while"], varMap, verbose);
+				var subVarMapList = parseProgram(bodyExprs[b], "while_statements", scopeCoefficient["while"], emptyVarMap, verbose);
+				//TODO check list difference method
+				for (var l in subVarMapList) {
+					var key = subVarMapList[l].key;
+					var value = subVarMapList[l].value;
+					var prevValues = varMap.get(key);
+					for (var v in prevValues) {
+						if (prevValues[v] != value[0]) {						
+							// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
+							if (changeVarMap.get(key)) {
+								var alternative_value = changeVarMap.get(key);
+								changeVarMap.setVariable(key, alternative_value.concat(value));
+							} else if (varMap.get(key)){
+								var alternative_value = varMap.get(key);
+								changeVarMap.setVariable(key, alternative_value.concat(value));
+							} else {
+								changeVarMap.setVariable(key, value);
+							}
+						}
+					}
+				}
+				changeVarMap.multipleUpdate(varMap);
 			}
 		} 
 	}
