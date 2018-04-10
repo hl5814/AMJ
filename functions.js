@@ -608,7 +608,11 @@ VariableMap.prototype.toList = function() {
 
 VariableMap.prototype.multipleUpdate = function(destinationVarMap) {
 	this._varMap.forEach(function(value, key){
-		destinationVarMap._varMap.set(key, value);
+		var list = [];
+		value.forEach(function(v){
+			list.push(v[0]);
+		});
+		destinationVarMap._varMap.set(key, list);
 	});
 }
 
@@ -617,7 +621,6 @@ VariableMap.prototype.copy = function(destinationVarMap) {
 		destinationVarMap._varMap.set(key, value);
 	});
 }
-
 
 module.exports = {AST, Expr, VariableMap};
 

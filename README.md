@@ -6,17 +6,6 @@ node main.js -u -v
 mocha test
 
 // https://github.com/facebook/flow
-
-detections and analysiss of drive-
-
-
-// Count the number of occurences of patterns
-// where the patters are (more statically way)
-
-current varmap before entering branches
-strore possible values in varMap 
-[val1, [val2, val3]]
-
 //==> dynamically stage, profiling on the code
 
 
@@ -53,17 +42,6 @@ inner blocks check:
 	->do while
 
 
-TODO:
-
-1) Build basic machine learning model using current features
-2) Extend more features
-
-symbolic execution? Execution for all
-
-
-
-change all places that calling varMap.get to parse a list
-
 <!-- change varMap store all possible values when encounter if branches -->
 // for variables with multiple possible values (e.g. {key:a, value:[1, "string"]})
 // case 1:  [equal assignment a=b]
@@ -75,8 +53,6 @@ change all places that calling varMap.get to parse a list
 //
 // same works for functions names
 // EXAMPLE: [Program8]
-
-//TODO: add checks for function calls on object, e.g. XXX.toString().
 
 <!-- change varMap store all possible values when encounter for/while blocks -->
 // check for/while same way as if statements, base on the conditions
@@ -93,9 +69,28 @@ change all places that calling varMap.get to parse a list
 // therefore we need to capture both cases.
 
 
+TODO:
+
+1) add checks for function calls on object, e.g. XXX.toString().
+2) Build basic machine learning model using current features
+	==> SVM, python scikit-learn (svm)
+
+//	from sklearn import svm
+//	X = [[0, 0], [1, 1]]
+//	y = [0, 1]
+//	clf = svm.SVC()
+//	clf.fit(X, y)
+//	clf.predict([[2., 2.]])
+//	>> array([1])
+//
+//   (x,y) ==> x : number of occurances
+//		   y : total weight
+
+3) Extend more features
 
 
-
+TODO: change data structure from list to set, when storing all type info in variable map
+otherwise, multiple same ?
 
 
 

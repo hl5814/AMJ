@@ -186,6 +186,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								} else if (args[0].type == "Identifier" ||
 										   args[0].type == "MemberExpression") {
 									var ref_values = varMap.get(args[0].value, verbose);
+									
 									//get value of nested memberexpression e.g. a="str"; Array[0] = a;
 									for (var i in ref_values) {
 										if (ref_values[i] && ref_values[i].type == "String") {
@@ -226,29 +227,35 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 			const emptyVarMap = new Functions.VariableMap(new HashMap());
 			varMap.copy(emptyVarMap);
-
 			const changeVarMap = new Functions.VariableMap(new HashMap());
+
 
 			for (var b in branchExprs){
 				var subVarMapList = parseProgram(branchExprs[b], "if_statements", scopeCoefficient["if"], emptyVarMap, verbose);
 
+				
 				//TODO check list difference method
 				for (var l in subVarMapList) {
+					
 					var key = subVarMapList[l].key;
 					var value = subVarMapList[l].value;
 
 					var prevValues = varMap.get(key);
+
 					for (var v in prevValues) {
-						if (prevValues[v] != value[0]) {						
-							//console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
+						if (prevValues[v] != value[0]) {					
+							// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
 							if (changeVarMap.get(key)) {
-								var alternative_value = changeVarMap.get(key);
-								changeVarMap.setVariable(key, alternative_value.concat(value));
-							} else if (varMap.get(key)){
-								var alternative_value = varMap.get(key);
-								changeVarMap.setVariable(key, alternative_value.concat(value));
-							} else {
-								changeVarMap.setVariable(key, value);
+								var typeSet = changeVarMap.get(key);
+								if (!typeSet.has(value)) {
+									typeSet.add(value);
+									changeVarMap.setVariable(key, typeSet);
+								}
+							}  else {
+								var typeSet = new Set();
+								typeSet.add(varMap.get(key));
+								typeSet.add(value);
+								changeVarMap.setVariable(key, typeSet);
 							}
 						}
 					}
@@ -271,16 +278,19 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					var value = subVarMapList[l].value;
 					var prevValues = varMap.get(key);
 					for (var v in prevValues) {
-						if (prevValues[v] != value[0]) {						
+						if (prevValues[v] != value[0]) {					
 							// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
 							if (changeVarMap.get(key)) {
-								var alternative_value = changeVarMap.get(key);
-								changeVarMap.setVariable(key, alternative_value.concat(value));
-							} else if (varMap.get(key)){
-								var alternative_value = varMap.get(key);
-								changeVarMap.setVariable(key, alternative_value.concat(value));
-							} else {
-								changeVarMap.setVariable(key, value);
+								var typeSet = changeVarMap.get(key);
+								if (!typeSet.has(value)) {
+									typeSet.add(value);
+									changeVarMap.setVariable(key, typeSet);
+								}
+							}  else {
+								var typeSet = new Set();
+								typeSet.add(varMap.get(key));
+								typeSet.add(value);
+								changeVarMap.setVariable(key, typeSet);
 							}
 						}
 					}
@@ -302,16 +312,19 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					var value = subVarMapList[l].value;
 					var prevValues = varMap.get(key);
 					for (var v in prevValues) {
-						if (prevValues[v] != value[0]) {						
+						if (prevValues[v] != value[0]) {					
 							// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
 							if (changeVarMap.get(key)) {
-								var alternative_value = changeVarMap.get(key);
-								changeVarMap.setVariable(key, alternative_value.concat(value));
-							} else if (varMap.get(key)){
-								var alternative_value = varMap.get(key);
-								changeVarMap.setVariable(key, alternative_value.concat(value));
-							} else {
-								changeVarMap.setVariable(key, value);
+								var typeSet = changeVarMap.get(key);
+								if (!typeSet.has(value)) {
+									typeSet.add(value);
+									changeVarMap.setVariable(key, typeSet);
+								}
+							}  else {
+								var typeSet = new Set();
+								typeSet.add(varMap.get(key));
+								typeSet.add(value);
+								changeVarMap.setVariable(key, typeSet);
 							}
 						}
 					}
