@@ -10,6 +10,10 @@ AST.prototype.isVariableDeclaration= function(index) {
 	return  (this._node.body[index].type == "VariableDeclaration");
 };
 
+AST.prototype.isReturnStatement= function(index) {
+	return  (this._node.body[index].type == "ReturnStatement");
+};
+
 AST.prototype.isFunctionDeclaration= function(index) {
 	return  (this._node.body[index].type == "FunctionDeclaration");
 };
@@ -43,6 +47,7 @@ AST.prototype.isBlockStatement= function(index) {
 AST.prototype.hasFunctionExpression= function(index) {
 	if (this._node.body[index].type == "VariableDeclaration") {
 		for (var i in this.getAllDeclarationBlocks(index)){
+			if (this._node.body[index].declarations[i].init === null) continue;
 			if (this._node.body[index].declarations[i].init.type == "FunctionExpression") {
 				return i;
 			}

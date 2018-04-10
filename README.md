@@ -77,7 +77,18 @@ change all places that calling varMap.get to parse a list
 // EXAMPLE: [Program8]
 
 //TODO: add checks for function calls on object, e.g. XXX.toString().
-
+//TODO: trate for/while same way as if statements, base on the conditions
+//	    program might skip the for/while block, therefore, we should store
+//		both possible values for variables encounter for/while blocks
+//
+// example:
+//		   	var a = "STRING";
+// 		   	for (var i = 0; i>5; i++) {
+//				a = 0;	
+//			}
+//			eval(a)
+// Based on static analysis, we didn't check whether the condition will be met,
+//therefore we need to capture both cases.
 
 
 
