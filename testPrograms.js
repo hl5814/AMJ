@@ -51,8 +51,19 @@ var program9 =
 `	var a = "alert()";
 	b = eval; 
 	b(a);`;
+var program10 =
+`	var x = "STR1";
+	if (1>2) {
+	    x = 0;
+	}
+	eval(x);
 
-
+	var y = "STR2";
+	if (1>2) {
+	    y = 0;
+	    eval(y);
+	}`;
+	
 exports.programs = [program0,program1,program2,program3,
 					program4,program5,program6,program7,
-					program8,program9];
+					program8,program9,program10];

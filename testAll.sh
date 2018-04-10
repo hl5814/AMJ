@@ -1,8 +1,8 @@
 #!/bin/bash
 
-for i in 0 1 2 3 4 5 6 7 8 9 ;
+for i in 0 1 2 3 4 5 6 7 8 9 10;
 do
-	echo -ne "Program $i: "
+	echo -ne "Program $i: \t"
 	node main.js -v -t $i > testProgramsResults/temp_result
 	diff testProgramsResults/$i testProgramsResults/temp_result > testProgramsResults/temp_diff
 	if [ $? -ne 0 ] ; 
