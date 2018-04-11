@@ -31,7 +31,7 @@ for (var f in funcNames) {
 
 // {key: featureType, value: [occurances, weight]}
 var resultMap = new HashMap();
-
+var featureMap = new HashMap();
 
 const scopeCoefficient = {  "main" 		: 1,
 							"if"    	: 1.5,
@@ -45,6 +45,10 @@ const featureWeight = { "InitVariable" 		: 1,
 						"ExpressionOp" 		: 4,
 						"StringOp"	   		: 5,
 						"FuncObfuscation" 	: 5};
+
+
+
+
 
 function updateResultMap(resultMap, featureType, coef) {
 	var prevValue = resultMap.get(featureType);
@@ -352,8 +356,16 @@ if (filePath !== undefined) {
 	var program = fs.readFileSync("user.js", "utf8");
 	if (filePath !== null) {
 		var file = fs.readFileSync(filePath, "utf8");
-		var match = file.match('<script[^>]*>(?:[^<]+|<(?!/script>))+');
-		if (match !== null) var program = match[0].substring(match[0].indexOf(">")+1,match[0].length);
+		var match = file.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+		var scriptCodes = "";
+		while (match !== null) {
+			var matchLength = match[0].length;
+			scriptCodes = scriptCodes + match[0].substring(match[0].indexOf(">")+1,match[0].length);
+			file = file.substring(matchLength+1, file.length);
+			match = file.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+		}
+		var program = scriptCodes;
+		console.log(program)
 	}
 	parseProgram(program, "User_Program", scopeCoefficient["main"], init_varMap, false, verbose);
 } else {
