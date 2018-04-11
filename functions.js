@@ -384,11 +384,11 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 
 Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	if (verbose>1) console.log("ArrayExpression:\n", this._expr, "\n")
 	const elements = this._expr.elements;
 	var elem_array = [];
 	for (var e in elements) {
 		var element = elements[e];
+		if (element === null) continue;
 		var token = (new Expr(element)).getToken(node);
 		if (token.type == "String") {
 			element.type = 'String';
@@ -425,16 +425,25 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 	
 	if (this._expr.body){
 		var body = new Expr(this._expr.body);
-		blockRanges.push(ASTUtils.getCode(body._expr).slice(1,-1));
+		var code = ASTUtils.getCode(body._expr);
+		if (code.indexOf("{") != -1) {
+			blockRanges.push(code.slice(1,-1));
+		} else {
+			blockRanges.push(code);
+		}
 	}
-	
 	return blockRanges;
 }
 
 Expr.prototype.parseWhileStatementExpr=function(node, varMap, blockRanges,verbose=false) {
 	if (this._expr.body){
 		var body = new Expr(this._expr.body);
-		blockRanges.push(ASTUtils.getCode(body._expr).slice(1,-1));
+		var code = ASTUtils.getCode(body._expr);
+		if (code.indexOf("{") != -1) {
+			blockRanges.push(code.slice(1,-1));
+		} else {
+			blockRanges.push(code);
+		}
 	}
 
 	return blockRanges;
@@ -462,7 +471,12 @@ Expr.prototype.parseIfBranches=function(node, varMap, blockRanges, verbose=false
 		var innerResult = this.parseIfStatementExpr(node,varMap, [], verbose);
 		return blockRanges.concat.apply([], innerResult);
 	} else {
-		blockRanges.push(ASTUtils.getCode(this._expr).slice(1,-1));
+		var code = ASTUtils.getCode(this._expr);
+		if (code.indexOf("{") != -1) {
+			blockRanges.push(code.slice(1,-1));
+		} else {
+			blockRanges.push(code);
+		}
 		return blockRanges;
 	}
 }

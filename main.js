@@ -9,15 +9,16 @@ const fs = require('fs');
 //===================parse command line arguments============================
 const optionDefinitions = [
   { name: 'verbose',      alias: 'v', type: Number },
-  { name: 'readFromFile', alias: 'u', type: Boolean},
   { name: 'weight',	 	  alias: 'w', type: Boolean},
-  { name: 'testNumber',   alias: 't', type: Number }
+  { name: 'testNumber',   alias: 't', type: Number },
+  { name: 'src', 		  alias: 's', type: String }
 ]
+
 const options = commandLineArgs(optionDefinitions)
-const readFile = options.readFromFile;
 const calcualteWeight = options.weight; 
 const testNumber = (options.testNumber == undefined) ? -1 : options.testNumber;
 const verbose = (options.verbose === undefined) ? 0 : (options.verbose === null)? 1 : 2;
+const filePath = options.src;
 
 //===============================MainProgram=================================
 var init_varMap = new Functions.VariableMap(new HashMap());
@@ -70,9 +71,15 @@ function showResult(resultMap) {
 }
 
 
-function parseProgram(program, scope, coefficient, varMap, verbose){
+function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 	if (verbose>1) console.log(scope + ":\n" + program);
-	const ast = ASTUtils.parse(program);
+	var ast;
+	if (hasReturn) {
+		ast = ASTUtils.parseWrap(program);
+	} else {
+		ast = ASTUtils.parse(program);
+	}
+	
 	
 	// iterate through each AST node
 	for (var i in ast.body){
@@ -103,7 +110,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 							var blocks = astNode.getFunctionBodyFromFunctionExpression(i);
 							for (var b in blocks){
 								// parse function body
-								parseProgram(blocks[b], variableName_Types[v].value, scopeCoefficient["function"], varMap, verbose);
+								parseProgram(blocks[b], variableName_Types[v].value, scopeCoefficient["function"], varMap, hasReturn, verbose);
 							}
 						}
 						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
@@ -125,7 +132,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						updateResultMap(resultMap, "Assignment", coefficient);
 					} else if (var_values[1][i].type == "FunctionExpression") {
 						//parse function body
-						parseProgram(var_values[1][i].value, var_values[1][i].value, scopeCoefficient["function"], varMap, verbose);
+						parseProgram(var_values[1][i].value, var_values[1][i].value, scopeCoefficient["function"], varMap, hasReturn, verbose);
 					}
 				}
 
@@ -210,11 +217,11 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				console.log("??", astNode._node.body[i].type)
 			}
 		} else if (astNode.isFunctionDeclaration(i)) {
-			// detach return nodes for parsing function body
-			// return nodes only need in dynamic analysis
-			ASTUtils.traverse(ast.body[i].body, function(node){
+			// set hasReturn flag to true for parsing function body
+			var hasReturn = false;
+			ASTUtils.traverse(ast.body[i].body, function(node, parent){
 				if (node.type == "ReturnStatement"){
-					ASTUtils.detach(node);
+					hasReturn = true;
 				}
 			});
 
@@ -222,7 +229,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			varMap.setVariable(funcName, [{ type: 'user_Function', value: funcName }]);
 			const emptyVarMap = new Functions.VariableMap(new HashMap());
 			init_varMap.copy(emptyVarMap);
-			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, scopeCoefficient["function"], emptyVarMap, verbose);
+			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, scopeCoefficient["function"], emptyVarMap, hasReturn, verbose);
 		} else if (astNode.isIfStatement(i)) {
 			var branchExprs = astNode.parseIfStatement(i, varMap, verbose);
 
@@ -232,7 +239,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 
 			for (var b in branchExprs){
-				var subVarMapList = parseProgram(branchExprs[b], "if_statements", scopeCoefficient["if"], emptyVarMap, verbose);
+				var subVarMapList = parseProgram(branchExprs[b], "if_statements", scopeCoefficient["if"], emptyVarMap, hasReturn, verbose);
 
 				
 				//TODO check list difference method
@@ -272,7 +279,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			const changeVarMap = new Functions.VariableMap(new HashMap());
 
 			for (var b in bodyExprs){
-				var subVarMapList = parseProgram(bodyExprs[b], "for_statements", scopeCoefficient["for"], emptyVarMap, verbose);
+				var subVarMapList = parseProgram(bodyExprs[b], "for_statements", scopeCoefficient["for"], emptyVarMap, hasReturn, verbose);
 				//TODO check list difference method
 				for (var l in subVarMapList) {
 					var key = subVarMapList[l].key;
@@ -306,7 +313,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			const changeVarMap = new Functions.VariableMap(new HashMap());
 
 			for (var b in bodyExprs){
-				var subVarMapList = parseProgram(bodyExprs[b], "while_statements", scopeCoefficient["while"], emptyVarMap, verbose);
+				var subVarMapList = parseProgram(bodyExprs[b], "while_statements", scopeCoefficient["while"], emptyVarMap, hasReturn, verbose);
 				//TODO check list difference method
 				for (var l in subVarMapList) {
 					var key = subVarMapList[l].key;
@@ -341,22 +348,24 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 //===================check input source============================
 
-if (readFile) {
+if (filePath !== undefined) {
 	var program = fs.readFileSync("user.js", "utf8");
-	parseProgram(program, "User_Program", scopeCoefficient["main"], init_varMap, verbose);
+	if (filePath !== null) {
+		var file = fs.readFileSync(filePath, "utf8");
+		var match = file.match('<script[^>]*>(?:[^<]+|<(?!/script>))+');
+		if (match !== null) var program = match[0].substring(match[0].indexOf(">")+1,match[0].length);
+	}
+	parseProgram(program, "User_Program", scopeCoefficient["main"], init_varMap, false, verbose);
 } else {
 	var testPrograms = require('./testPrograms');
 	if (testNumber == -1) {
 		for (var t in testPrograms.programs) {
-			parseProgram(testPrograms.programs[t], "Program"+t, scopeCoefficient["main"], init_varMap, verbose);
+			parseProgram(testPrograms.programs[t], "Program"+t, scopeCoefficient["main"], init_varMap, false, verbose);
 		}
 	} else {
-		parseProgram(testPrograms.programs[testNumber], "Program"+testNumber, scopeCoefficient["main"], init_varMap, verbose);
+		parseProgram(testPrograms.programs[testNumber], "Program"+testNumber, scopeCoefficient["main"], init_varMap, false, verbose);
 	}
 	
 }
 
 if (calcualteWeight) showResult(resultMap);
-
-
-
