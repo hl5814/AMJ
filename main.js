@@ -78,6 +78,7 @@ function showResult(resultMap) {
 
 function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 	// console.log(scope + ":\n\n>>>" + program, "<<<\n\n\n");
+	if (program.replace(/\s+/, "") == "") return varMap.toList();
 	var ast;
 	if (hasReturn) {
 		ast = ASTUtils.parseWrap(program);
@@ -167,6 +168,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						updateResultMap(resultMap, "FuncObfuscation", coefficient);
 						user_defined_funName = var_values[v].value;
 					}
+
 					if (funcName != funcName.substring(funcName.lastIndexOf(".")+1)){
 						var args = astNode.getFunctionArguments(i, varMap);
 						var argStr = "";
@@ -182,7 +184,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					var funcNames = varMap.get(funcName);
 					for (var f in funcNames) {
 						if (funcNames[f].type == "pre_Function" || user_defined_funName == funcNames[f].value) {
-
 							var args = astNode.getFunctionArguments(i, varMap);
 
 							// JS will ignore extra parameters, if function is defined with only one parameter
@@ -196,11 +197,11 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 									var ref_values = varMap.get(args[0].value, verbose);
 
 									//get value of nested memberexpression e.g. a="str"; Array[0] = a;
-									for (var i in ref_values) {
-										if (ref_values[i] && ref_values[i].type == "String") {
+									for (var ref in ref_values) {
+										if (ref_values[ref] && ref_values[ref].type == "String") {
 											if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
 											updateResultMap(resultMap, "StringOp", coefficient);
-										} else if (ref_values[i] && ref_values[i].type == "Expression") {
+										} else if (ref_values[ref] && ref_values[ref].type == "Expression") {
 											if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": "+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
 											updateResultMap(resultMap, "StringOp", coefficient);
 										}
@@ -388,7 +389,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			//try branch
 			var tryVarMapList = parseProgram(bodyExprs[0], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
 			var catchVarMapList = parseProgram(bodyExprs[1], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
-
+			
 			var diffMap = new Functions.VariableMap(new HashMap());
 
 

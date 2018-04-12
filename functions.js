@@ -461,6 +461,7 @@ Expr.prototype.parseWhileStatementExpr=function(node, varMap, blockRanges,verbos
 }
 
 Expr.prototype.parseTryStatementExpr=function(node, varMap, blockRanges,verbose=false) {
+
 	if (this._expr.block){
 		var block = new Expr(this._expr.block);
 		var code = ASTUtils.getCode(block._expr);
@@ -495,7 +496,7 @@ Expr.prototype.parseTryStatementExpr=function(node, varMap, blockRanges,verbose=
 			}
 		}
 	}
-
+	
 	return blockRanges;
 }
 
