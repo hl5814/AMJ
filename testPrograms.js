@@ -32,12 +32,36 @@ var program5 =
 	}
 	eval(test);`;
 var program6 =`
-	var a = eval;
-	function a(){};
-	a("test");`
+	var x = "STR";
+	try{
+		x = "TRY";
+	}catch(e){
+		x = 0;
+	}
+	eval(x);
+
+	var y = "";
+	try{
+		y = "TRY";
+	}catch(e){
+		y = "CATCH";
+	}
+	eval(y);
+
+	try{
+		var z = "TRY";
+	}catch(e){
+		var z = "CATCH";
+	}
+	var z = "end";
+	eval(z);`
 var program7 =`
 	var a = eval;
-	a("test");`
+	a("test");
+
+	var b = eval;
+	function b(){};
+	b("test2");`
 var program8 = 
 `	function a(){};
 	function b(){};

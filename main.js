@@ -386,38 +386,67 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			varMap.copy(emptyVarMap);
 			const changeVarMap = new Functions.VariableMap(new HashMap());
 
-			for (var b in bodyExprs){
-				var subVarMapList = parseProgram(bodyExprs[b], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
+			//try branch
+			var tryVarMapList = parseProgram(bodyExprs[0], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
+			var catchVarMapList = parseProgram(bodyExprs[1], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
+
+			var diffMap = new Functions.VariableMap(new HashMap());
+
+
+			//check variables exists in try branch
+			tryVarMapList.forEach(function(val1) {
 				
-				//TODO check list difference method
-				for (var l in subVarMapList) {
-					var key = subVarMapList[l].key;
-					var value = subVarMapList[l].value;
-					var prevValues = varMap.get(key);
-					if (prevValues === undefined) {
-						varMap.setVariable(key, value);
-					} else {
-						for (var v in prevValues) {
-							if (prevValues[v] != value[0]) {					
-								// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
-								if (changeVarMap.get(key)) {
-									var typeSet = changeVarMap.get(key);
-									if (!typeSet.has(value)) {
-										typeSet.add(value);
-										changeVarMap.setVariable(key, typeSet);
-									}
-								}  else {
-									var typeSet = new Set();
-									typeSet.add(varMap.get(key));
-									typeSet.add(value);
-									changeVarMap.setVariable(key, typeSet);
-								}
-							}
+				var changedInCatchBranch = false;
+				catchVarMapList.forEach(function(val2){
+					// variable exists in both try/catch branches
+					if (val2.key == val1.key && val2.value != val1.value) {
+						var typeSet = new Set();
+						typeSet.add(val1.value);
+						typeSet.add(val2.value);
+						diffMap.setVariable(val1.key, typeSet);
+						changedInCatchBranch = true;
+					}
+				});
+
+				if (!changedInCatchBranch) {
+					var prevValues = varMap.get(val1.key);
+					if (prevValues) {
+						if (prevValues != val1.value) {
+							var typeSet = new Set();
+							typeSet.add(prevValues);
+							typeSet.add(val1.value);
+							diffMap.setVariable(val1.key, typeSet);
 						}
+					} else {
+						var typeSet = new Set();
+						typeSet.add(val1.value);
+						diffMap.setVariable(val1.key, typeSet);
+					}
+					
+				}
+			});
+
+			//check variables exists in catch branch
+			catchVarMapList.forEach(function(val1){
+				if (diffMap.get(val1.key) === undefined) {
+					var prevValues = varMap.get(val1.key);
+					if (prevValues) {
+						if (prevValues.value != val1.value) {
+							var typeSet = new Set();
+							typeSet.add(prevValues);
+							typeSet.add(val1.value);
+							diffMap.setVariable(val1.key, typeSet);
+						}
+					} else {
+						var typeSet = new Set();
+						typeSet.add(val1.value);
+						diffMap.setVariable(val1.key, typeSet);
 					}
 				}
-				changeVarMap.multipleUpdate(varMap);
-			}
+			});
+
+			
+			diffMap.multipleUpdate(varMap);
 		}
 	}
 	if (verbose>1)  console.log("-------------------------------------------\n")
