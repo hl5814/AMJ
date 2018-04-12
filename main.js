@@ -71,20 +71,20 @@ function showResult(resultMap) {
 	});
 	console.log("--------------------------------------------")
 	console.log("Total \t\t|\t", totalOccurances, "\t|\t", totalWeight);
-	console.log(totalOccurances+","+totalWeight)
+	console.log("POINT:",totalOccurances+","+totalWeight)
 }
 
 
 function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
-	if (verbose>1) console.log(scope + ":\n" + program);
+	// console.log(scope + ":\n\n>>>" + program, "<<<\n\n\n");
 	var ast;
 	if (hasReturn) {
 		ast = ASTUtils.parseWrap(program);
 	} else {
 		ast = ASTUtils.parse(program);
 	}
-	
-	
+	hasReturn = false;
+
 	// iterate through each AST node
 	for (var i in ast.body){
 		var astNode = new Functions.AST(ast);
@@ -217,7 +217,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			}
 		} else if (astNode.isFunctionDeclaration(i)) {
 			// set hasReturn flag to true for parsing function body
-			var hasReturn = false;
+			
 			ASTUtils.traverse(ast.body[i].body, function(node, parent){
 				if (node.type == "ReturnStatement"){
 					hasReturn = true;
@@ -271,6 +271,13 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				changeVarMap.multipleUpdate(varMap);
 			}
 		} else if (astNode.isForStatement(i)) {
+			ASTUtils.traverse(astNode._node, function(node, parent){
+				if (node.type == "BreakStatement" || 
+					node.type == "ContinueStatement") {
+					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
+				}
+			})
+
 			var bodyExprs = astNode.parseForStatement(i, varMap, verbose);
 
 			const emptyVarMap = new Functions.VariableMap(new HashMap());
@@ -305,8 +312,15 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				changeVarMap.multipleUpdate(varMap);
 			}
 		} else if (astNode.isWhileStatement(i)) {
-			var bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
+			ASTUtils.traverse(astNode._node, function(node, parent){
+				if (node.type == "BreakStatement" || 
+					node.type == "ContinueStatement") {
+					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
+				}
+			})
 
+			var bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
+			
 			const emptyVarMap = new Functions.VariableMap(new HashMap());
 			varMap.copy(emptyVarMap);
 			const changeVarMap = new Functions.VariableMap(new HashMap());
@@ -354,13 +368,17 @@ if (filePath !== undefined) {
 
 	var match = file.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
 	var scriptCodes = "";
-	while (match !== null) {
-		var matchLength = match[0].length;
-		var scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
-		var removeHTMLCommentsMatch = scriptBlock.replace(/<!--[\s\S]*?-->/g, "")
-		scriptCodes = scriptCodes + removeHTMLCommentsMatch;
-		file = file.substring(matchLength+1, file.length);
-		match = file.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+	if (match !== null) {
+		while (match !== null) {
+			var matchLength = match[0].length;
+			var scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
+			var removeHTMLCommentsMatch = scriptBlock.replace(/<!--[\s\S]*?-->/g, "");
+			scriptCodes = scriptCodes + removeHTMLCommentsMatch;
+			file = file.substring(matchLength+1, file.length);
+			match = file.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+		}
+	} else {
+		var scriptCodes = file.replace(/<!--[\s\S]*?-->/g, "")
 	}
 	var program = scriptCodes;
 	parseProgram(program, "User_Program", scopeCoefficient["main"], init_varMap, false, verbose);
@@ -376,4 +394,4 @@ if (filePath !== undefined) {
 	
 }
 
-if (calcualteWeight) showResult(resultMap);
+if (calcualteWeight && resultMap.size > 0) showResult(resultMap);

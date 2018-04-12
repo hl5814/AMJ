@@ -30,7 +30,7 @@ if [ -d $SOURCE ]; then
     echo "$SOURCE is a directory"
     for filename in $SOURCE/*; do
     	echo $filename
-		node main.js -s $filename -w
+		node main.js -s $filename -w | grep POINT
 done
 elif [ -f $SOURCE ]; then
     node main.js -s $SOURCE -w

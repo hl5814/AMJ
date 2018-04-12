@@ -161,12 +161,14 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		if (binaryOPs.indexOf(expression.operator) != -1) {
 			var val = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
 			var lhs_type_values = varMap.get(lhs.name, verbose);
-			if (lhs_type_values == undefined) {
+
+			if (lhs_type_values === undefined) {
 				//update varMap if variable undefined
 				varMap.setVariable(varName, [{ type: undefined, value: undefined }]);
-				lhs_type_values = { type: undefined, value: undefined };
+				lhs_type_values = [{ type: undefined, value: undefined }];
 			}
 			var result_types = [];
+
 			for (var i in lhs_type_values) {
 				if (lhs_type_values[i].type == "String"){
 					result_types.push({ type: "String", value: "(" + lhs_type_values[i].value + expression.operator + val + ")"});
