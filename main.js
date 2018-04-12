@@ -37,7 +37,8 @@ const scopeCoefficient = {  "main" 		: 1,
 							"if"    	: 1.5,
 							"for"   	: 2,
 							"while" 	: 2,
-							"function"	: 3};
+							"function"	: 3,
+							"try"		: 2};
 
 const featureWeight = { "InitVariable" 		: 1,
 					    "Assignment"   		: 2,
@@ -230,6 +231,14 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			init_varMap.copy(emptyVarMap);
 			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, scopeCoefficient["function"], emptyVarMap, hasReturn, verbose);
 		} else if (astNode.isIfStatement(i)) {
+			ASTUtils.traverse(astNode._node, function(node, parent){
+				if (node.type == "BreakStatement" || 
+					node.type == "ContinueStatement" ||
+					node.type == "ReturnStatement") {
+					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
+				}
+			})
+
 			var branchExprs = astNode.parseIfStatement(i, varMap, verbose);
 
 			const emptyVarMap = new Functions.VariableMap(new HashMap());
@@ -243,37 +252,38 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				
 				//TODO check list difference method
 				for (var l in subVarMapList) {
-					
 					var key = subVarMapList[l].key;
 					var value = subVarMapList[l].value;
-
 					var prevValues = varMap.get(key);
-
-					for (var v in prevValues) {
-						if (prevValues[v] != value[0]) {					
-							// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
-							if (changeVarMap.get(key)) {
-								var typeSet = changeVarMap.get(key);
-								if (!typeSet.has(value)) {
+					if (prevValues === undefined) {
+						varMap.setVariable(key, value);
+					} else {
+						for (var v in prevValues) {
+							if (prevValues[v] != value[0]) {					
+								// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
+								if (changeVarMap.get(key)) {
+									var typeSet = changeVarMap.get(key);
+									if (!typeSet.has(value)) {
+										typeSet.add(value);
+										changeVarMap.setVariable(key, typeSet);
+									}
+								}  else {
+									var typeSet = new Set();
+									typeSet.add(varMap.get(key));
 									typeSet.add(value);
 									changeVarMap.setVariable(key, typeSet);
 								}
-							}  else {
-								var typeSet = new Set();
-								typeSet.add(varMap.get(key));
-								typeSet.add(value);
-								changeVarMap.setVariable(key, typeSet);
 							}
 						}
 					}
 				}
-
 				changeVarMap.multipleUpdate(varMap);
 			}
 		} else if (astNode.isForStatement(i)) {
 			ASTUtils.traverse(astNode._node, function(node, parent){
 				if (node.type == "BreakStatement" || 
-					node.type == "ContinueStatement") {
+					node.type == "ContinueStatement" ||
+					node.type == "ReturnStatement") {
 					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
 				}
 			})
@@ -291,20 +301,24 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					var key = subVarMapList[l].key;
 					var value = subVarMapList[l].value;
 					var prevValues = varMap.get(key);
-					for (var v in prevValues) {
-						if (prevValues[v] != value[0]) {					
-							// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
-							if (changeVarMap.get(key)) {
-								var typeSet = changeVarMap.get(key);
-								if (!typeSet.has(value)) {
+					if (prevValues === undefined) {
+						varMap.setVariable(key, value);
+					} else {
+						for (var v in prevValues) {
+							if (prevValues[v] != value[0]) {					
+								// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
+								if (changeVarMap.get(key)) {
+									var typeSet = changeVarMap.get(key);
+									if (!typeSet.has(value)) {
+										typeSet.add(value);
+										changeVarMap.setVariable(key, typeSet);
+									}
+								}  else {
+									var typeSet = new Set();
+									typeSet.add(varMap.get(key));
 									typeSet.add(value);
 									changeVarMap.setVariable(key, typeSet);
 								}
-							}  else {
-								var typeSet = new Set();
-								typeSet.add(varMap.get(key));
-								typeSet.add(value);
-								changeVarMap.setVariable(key, typeSet);
 							}
 						}
 					}
@@ -314,7 +328,8 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 		} else if (astNode.isWhileStatement(i)) {
 			ASTUtils.traverse(astNode._node, function(node, parent){
 				if (node.type == "BreakStatement" || 
-					node.type == "ContinueStatement") {
+					node.type == "ContinueStatement" ||
+					node.type == "ReturnStatement") {
 					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
 				}
 			})
@@ -332,27 +347,78 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					var key = subVarMapList[l].key;
 					var value = subVarMapList[l].value;
 					var prevValues = varMap.get(key);
-					for (var v in prevValues) {
-						if (prevValues[v] != value[0]) {					
-							// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
-							if (changeVarMap.get(key)) {
-								var typeSet = changeVarMap.get(key);
-								if (!typeSet.has(value)) {
+					if (prevValues === undefined) {
+						varMap.setVariable(key, value);
+					} else {
+						for (var v in prevValues) {
+							if (prevValues[v] != value[0]) {					
+								// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
+								if (changeVarMap.get(key)) {
+									var typeSet = changeVarMap.get(key);
+									if (!typeSet.has(value)) {
+										typeSet.add(value);
+										changeVarMap.setVariable(key, typeSet);
+									}
+								}  else {
+									var typeSet = new Set();
+									typeSet.add(varMap.get(key));
 									typeSet.add(value);
 									changeVarMap.setVariable(key, typeSet);
 								}
-							}  else {
-								var typeSet = new Set();
-								typeSet.add(varMap.get(key));
-								typeSet.add(value);
-								changeVarMap.setVariable(key, typeSet);
 							}
 						}
 					}
 				}
 				changeVarMap.multipleUpdate(varMap);
 			}
-		} 
+		} else if (astNode.isTryStatement(i)) {
+			ASTUtils.traverse(astNode._node, function(node, parent){
+				if (node.type == "BreakStatement" || 
+					node.type == "ContinueStatement" ||
+					node.type == "ReturnStatement") {
+					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
+				}
+			})
+
+			var bodyExprs = astNode.parseTryStatement(i, varMap, verbose);
+
+			const emptyVarMap = new Functions.VariableMap(new HashMap());
+			varMap.copy(emptyVarMap);
+			const changeVarMap = new Functions.VariableMap(new HashMap());
+
+			for (var b in bodyExprs){
+				var subVarMapList = parseProgram(bodyExprs[b], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
+				
+				//TODO check list difference method
+				for (var l in subVarMapList) {
+					var key = subVarMapList[l].key;
+					var value = subVarMapList[l].value;
+					var prevValues = varMap.get(key);
+					if (prevValues === undefined) {
+						varMap.setVariable(key, value);
+					} else {
+						for (var v in prevValues) {
+							if (prevValues[v] != value[0]) {					
+								// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
+								if (changeVarMap.get(key)) {
+									var typeSet = changeVarMap.get(key);
+									if (!typeSet.has(value)) {
+										typeSet.add(value);
+										changeVarMap.setVariable(key, typeSet);
+									}
+								}  else {
+									var typeSet = new Set();
+									typeSet.add(varMap.get(key));
+									typeSet.add(value);
+									changeVarMap.setVariable(key, typeSet);
+								}
+							}
+						}
+					}
+				}
+				changeVarMap.multipleUpdate(varMap);
+			}
+		}
 	}
 	if (verbose>1)  console.log("-------------------------------------------\n")
 	if (verbose>1) varMap.printMap();

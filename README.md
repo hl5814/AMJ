@@ -67,6 +67,39 @@ inner blocks check:
 //			eval(a)
 // Based on static analysis, we didn't check whether the condition will be met,
 // therefore we need to capture both cases.
+//
+// ==>varMap: {key:a, value:["STRING", 0]}
+
+<!-- try catch finally blocks -->
+// Difference between try/catch blocks and if/for/while blocks are, try catch
+// has no condition, which means the previous value will always be override by either
+// try branch or catch branch. whilst if/for/while blocks has condition, so we 
+// still need to record previous value in the varMap
+//
+// example:
+//			var x = 0;
+//			try{
+//				x = 1;
+//			}catch(e){
+//				x = 2;
+//			}
+//
+// ==>varMap: {key:x, value:[1, 2]}
+//
+// however there exists finally block and if the same variable is updated in the 
+// finally block (exists finally block), then update varMap only store the finally 
+// value
+//			var x = 0;
+//			try{
+//				x = 1;
+//			}catch(e){
+//				x = 2;
+//			}finally {
+//              x = 3;
+//        	}   
+// 
+// ==>varMap: {key:x, value:[3]}
+
 
 
 TODO:
@@ -91,7 +124,6 @@ TODO:
 
 TODO: change data structure from list to set, when storing all type info in variable map
 otherwise, multiple same ?
-? change testAll script take command line argument to overrite all test cases expected results
 
 
 

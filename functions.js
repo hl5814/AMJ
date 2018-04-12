@@ -31,6 +31,10 @@ AST.prototype.isForStatement=function(index){
 		     this._node.body[index].type == "ForInStatement" );
 };
 
+AST.prototype.isTryStatement=function(index){
+	return  (this._node.body[index].type == "TryStatement");
+};
+
 AST.prototype.isWhileStatement=function(index){
 	return  (this._node.body[index].type == "WhileStatement" ||
 			 this._node.body[index].type == "DoWhileStatement" );
@@ -81,6 +85,11 @@ AST.prototype.parseForStatement=function(index, varMap, verbose=false){
 AST.prototype.parseWhileStatement=function(index, varMap, verbose=false){
 	const forExpr = new Expr(this._node.body[index]);
 	return forExpr.parseWhileStatementExpr(this._node, varMap, [], verbose);
+}
+
+AST.prototype.parseTryStatement=function(index, varMap, verbose=false){
+	const forExpr = new Expr(this._node.body[index]);
+	return forExpr.parseTryStatementExpr(this._node, varMap, [], verbose);
 }
 
 AST.prototype.getFunctionBodyFromFunctionExpression=function(index, verbose=false){
@@ -450,6 +459,46 @@ Expr.prototype.parseWhileStatementExpr=function(node, varMap, blockRanges,verbos
 
 	return blockRanges;
 }
+
+Expr.prototype.parseTryStatementExpr=function(node, varMap, blockRanges,verbose=false) {
+	if (this._expr.block){
+		var block = new Expr(this._expr.block);
+		var code = ASTUtils.getCode(block._expr);
+		if (code.indexOf("{") != -1) {
+			blockRanges.push(code.slice(1,-1));
+		} else {
+			blockRanges.push(code);
+		}
+	}
+
+	if (this._expr.handler){
+		if (this._expr.handler.body) {
+			var block = new Expr(this._expr.handler.body);
+			var code = ASTUtils.getCode(block._expr);
+			if (code.indexOf("{") != -1) {
+				blockRanges.push(code.slice(1,-1));
+			} else {
+				blockRanges.push(code);
+			}
+		}
+	}
+
+	if (this._expr.finalizer){
+		if (this._expr.finalizer) {
+			var block = new Expr(this._expr.finalizer);
+			var code = ASTUtils.getCode(block._expr);
+
+			if (code.indexOf("{") != -1) {
+				blockRanges.push(code.slice(1,-1));
+			} else {
+				blockRanges.push(code);
+			}
+		}
+	}
+
+	return blockRanges;
+}
+
 
 Expr.prototype.parseIfStatementExpr=function(node, varMap, blockRanges,verbose=false) {
 	var ifBranch = new Expr(this._expr.consequent);
