@@ -145,9 +145,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				var var_value = astNode.getUpdateExpression(i, varMap, verbose);
 				// no point to track ++, --
 			} else if (astNode.isCallExpression(i) || astNode.isExpressionStatement(i)) {
-				//console.log(ast.body[i].expression.callee.object);
-				//console.log(ast.body[i].expression.callee.property);
-
 
 				//List of malicious pre-defined functions
 				var funcName = "";
@@ -183,8 +180,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					// if (funcNames.indexOf(funcName) != -1 || funcNames.indexOf(user_defined_funName) != -1) {
 					var funcNames = varMap.get(funcName);
 					for (var f in funcNames) {
-						//console.log(">>",funcNames[f], user_defined_funName)
-						
 						if (funcNames[f].type == "pre_Function" || user_defined_funName == funcNames[f].value) {
 
 							var args = astNode.getFunctionArguments(i, varMap);
@@ -353,20 +348,21 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 //===================check input source============================
 
 if (filePath !== undefined) {
-	var program = fs.readFileSync("user.js", "utf8");
-	if (filePath !== null) {
+	var file = fs.readFileSync("user.js", "utf8");
+	if (filePath !== null) 
 		var file = fs.readFileSync(filePath, "utf8");
-		var match = file.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
-		var scriptCodes = "";
-		while (match !== null) {
-			var matchLength = match[0].length;
-			scriptCodes = scriptCodes + match[0].substring(match[0].indexOf(">")+1,match[0].length);
-			file = file.substring(matchLength+1, file.length);
-			match = file.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
-		}
-		var program = scriptCodes;
-		console.log(program)
+
+	var match = file.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+	var scriptCodes = "";
+	while (match !== null) {
+		var matchLength = match[0].length;
+		var scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
+		var removeHTMLCommentsMatch = scriptBlock.replace(/<!--[\s\S]*?-->/g, "")
+		scriptCodes = scriptCodes + removeHTMLCommentsMatch;
+		file = file.substring(matchLength+1, file.length);
+		match = file.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
 	}
+	var program = scriptCodes;
 	parseProgram(program, "User_Program", scopeCoefficient["main"], init_varMap, false, verbose);
 } else {
 	var testPrograms = require('./testPrograms');

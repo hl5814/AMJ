@@ -3,6 +3,14 @@
 # parse command line flag "-s" for path of JS file/directories
 
 POSITIONAL=()
+
+if [ -z "$2" ]
+  then
+    echo "usage: "
+    echo "      ./checkFiles.sh -s [filePath/directoryPath]"
+    exit 1
+fi
+
 while [[ $# -gt 0 ]]
 do
 key="$1"
