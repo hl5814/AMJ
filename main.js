@@ -384,7 +384,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 
 			const emptyVarMap = new Functions.VariableMap(new HashMap());
 			varMap.copy(emptyVarMap);
-			const changeVarMap = new Functions.VariableMap(new HashMap());
 
 			//try branch
 			var tryVarMapList = parseProgram(bodyExprs[0], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
@@ -395,7 +394,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 
 			//check variables exists in try branch
 			tryVarMapList.forEach(function(val1) {
-				
+
 				var changedInCatchBranch = false;
 				catchVarMapList.forEach(function(val2){
 					// variable exists in both try/catch branches
@@ -446,7 +445,38 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			});
 
 			
-			diffMap.multipleUpdate(varMap);
+
+			//now check if there exists finally block
+			if (bodyExprs.length == 3) {
+				//finally branch
+				var finallyVarMapList = parseProgram(bodyExprs[2], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
+				// diffMap.multipleUpdate(varMap);
+				// diffMap.printMap()
+				// check variables exists in diffMap branch
+				finallyVarMapList.forEach(function(val1){
+					if (diffMap.get(val1.key) === undefined) {
+						var prevValues = varMap.get(val1.key);
+						if (prevValues) {
+							var typeSet = new Set();
+							typeSet.add(val1.value);
+							diffMap.setVariable(val1.key, typeSet);
+						} else {
+							var typeSet = new Set();
+							typeSet.add(val1.value);
+							diffMap.setVariable(val1.key, typeSet);
+						}
+					} else {
+						var typeSet = new Set();
+						typeSet.add(val1.value);
+						diffMap.setVariable(val1.key, typeSet);
+					}
+				});
+				diffMap.multipleUpdate(varMap);
+
+
+			} else {
+				diffMap.multipleUpdate(varMap);
+			}
 		}
 	}
 	if (verbose>1)  console.log("-------------------------------------------\n")

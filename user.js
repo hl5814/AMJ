@@ -3,4 +3,6 @@ var x = "STR";
         x = "TRY";
     }catch(e){
         x = 0;
+    }finally{
+        x = 6;
     }

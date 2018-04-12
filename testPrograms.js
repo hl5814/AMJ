@@ -54,7 +54,17 @@ var program6 =`
 		var z = "CATCH";
 	}
 	var z = "end";
-	eval(z);`
+	eval(z);
+
+	var a = "STR";
+	try{
+	    a = "TRY";
+	}catch(e){
+	    a = "CATCH";
+	}finally{
+	    a = "FINALLY";
+	}
+	eval(a);`
 var program7 =`
 	var a = eval;
 	a("test");
