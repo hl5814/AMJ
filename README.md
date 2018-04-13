@@ -52,23 +52,67 @@ inner blocks check:
 //		 ==> {key:a, value:[1+1, "string"+1]}
 //
 // same works for functions names
-// EXAMPLE: [Program8]
+// 
+// [REMARK]: need to check whether "else" branch exists. For an if-statement with only 
+//			 if branch, we store all possible values. For an if-else-statement, only need 
+//			 store values in ...
 
-<!-- change varMap store all possible values when encounter for/while blocks -->
-// check for/while same way as if statements, base on the conditions
-// program might skip the for/while block, therefore, we should store
-// both possible values for variables encounter for/while blocks
+<!-- for blocks -->
+// for for statements we check it in the same way as if statements, base on the conditions
+// program might skip the for block, therefore, we should store
+// both possible values for variables encounter for blocks
+//
+// [REMARK]: for condition will always be executed, for body is conditional
+//			 i.e. variables in for condition will always be updated first
+//			 then for body will be treated as possible values
 //
 // example:
 //		   	var a = "STRING";
 // 		   	for (var i = 0; i>5; i++) {
 //				a = 0;	
 //			}
-//			eval(a)
+//
 // Based on static analysis, we didn't check whether the condition will be met,
 // therefore we need to capture both cases.
 //
 // ==>varMap: {key:a, value:["STRING", 0]}
+//
+// when a variable is overwritten in the condition line, the problem became more complicated
+// it has 5 different cases (details see RegressionTests/testPrograms/for.js)
+//
+// KNOWN ISSUE: current implementation is get the code and parse it with empty varMap
+//				in order to get the variable name, and check if value is undefined, 
+//				however, empty map will cause issues with array element and object
+//				field 
+//		e.g. 	
+//				for(a[0];a[0]<2;a[0]++){} 
+//				for(a.f;a.f<2;a.f++){} 
+
+
+<!-- while blocks -->
+// different to for blocks, while blocks don't have assignment in condition, so we only need
+// to parse its body and update all possible values in varMap
+// example:
+//		   	var a = "STRING";
+// 		   	while (i>5) {
+//				a = 0;	
+//			}
+//
+// ==>varMap: {key:a, value:["STRING", 0]}
+//
+// however, for do-while blocks, the code in body will always be executed at lease once
+// therefore, we just need to parse the body once and overwrite values in varMap
+// example:
+//		   	var a = "STRING";
+// 		   	do {
+//				a = 0;	
+//			} while(i>5);
+//
+// ==>varMap: {key:a, value:[0]}
+
+
+
+
 
 <!-- try catch finally blocks -->
 // Difference between try/catch blocks and if/for/while blocks are, try catch
@@ -99,6 +143,8 @@ inner blocks check:
 //        	}   
 // 
 // ==>varMap: {key:x, value:[3]}
+
+
 
 
 

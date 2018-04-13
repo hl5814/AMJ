@@ -143,9 +143,20 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 
 				varMap.updateVariable(var_values[0], var_values[1], verbose);
 			} else if (astNode.isUpdateExpression(i)) {
+
 				var var_value = astNode.getUpdateExpression(i, varMap, verbose);
 				// no point to track ++, --
-			} else if (astNode.isCallExpression(i) || astNode.isExpressionStatement(i)) {
+			
+			} else {
+				// (astNode.isCallExpression(i)) and the rest expressions
+				if (astNode._node.body[i].expression.type == "Identifier") {
+					var var_values = varMap.get(astNode._node.body[i].expression.name);
+					if (var_values === undefined) {
+						varMap.updateVariable(astNode._node.body[i].expression.name, [{ type: 'undefined', value: 'undefined' }]);
+					}
+					continue;
+				}
+
 
 				//List of malicious pre-defined functions
 				var funcName = "";
@@ -213,9 +224,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						}
 					}
 				}
-			} else {
-				console.log("??", astNode._node.body[i].type)
-			}
+			} 
 		} else if (astNode.isFunctionDeclaration(i)) {
 			// set hasReturn flag to true for parsing function body
 			
@@ -263,34 +272,51 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			}
 			diffMap.multipleUpdate(varMap);
 
-		} else if (astNode.isForStatement(i)) {
+		} else if (astNode.isForStatement(i) || astNode.isForInStatement(i)) {
 			ASTUtils.traverse(astNode._node, function(node, parent){
 				if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
 					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
 			})
 
 			var bodyExprs = astNode.parseForStatement(i, varMap, verbose);
-
-			
 			const diffMap = new Functions.VariableMap(new HashMap());
 
-			for (var b in bodyExprs){
-				var eVarMap = new Functions.VariableMap(new HashMap());
-				varMap.copy(eVarMap);
 
-				var subVarMapList = parseProgram(bodyExprs[b], "for_statements", scopeCoefficient["for"], eVarMap, hasReturn, verbose);
-				subVarMapList.forEach(function(val1) {
-					var prevValues = varMap.get(val1.key);
-					var typeSet = new Set();
-					// if variable exists in main program, add the prev_value
-					if (prevValues && prevValues != val1.value) typeSet.add(prevValues);
+			// parse for condition with empty varMap
+			var eVarMap = new Functions.VariableMap(new HashMap());
+			var subVarMapList = parseProgram(bodyExprs[0], "for_statements", scopeCoefficient["for"], eVarMap, hasReturn, verbose);
+			subVarMapList.forEach(function(val1) {
+				var prevValues = varMap.get(val1.key);
+				var typeSet = new Set();
+				if (prevValues && astNode.isForInStatement(i)) {
+					typeSet.add([ { type: 'Literal', value: '0' } ]);
+				} else if (prevValues && astNode.isForStatement(i)){
+					if (val1.value[0].type == "undefined" && val1.value[0].value == "undefined") {
+						typeSet.add(prevValues);
+					} else {
+						typeSet.add(val1.value);
+					}
+				}
+				diffMap.setVariable(val1.key, typeSet);
+			});
 
-					typeSet.add(val1.value);
-					diffMap.setVariable(val1.key, typeSet);
-				});
-			}
 			diffMap.multipleUpdate(varMap);
 
+			// parse for body with current varMap
+			var eVarMap2 = new Functions.VariableMap(new HashMap());
+			varMap.copy(eVarMap2);
+
+			subVarMapList = parseProgram(bodyExprs[1], "for_statements", scopeCoefficient["for"], eVarMap2, hasReturn, verbose);
+			subVarMapList.forEach(function(val1) {
+				var prevValues = varMap.get(val1.key);
+				var typeSet = new Set();
+				// if variable exists in main program, add the prev_value
+				if (prevValues && prevValues != val1.value) typeSet.add(prevValues);
+
+				typeSet.add(val1.value);
+				diffMap.setVariable(val1.key, typeSet);
+			});
+			diffMap.multipleUpdate(varMap);
 		} else if (astNode.isWhileStatement(i)) {
 			ASTUtils.traverse(astNode._node, function(node, parent){
 				if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
@@ -319,6 +345,14 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			}
 			diffMap.multipleUpdate(varMap);
 
+		} else if (astNode.isDoWhileStatement(i)) {
+			ASTUtils.traverse(astNode._node, function(node, parent){
+				if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
+					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
+			})
+			var bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
+			// update varMap directly since the body code will always be executed in do-while
+			parseProgram(bodyExprs[0], "while_statements", scopeCoefficient["while"], varMap, hasReturn, verbose);
 		} else if (astNode.isTryStatement(i)) {
 			ASTUtils.traverse(astNode._node, function(node, parent){
 				if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")

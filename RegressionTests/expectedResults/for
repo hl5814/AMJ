@@ -1,0 +1,3 @@
+FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("for")
+FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [y] ==> eval("for")
+FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [case3] ==> eval("case3")

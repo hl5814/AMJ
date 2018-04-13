@@ -148,7 +148,7 @@ describe('AST ForStatements', function() {
 
     it(`isForStatement()`, function() {
         expect(block.isForStatement(0)).to.equal(true);
-        expect(block.isForStatement(2)).to.equal(true);
+        expect(block.isForInStatement(2)).to.equal(true);
     });
 
     const astNode = new Functions.AST(ASTUtils.parse(program));
@@ -161,7 +161,7 @@ describe('AST ForStatements', function() {
 
     it(`parseForStatement() && parseForStatementExpr`, function() {
         const bodyExprs = astNode.parseForStatement(2, varMap);
-        expect(bodyExprs).to.deep.equal([ 'j=6' ]);
+        expect(bodyExprs).to.deep.equal([ 'var i', 'j=6' ]);
     });
 });
 

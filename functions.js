@@ -27,8 +27,11 @@ AST.prototype.isIfStatement=function(index){
 };
 
 AST.prototype.isForStatement=function(index){
-	return  (this._node.body[index].type == "ForStatement" ||
-		     this._node.body[index].type == "ForInStatement" );
+	return  (this._node.body[index].type == "ForStatement");
+};
+
+AST.prototype.isForInStatement=function(index){
+	return  (this._node.body[index].type == "ForInStatement" );
 };
 
 AST.prototype.isTryStatement=function(index){
@@ -36,8 +39,11 @@ AST.prototype.isTryStatement=function(index){
 };
 
 AST.prototype.isWhileStatement=function(index){
-	return  (this._node.body[index].type == "WhileStatement" ||
-			 this._node.body[index].type == "DoWhileStatement" );
+	return  (this._node.body[index].type == "WhileStatement");
+};
+
+AST.prototype.isDoWhileStatement=function(index){
+	return  (this._node.body[index].type == "DoWhileStatement" );
 };
 
 AST.prototype.isCallExpression= function(index) {
@@ -429,6 +435,14 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 }
 
 Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=false) {
+	// for in statements, e.g. for(var x in list){...}
+
+	if (this._expr.left) {
+		var left = new Expr(this._expr.left);
+		blockRanges.push(ASTUtils.getCode(left._expr));
+	}
+
+	// regular for statements, e.g. for(var i=0;i<5;i++){...}
 	if (this._expr.init) {
 		var init = new Expr(this._expr.init);
 		blockRanges.push(ASTUtils.getCode(init._expr));
@@ -496,7 +510,7 @@ Expr.prototype.parseTryStatementExpr=function(node, varMap, blockRanges,verbose=
 			}
 		}
 	}
-	
+
 	return blockRanges;
 }
 
