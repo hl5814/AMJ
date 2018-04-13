@@ -1,12 +1,11 @@
-b = "test";
-try  {
-    eval(b);
-    b = "TRY";
-} catch(e) {
-    eval(b);
-    b = "CATCH";
-} finally {
-   eval(b);
-   b = 0;
+var b = 1;
+if (1>2) {
+    b = 2;
+} else if (1>2) {
+	b = 0;
+} else if (1>2) {
+	b = 2;
+} else {
+	b = "else"
 }
 eval(b);

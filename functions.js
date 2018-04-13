@@ -531,7 +531,8 @@ Expr.prototype.hasElseExpr=function(node) {
 		var elseifBranch = new Expr(this._expr.alternate);
 		return elseifBranch.hasElseExpr(node);
 	}
-	return (this._expr.alternate !== null && this._expr.alternate.type == "BlockStatement");
+	return (this._expr.alternate !== null && (this._expr.alternate.type == "BlockStatement" ||
+											  this._expr.alternate.type == "ExpressionStatement"));
 }
 
 Expr.prototype.parseIfStatementExpr=function(node, varMap, blockRanges,verbose=false) {
