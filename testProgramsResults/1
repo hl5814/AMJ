@@ -1,3 +1,0 @@
-FEATURE[StringOp] in :Program1: eval(STRING) => eval["helloworld"]
-FEATURE[ExpressionOp] in :Program1: eval(BinaryExpression) => eval[1+1]
-FEATURE[ExpressionOp] in :Program1: eval(CallExpression) => eval[foo((1+(bar())))]

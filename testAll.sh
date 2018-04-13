@@ -18,37 +18,44 @@ esac
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
+SOURCE_DIR="RegressionTests/testPrograms"
+RESULT_DIR="RegressionTests/expectedResults"
 
-# loop through pre-defined test cases
-for i in 0 1 2 3 4 5 6 7 8 9 10;
-do
-	echo -ne "Program $i: \t"
-	if [ ${UPDATE} ] ;
-	then
-		echo -e "\033[33m [update] \033[0m"
-		node main.js -v -t $i > testProgramsResults/$i
-		continue
-	fi
+if [ -d $SOURCE_DIR ]; then
+    for filename in $SOURCE_DIR/*; do
+    	s=${filename##*/}
+		echo -ne "[${filename##*/}]: \t\t"
+		if [ ${UPDATE} ] ;
+		then
+			echo -e "\033[33m [update] \033[0m"
+			node main.js -s $filename -v > ${RESULT_DIR}/${s%.*}
+			continue
+		fi
 
-	node main.js -v -t $i > testProgramsResults/temp_result
-	diff testProgramsResults/$i testProgramsResults/temp_result > testProgramsResults/temp_diff
+		node main.js -s $filename -v > ${RESULT_DIR}/temp_result
+		diff ${RESULT_DIR}/${s%.*} ${RESULT_DIR}/temp_result > ${RESULT_DIR}/temp_diff
 
-
-	if [ $? -ne 0 ] ; 
-	then
-		echo -e "\033[31m [FAIL] \033[0m"
-		cat testProgramsResults/temp_diff
-	else
-		echo -e "\033[32m [PASS] \033[0m"
-	fi
+		if [ $? -ne 0 ] ; 
+		then
+			echo -e "\033[31m [FAIL] \033[0m"
+			cat ${RESULT_DIR}/temp_diff
+		else
+			echo -e "\033[32m [PASS] \033[0m"
+		fi
 done
-
+else
+    echo "$SOURCE_DIR is not valid"
+    exit 1
+fi
 
 # clean up intermediate files if exits
-if [ -f testProgramsResults/temp_result ]; then
-    rm testProgramsResults/temp_result
+if [ -f ${RESULT_DIR}/temp_result ]; then
+    rm ${RESULT_DIR}/temp_result
 fi
 
-if [ -f testProgramsResults/temp_diff ]; then
-    rm testProgramsResults/temp_diff
+if [ -f ${RESULT_DIR}/temp_diff ]; then
+    rm ${RESULT_DIR}/temp_diff
 fi
+
+
+

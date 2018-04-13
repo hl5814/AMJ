@@ -1,0 +1,2 @@
+FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("STR1")
+FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("STR2")

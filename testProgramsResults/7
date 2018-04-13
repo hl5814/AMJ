@@ -1,2 +1,0 @@
-FEATURE[FuncObfuscation] :[ a ] -> [ eval ]
-FEATURE[StringOp] in :Program7: a(STRING) => a["test"]

@@ -1,5 +1,0 @@
-FEATURE[StringOp] in :Program6: eval(Object->STRING) => [x] ==> eval("TRY")
-FEATURE[StringOp] in :Program6: eval(Object->STRING) => [y] ==> eval("TRY")
-FEATURE[StringOp] in :Program6: eval(Object->STRING) => [y] ==> eval("CATCH")
-FEATURE[StringOp] in :Program6: eval(Object->STRING) => [z] ==> eval("end")
-FEATURE[StringOp] in :Program6: eval(Object->STRING) => [a] ==> eval("FINALLY")

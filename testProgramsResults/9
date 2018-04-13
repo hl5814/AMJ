@@ -1,2 +1,0 @@
-FEATURE[FuncObfuscation] :[ b ] -> [ eval ]
-FEATURE[StringOp] in :Program9: b(Object->STRING) => [a] ==> b("alert()")

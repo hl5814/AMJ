@@ -1,1 +1,0 @@
-FEATURE[StringOp] in :Program2: eval(Object->STRING) => [c] ==> eval("alert(b)")

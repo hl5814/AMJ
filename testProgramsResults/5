@@ -1,2 +1,0 @@
-FEATURE[StringOp] in :testScope2: eval(Object->STRING) => [test] ==> eval("inner2")
-FEATURE[StringOp] in :testScope1: eval(Object->STRING) => [test] ==> eval("inner1")

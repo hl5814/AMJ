@@ -10,13 +10,11 @@ const fs = require('fs');
 const optionDefinitions = [
   { name: 'verbose',      alias: 'v', type: Number },
   { name: 'weight',	 	  alias: 'w', type: Boolean},
-  { name: 'testNumber',   alias: 't', type: Number },
   { name: 'src', 		  alias: 's', type: String }
 ]
 
 const options = commandLineArgs(optionDefinitions)
 const calcualteWeight = options.weight; 
-const testNumber = (options.testNumber == undefined) ? -1 : options.testNumber;
 const verbose = (options.verbose === undefined) ? 0 : (options.verbose === null)? 1 : 2;
 const filePath = options.src;
 
@@ -33,7 +31,8 @@ for (var f in funcNames) {
 var resultMap = new HashMap();
 var featureMap = new HashMap();
 
-const scopeCoefficient = {  "main" 		: 1,
+const scopeCoefficient = {  "test"      : 0,
+							"main" 		: 1,
 							"if"    	: 1.5,
 							"for"   	: 2,
 							"while" 	: 2,
@@ -199,10 +198,10 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 									//get value of nested memberexpression e.g. a="str"; Array[0] = a;
 									for (var ref in ref_values) {
 										if (ref_values[ref] && ref_values[ref].type == "String") {
-											if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
+											if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": "+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[ref].value + ")");
 											updateResultMap(resultMap, "StringOp", coefficient);
 										} else if (ref_values[ref] && ref_values[ref].type == "Expression") {
-											if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": "+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[i].value + ")");
+											if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": "+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[ref].value + ")");
 											updateResultMap(resultMap, "StringOp", coefficient);
 										}
 									}							
@@ -233,162 +232,108 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, scopeCoefficient["function"], emptyVarMap, hasReturn, verbose);
 		} else if (astNode.isIfStatement(i)) {
 			ASTUtils.traverse(astNode._node, function(node, parent){
-				if (node.type == "BreakStatement" || 
-					node.type == "ContinueStatement" ||
-					node.type == "ReturnStatement") {
+				if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
 					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
-				}
 			})
 
 			var branchExprs = astNode.parseIfStatement(i, varMap, verbose);
+			const diffMap = new Functions.VariableMap(new HashMap());
 
-			const emptyVarMap = new Functions.VariableMap(new HashMap());
-			varMap.copy(emptyVarMap);
-			const changeVarMap = new Functions.VariableMap(new HashMap());
-
-
+		
 			for (var b in branchExprs){
-				var subVarMapList = parseProgram(branchExprs[b], "if_statements", scopeCoefficient["if"], emptyVarMap, hasReturn, verbose);
+				var eVarMap = new Functions.VariableMap(new HashMap());
+				varMap.copy(eVarMap);
+				var ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", scopeCoefficient["if"], eVarMap, hasReturn, verbose);
 
-				
-				//TODO check list difference method
-				for (var l in subVarMapList) {
-					var key = subVarMapList[l].key;
-					var value = subVarMapList[l].value;
-					var prevValues = varMap.get(key);
-					if (prevValues === undefined) {
-						varMap.setVariable(key, value);
+				ifbranchVarMapList.forEach(function(val1) {
+					// variable already in diffMap
+					var prevBranch = diffMap.get(val1.key);
+					if (prevBranch) {
+						prevBranch.add(val1.value);
+						diffMap.setVariable(val1.key, prevBranch);
 					} else {
-						for (var v in prevValues) {
-							if (prevValues[v] != value[0]) {					
-								// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
-								if (changeVarMap.get(key)) {
-									var typeSet = changeVarMap.get(key);
-									if (!typeSet.has(value)) {
-										typeSet.add(value);
-										changeVarMap.setVariable(key, typeSet);
-									}
-								}  else {
-									var typeSet = new Set();
-									typeSet.add(varMap.get(key));
-									typeSet.add(value);
-									changeVarMap.setVariable(key, typeSet);
-								}
-							}
-						}
+						var prevValues = varMap.get(val1.key);
+						var typeSet = new Set();
+						// if variable exists in main program, add the prev_value
+						if (prevValues && prevValues != val1.value) typeSet.add(prevValues);
+						typeSet.add(val1.value);
+						diffMap.setVariable(val1.key, typeSet);
 					}
-				}
-				changeVarMap.multipleUpdate(varMap);
+				});
 			}
+			diffMap.multipleUpdate(varMap);
+
 		} else if (astNode.isForStatement(i)) {
 			ASTUtils.traverse(astNode._node, function(node, parent){
-				if (node.type == "BreakStatement" || 
-					node.type == "ContinueStatement" ||
-					node.type == "ReturnStatement") {
+				if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
 					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
-				}
 			})
 
 			var bodyExprs = astNode.parseForStatement(i, varMap, verbose);
 
-			const emptyVarMap = new Functions.VariableMap(new HashMap());
-			varMap.copy(emptyVarMap);
-			const changeVarMap = new Functions.VariableMap(new HashMap());
+			
+			const diffMap = new Functions.VariableMap(new HashMap());
 
 			for (var b in bodyExprs){
-				var subVarMapList = parseProgram(bodyExprs[b], "for_statements", scopeCoefficient["for"], emptyVarMap, hasReturn, verbose);
-				//TODO check list difference method
-				for (var l in subVarMapList) {
-					var key = subVarMapList[l].key;
-					var value = subVarMapList[l].value;
-					var prevValues = varMap.get(key);
-					if (prevValues === undefined) {
-						varMap.setVariable(key, value);
-					} else {
-						for (var v in prevValues) {
-							if (prevValues[v] != value[0]) {					
-								// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
-								if (changeVarMap.get(key)) {
-									var typeSet = changeVarMap.get(key);
-									if (!typeSet.has(value)) {
-										typeSet.add(value);
-										changeVarMap.setVariable(key, typeSet);
-									}
-								}  else {
-									var typeSet = new Set();
-									typeSet.add(varMap.get(key));
-									typeSet.add(value);
-									changeVarMap.setVariable(key, typeSet);
-								}
-							}
-						}
-					}
-				}
-				changeVarMap.multipleUpdate(varMap);
+				var eVarMap = new Functions.VariableMap(new HashMap());
+				varMap.copy(eVarMap);
+
+				var subVarMapList = parseProgram(bodyExprs[b], "for_statements", scopeCoefficient["for"], eVarMap, hasReturn, verbose);
+				subVarMapList.forEach(function(val1) {
+					var prevValues = varMap.get(val1.key);
+					var typeSet = new Set();
+					// if variable exists in main program, add the prev_value
+					if (prevValues && prevValues != val1.value) typeSet.add(prevValues);
+
+					typeSet.add(val1.value);
+					diffMap.setVariable(val1.key, typeSet);
+				});
 			}
+			diffMap.multipleUpdate(varMap);
+
 		} else if (astNode.isWhileStatement(i)) {
 			ASTUtils.traverse(astNode._node, function(node, parent){
-				if (node.type == "BreakStatement" || 
-					node.type == "ContinueStatement" ||
-					node.type == "ReturnStatement") {
+				if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
 					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
-				}
 			})
 
 			var bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
-			
-			const emptyVarMap = new Functions.VariableMap(new HashMap());
-			varMap.copy(emptyVarMap);
-			const changeVarMap = new Functions.VariableMap(new HashMap());
+			const diffMap = new Functions.VariableMap(new HashMap());
 
 			for (var b in bodyExprs){
-				var subVarMapList = parseProgram(bodyExprs[b], "while_statements", scopeCoefficient["while"], emptyVarMap, hasReturn, verbose);
-				//TODO check list difference method
-				for (var l in subVarMapList) {
-					var key = subVarMapList[l].key;
-					var value = subVarMapList[l].value;
-					var prevValues = varMap.get(key);
-					if (prevValues === undefined) {
-						varMap.setVariable(key, value);
-					} else {
-						for (var v in prevValues) {
-							if (prevValues[v] != value[0]) {					
-								// console.log("DIFF["+key+"] -> before:", varMap.get(key), "  now:",value);
-								if (changeVarMap.get(key)) {
-									var typeSet = changeVarMap.get(key);
-									if (!typeSet.has(value)) {
-										typeSet.add(value);
-										changeVarMap.setVariable(key, typeSet);
-									}
-								}  else {
-									var typeSet = new Set();
-									typeSet.add(varMap.get(key));
-									typeSet.add(value);
-									changeVarMap.setVariable(key, typeSet);
-								}
-							}
-						}
-					}
-				}
-				changeVarMap.multipleUpdate(varMap);
+				var eVarMap = new Functions.VariableMap(new HashMap());
+				varMap.copy(eVarMap);
+
+				var subVarMapList = parseProgram(bodyExprs[b], "while_statements", scopeCoefficient["while"], eVarMap, hasReturn, verbose);
+
+				subVarMapList.forEach(function(val1) {
+					var prevValues = varMap.get(val1.key);
+					var typeSet = new Set();
+
+					// if variable exists in main program, add the prev_value
+					if (prevValues && prevValues != val1.value) typeSet.add(prevValues);
+
+					typeSet.add(val1.value);
+					diffMap.setVariable(val1.key, typeSet);
+				});
 			}
+			diffMap.multipleUpdate(varMap);
+
 		} else if (astNode.isTryStatement(i)) {
 			ASTUtils.traverse(astNode._node, function(node, parent){
-				if (node.type == "BreakStatement" || 
-					node.type == "ContinueStatement" ||
-					node.type == "ReturnStatement") {
+				if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
 					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
-				}
 			})
 
 			var bodyExprs = astNode.parseTryStatement(i, varMap, verbose);
 
-			const emptyVarMap = new Functions.VariableMap(new HashMap());
-			varMap.copy(emptyVarMap);
+			const eVarMap1 = new Functions.VariableMap(new HashMap());
+			const eVarMap2 = new Functions.VariableMap(new HashMap());
+			varMap.copy(eVarMap1);
+			varMap.copy(eVarMap2);
 
-			//try branch
-			var tryVarMapList = parseProgram(bodyExprs[0], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
-			var catchVarMapList = parseProgram(bodyExprs[1], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
+			var tryVarMapList = parseProgram(bodyExprs[0], "Try_statements", scopeCoefficient["try"], eVarMap1, hasReturn, verbose);
+			var catchVarMapList = parseProgram(bodyExprs[1], "Catch_statements", scopeCoefficient["try"], eVarMap2, hasReturn, verbose);
 			
 			var diffMap = new Functions.VariableMap(new HashMap());
 
@@ -398,83 +343,67 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 
 				var changedInCatchBranch = false;
 				catchVarMapList.forEach(function(val2){
-					// variable exists in both try/catch branches
+					// variable exists in both try/catch branches with different values
 					if (val2.key == val1.key && val2.value != val1.value) {
 						var typeSet = new Set();
-						typeSet.add(val1.value);
-						typeSet.add(val2.value);
+						typeSet.add(val1.value).add(val2.value);
 						diffMap.setVariable(val1.key, typeSet);
 						changedInCatchBranch = true;
 					}
 				});
 
+				// this variable only exists in try branch but NOT in catch branch
 				if (!changedInCatchBranch) {
 					var prevValues = varMap.get(val1.key);
-					if (prevValues) {
-						if (prevValues != val1.value) {
-							var typeSet = new Set();
-							typeSet.add(prevValues);
-							typeSet.add(val1.value);
-							diffMap.setVariable(val1.key, typeSet);
-						}
-					} else {
-						var typeSet = new Set();
-						typeSet.add(val1.value);
-						diffMap.setVariable(val1.key, typeSet);
-					}
-					
+					var typeSet = new Set();
+					// if variable exists in main program, add the prev_value
+					if (prevValues && prevValues != val1.value) {
+						typeSet.add(prevValues);
+					} 
+					typeSet.add(val1.value);
+					diffMap.setVariable(val1.key, typeSet);
 				}
 			});
 
-			//check variables exists in catch branch
+			// check variables only exists in catch branch but NOT in try branch
 			catchVarMapList.forEach(function(val1){
+
+				// if varible exists in try branch must be in diffMap
+				// i.e. all keys that didn't exists in diffMap are new variables
 				if (diffMap.get(val1.key) === undefined) {
 					var prevValues = varMap.get(val1.key);
-					if (prevValues) {
-						if (prevValues.value != val1.value) {
-							var typeSet = new Set();
+					var typeSet = new Set();
+					// if variable exists in main program, add the prev_value
+					if (prevValues && prevValues.value != val1.value) {
 							typeSet.add(prevValues);
-							typeSet.add(val1.value);
-							diffMap.setVariable(val1.key, typeSet);
-						}
-					} else {
-						var typeSet = new Set();
-						typeSet.add(val1.value);
-						diffMap.setVariable(val1.key, typeSet);
-					}
+					} 
+					typeSet.add(val1.value);
+					diffMap.setVariable(val1.key, typeSet);
 				}
 			});
 
-			
-
-			//now check if there exists finally block
+			// check if there exists finally block
 			if (bodyExprs.length == 3) {
 				//finally branch
-				var finallyVarMapList = parseProgram(bodyExprs[2], "Try_statements", scopeCoefficient["try"], emptyVarMap, hasReturn, verbose);
-				// diffMap.multipleUpdate(varMap);
-				// diffMap.printMap()
-				// check variables exists in diffMap branch
+				const eVarMap3 = new Functions.VariableMap(new HashMap());
+				
+				// use empty varMap to parse finally block
+				// @finallyVarMapList : contains all new declaried variable in finally block
+				var finallyVarMapList = parseProgram(bodyExprs[2], "test", scopeCoefficient["test"], eVarMap3, hasReturn, false);
+				
+				// copy variables from @diffMap, parse finally block for detecting malicious patterns
+				diffMap.multipleUpdate(eVarMap3);
+				parseProgram(bodyExprs[2], "Finally_statements", scopeCoefficient["try"], eVarMap3, hasReturn, verbose);
+
+				// for all @val in @finallyVarMapList, added to @diffMap regradless their previous value
 				finallyVarMapList.forEach(function(val1){
-					if (diffMap.get(val1.key) === undefined) {
-						var prevValues = varMap.get(val1.key);
-						if (prevValues) {
-							var typeSet = new Set();
-							typeSet.add(val1.value);
-							diffMap.setVariable(val1.key, typeSet);
-						} else {
-							var typeSet = new Set();
-							typeSet.add(val1.value);
-							diffMap.setVariable(val1.key, typeSet);
-						}
-					} else {
-						var typeSet = new Set();
-						typeSet.add(val1.value);
-						diffMap.setVariable(val1.key, typeSet);
-					}
+					var typeSet = new Set();
+					typeSet.add(val1.value);
+					diffMap.setVariable(val1.key, typeSet);
 				});
+
+				// copy @diffMap values to @varMap
 				diffMap.multipleUpdate(varMap);
-
-
 			} else {
 				diffMap.multipleUpdate(varMap);
 			}
@@ -508,16 +437,8 @@ if (filePath !== undefined) {
 	}
 	var program = scriptCodes;
 	parseProgram(program, "User_Program", scopeCoefficient["main"], init_varMap, false, verbose);
-} else {
-	var testPrograms = require('./testPrograms');
-	if (testNumber == -1) {
-		for (var t in testPrograms.programs) {
-			parseProgram(testPrograms.programs[t], "Program"+t, scopeCoefficient["main"], init_varMap, false, verbose);
-		}
-	} else {
-		parseProgram(testPrograms.programs[testNumber], "Program"+testNumber, scopeCoefficient["main"], init_varMap, false, verbose);
-	}
-	
-}
 
-if (calcualteWeight && resultMap.size > 0) showResult(resultMap);
+	if (calcualteWeight && resultMap.size > 0) showResult(resultMap);
+} 
+
+

@@ -122,11 +122,6 @@ TODO:
 3) Extend more features
 
 
-TODO: change data structure from list to set, when storing all type info in variable map
-otherwise, multiple same ?
-
-
-
 
 
 

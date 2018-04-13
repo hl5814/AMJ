@@ -1,0 +1,10 @@
+FEATURE[StringOp] in :a: eval(STRING) => eval["str1.1"]
+FEATURE[InitVariable] in :User_Program, Init Variable by FunctionExpression:b=a
+FEATURE[StringOp] in :a: eval(STRING) => eval["str1.2"]
+FEATURE[StringOp] in :eval("str2.1");: eval(STRING) => eval["str2.1"]
+FEATURE[InitVariable] in :User_Program, Init Variable by FunctionExpression:c=function(){eval("str2.2");}
+FEATURE[StringOp] in :function(){eval("str2.2");}: eval(STRING) => eval["str2.2"]
+FEATURE[StringOp] in :testScope2: eval(Object->STRING) => [test] ==> eval("inner2")
+FEATURE[StringOp] in :testScope1: eval(Object->STRING) => [test] ==> eval("inner1")
+FEATURE[FuncObfuscation] :[ a ] -> [ eval ]
+FEATURE[StringOp] in :User_Program: a(STRING) => a["test"]
