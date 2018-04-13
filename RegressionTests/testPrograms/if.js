@@ -1,5 +1,4 @@
 // main scope variable overrided in both if/else blocks
-// TODO: check if exists else branch: 
 var x = "STR1";
 if (1>2) {
     x = 0;

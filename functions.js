@@ -23,7 +23,13 @@ AST.prototype.isExpressionStatement= function(index) {
 };
 
 AST.prototype.isIfStatement=function(index){
-	return  (this._node.body[index].type == "IfStatement");
+	const ifExpr = new Expr(this._node.body[index]);
+	return  (this._node.body[index].type == "IfStatement" && !ifExpr.hasElseExpr(this._node));
+};
+
+AST.prototype.isIfElseStatement=function(index){
+	const ifExpr = new Expr(this._node.body[index]);
+	return  (this._node.body[index].type == "IfStatement" && ifExpr.hasElseExpr(this._node));
 };
 
 AST.prototype.isForStatement=function(index){
@@ -81,6 +87,11 @@ AST.prototype.getAllDeclarationBlocks=function(index, verbose=false) {
 AST.prototype.parseIfStatement=function(index, varMap, verbose=false){
 	const ifExpr = new Expr(this._node.body[index]);
 	return ifExpr.parseIfStatementExpr(this._node, varMap, [], verbose);
+}
+
+AST.prototype.hasElse=function(index, varMap, verbose=false){
+	const ifExpr = new Expr(this._node.body[index]);
+	return ifExpr.hasElseExpr(this._node, varMap, [], verbose);
 }
 
 AST.prototype.parseForStatement=function(index, varMap, verbose=false){
@@ -514,6 +525,14 @@ Expr.prototype.parseTryStatementExpr=function(node, varMap, blockRanges,verbose=
 	return blockRanges;
 }
 
+
+Expr.prototype.hasElseExpr=function(node) {
+	if (this._expr.alternate && this._expr.alternate.type == "IfStatement") {
+		var elseifBranch = new Expr(this._expr.alternate);
+		return elseifBranch.hasElseExpr(node);
+	}
+	return (this._expr.alternate !== null && this._expr.alternate.type == "BlockStatement");
+}
 
 Expr.prototype.parseIfStatementExpr=function(node, varMap, blockRanges,verbose=false) {
 	var ifBranch = new Expr(this._expr.consequent);

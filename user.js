@@ -1,5 +1,12 @@
-var i = "main";
-do {
-    i = "do-while"
+b = "test";
+try  {
+    eval(b);
+    b = "TRY";
+} catch(e) {
+    eval(b);
+    b = "CATCH";
+} finally {
+   eval(b);
+   b = 0;
 }
-while (i < 5);
+eval(b);

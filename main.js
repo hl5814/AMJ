@@ -27,6 +27,24 @@ for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
 
+Set.prototype.my_add=function(values){
+	var hasSame = false;
+	var toAddList = [];
+
+	for (var v in values) {
+		var exists = false;
+		this.forEach(function(item) { 
+			if (values[v].key == item[0].key && values[v].value == item[0].value) {
+				exists = true;
+			}
+		});
+
+		if (!exists) {
+			this.add([values[v]]);
+		}
+	}
+}
+
 // {key: featureType, value: [occurances, weight]}
 var resultMap = new HashMap();
 var featureMap = new HashMap();
@@ -239,7 +257,47 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			const emptyVarMap = new Functions.VariableMap(new HashMap());
 			init_varMap.copy(emptyVarMap);
 			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, scopeCoefficient["function"], emptyVarMap, hasReturn, verbose);
-		} else if (astNode.isIfStatement(i)) {
+		} else if (astNode.isIfElseStatement(i)) {
+			ASTUtils.traverse(astNode._node, function(node, parent){
+				if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
+					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
+			})
+
+			var branchExprs = astNode.parseIfStatement(i, varMap, verbose);
+			const diffMap = new Functions.VariableMap(new HashMap());
+
+			for (var b in branchExprs){
+				var eVarMap = new Functions.VariableMap(new HashMap());
+				varMap.copy(eVarMap);
+				var ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", scopeCoefficient["if"], eVarMap, hasReturn, verbose);
+
+				ifbranchVarMapList.forEach(function(val1) {
+					// variable in @varMap
+					var var_values = varMap.get(val1.key);
+
+					// value different as @varMap ||
+					// new value created in if branches
+					if ((var_values !== undefined && var_values != val1.value) ||
+						 var_values === undefined) {
+						var prevValues = diffMap.get(val1.key);
+
+						// check if value already in @diffMap
+						if (prevValues) { 
+							var setIter = prevValues.values();
+							prevValues.my_add(val1.value);
+							diffMap.setVariable(val1.key, prevValues);
+						} else {
+							var typeSet = new Set();
+							typeSet.my_add(val1.value);
+							diffMap.setVariable(val1.key, typeSet);
+						}
+					} 
+				});
+				//diffMap.printMap();
+			}
+			diffMap.multipleUpdate(varMap);
+		}else if (astNode.isIfStatement(i)) {
+
 			ASTUtils.traverse(astNode._node, function(node, parent){
 				if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
 					ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
@@ -258,14 +316,14 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					// variable already in diffMap
 					var prevBranch = diffMap.get(val1.key);
 					if (prevBranch) {
-						prevBranch.add(val1.value);
+						prevBranch.my_add(val1.value);
 						diffMap.setVariable(val1.key, prevBranch);
 					} else {
 						var prevValues = varMap.get(val1.key);
 						var typeSet = new Set();
 						// if variable exists in main program, add the prev_value
-						if (prevValues && prevValues != val1.value) typeSet.add(prevValues);
-						typeSet.add(val1.value);
+						if (prevValues && prevValues != val1.value) typeSet.my_add(prevValues);
+						typeSet.my_add(val1.value);
 						diffMap.setVariable(val1.key, typeSet);
 					}
 				});
@@ -289,12 +347,12 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				var prevValues = varMap.get(val1.key);
 				var typeSet = new Set();
 				if (prevValues && astNode.isForInStatement(i)) {
-					typeSet.add([ { type: 'Literal', value: '0' } ]);
+					typeSet.my_add([ { type: 'Literal', value: '0' } ]);
 				} else if (prevValues && astNode.isForStatement(i)){
 					if (val1.value[0].type == "undefined" && val1.value[0].value == "undefined") {
-						typeSet.add(prevValues);
+						typeSet.my_add(prevValues);
 					} else {
-						typeSet.add(val1.value);
+						typeSet.my_add(val1.value);
 					}
 				}
 				diffMap.setVariable(val1.key, typeSet);
@@ -311,9 +369,9 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				var prevValues = varMap.get(val1.key);
 				var typeSet = new Set();
 				// if variable exists in main program, add the prev_value
-				if (prevValues && prevValues != val1.value) typeSet.add(prevValues);
+				if (prevValues && prevValues != val1.value) typeSet.my_add(prevValues);
 
-				typeSet.add(val1.value);
+				typeSet.my_add(val1.value);
 				diffMap.setVariable(val1.key, typeSet);
 			});
 			diffMap.multipleUpdate(varMap);
@@ -337,9 +395,9 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					var typeSet = new Set();
 
 					// if variable exists in main program, add the prev_value
-					if (prevValues && prevValues != val1.value) typeSet.add(prevValues);
+					if (prevValues && prevValues != val1.value) typeSet.my_add(prevValues);
 
-					typeSet.add(val1.value);
+					typeSet.my_add(val1.value);
 					diffMap.setVariable(val1.key, typeSet);
 				});
 			}
@@ -380,7 +438,8 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					// variable exists in both try/catch branches with different values
 					if (val2.key == val1.key && val2.value != val1.value) {
 						var typeSet = new Set();
-						typeSet.add(val1.value).add(val2.value);
+						typeSet.my_add(val1.value);
+						typeSet.my_add(val2.value);
 						diffMap.setVariable(val1.key, typeSet);
 						changedInCatchBranch = true;
 					}
@@ -392,9 +451,9 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					var typeSet = new Set();
 					// if variable exists in main program, add the prev_value
 					if (prevValues && prevValues != val1.value) {
-						typeSet.add(prevValues);
+						typeSet.my_add(prevValues);
 					} 
-					typeSet.add(val1.value);
+					typeSet.my_add(val1.value);
 					diffMap.setVariable(val1.key, typeSet);
 				}
 			});
@@ -409,9 +468,9 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					var typeSet = new Set();
 					// if variable exists in main program, add the prev_value
 					if (prevValues && prevValues.value != val1.value) {
-							typeSet.add(prevValues);
+							typeSet.my_add(prevValues);
 					} 
-					typeSet.add(val1.value);
+					typeSet.my_add(val1.value);
 					diffMap.setVariable(val1.key, typeSet);
 				}
 			});
@@ -432,7 +491,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				// for all @val in @finallyVarMapList, added to @diffMap regradless their previous value
 				finallyVarMapList.forEach(function(val1){
 					var typeSet = new Set();
-					typeSet.add(val1.value);
+					typeSet.my_add(val1.value);
 					diffMap.setVariable(val1.key, typeSet);
 				});
 
