@@ -42,7 +42,7 @@ inner blocks check:
 	->do while
 
 
-<!-- change varMap store all possible values when encounter if branches -->
+<!-- updates for variables with multiple possibe values -->
 // for variables with multiple possible values (e.g. {key:a, value:[1, "string"]})
 // case 1:  [equal assignment a=b]
 // 		 ignore all possible values, replace with the new value on RHS
@@ -51,11 +51,57 @@ inner blocks check:
 //		 update all branches with the corresponding value
 //		 ==> {key:a, value:[1+1, "string"+1]}
 //
-// same works for functions names
-// 
-// [REMARK]: need to check whether "else" branch exists. For an if-statement with only 
-//			 if branch, we store all possible values. For an if-else-statement, only need 
-//			 store values in ...
+// p.s. same works for functions names
+
+<!-- if blocks -->
+// for single if statement, store both possible values in main scope and if block
+// example:
+//		   	var a = "MAIN";
+// 		   	if (...) {
+//				a = "IF";	
+//			}
+// from static point of view we didn't know whether the if body will be executed
+// therefore, we need to store both values in varMap
+// ==>varMap: {key:a, value:["MAIN", "IF"]}
+//
+// for an if-else statement, store both possible values in if block and else block
+// example:
+//		   	var a = "MAIN";
+// 		   	if (...) {
+//				a = "IF";	
+//			} else {
+//				a = "ELSE";
+//			}
+// Even if we don't know whether if-branch or else-branch will be executed, but we know
+// one of them will be executed, therefore if there exists an else branch, we need to forget
+// about the main scope value
+// ==>varMap: {key:a, value:["IF", "ELSE"]}
+//
+//
+// same logic works for if-elseif statements (if exists else branch, ignore main scope)
+// example:
+//		   	var a = "MAIN";
+// 		   	if (...) {
+//				a = "IF";	
+//			} else if (...) {
+//				a = "ELSE-IF";
+//			}
+// ==>varMap: {key:a, value:["MAIN","IF", "ELSE-IF"]}
+//
+// example:
+//		   	var a = "MAIN";
+// 		   	if (...) {
+//				a = "IF";	
+//			} else if (...) {
+//				a = "ELSE-IF";
+//			} else {
+//				a = "ELSE";
+//			}
+// ==>varMap: {key:a, value:["IF", "ELSE-IF","ELSE"]}
+
+
+
+
 
 <!-- for blocks -->
 // for for statements we check it in the same way as if statements, base on the conditions
@@ -109,8 +155,6 @@ inner blocks check:
 //			} while(i>5);
 //
 // ==>varMap: {key:a, value:[0]}
-
-
 
 
 
