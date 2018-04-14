@@ -128,8 +128,8 @@ describe('AST IfStatements', function() {
 
     it(`isIfStatement()`, function() {
         expect(block.isIfStatement(0)).to.equal(true);
-        expect(block.isIfStatement(1)).to.equal(true);
-        expect(block.isIfStatement(2)).to.equal(true);
+        expect(block.isIfElseStatement(1)).to.equal(true);
+        expect(block.isIfElseStatement(2)).to.equal(true);
     });
 
     it(`parseIfStatement() && parseIfStatementExpr`, function() {
@@ -172,7 +172,7 @@ describe('AST WhileStatements', function() {
 
     it(`isWhileStatement()`, function() {
         expect(block.isWhileStatement(0)).to.equal(true);
-        expect(block.isWhileStatement(1)).to.equal(true);
+        expect(block.isDoWhileStatement(1)).to.equal(true);
     });
 
     const astNode = new Functions.AST(ASTUtils.parse(program));

@@ -240,7 +240,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 					return [varName, [{ type: "BitwiseOperationExpression", value: val}]];
 				}
 			}
-			return [varName, { type: "Expression", value: val}];
+			return [varName, [{ type: "Expression", value: val}]];
 		} else if (rhs.type == "CallExpression") {
 			var arg = new Expr(rhs);
 			var val = arg.getArg(this._node, identifier, varMap, false, verbose);
@@ -391,7 +391,6 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 		var expr = new Expr(this._expr);
 		arg = expr.getValueFromUnaryExpression(node, identifier, varMap, inner, verbose);
 	} else if (this._expr.type == "CallExpression") {
-		console.log(1)
 		var expr = new Expr(this._expr);
 		arg = expr.getValueFromCallExpression(node, identifier, varMap, inner, verbose);
 	} else if (this._expr.type == "NewExpression") {
@@ -402,7 +401,6 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 		elem_array = expr.getValueFromArrayExpression(node, identifier, varMap, inner, verbose);
 		return elem_array;
 	} else if (this._expr.type == "MemberExpression") {
-		console.log(2)
 		var expr = new Expr(this._expr);
 		elem_array = expr.getValueFromMemberExpression(node, identifier, varMap, inner, verbose);
 		return elem_array;
@@ -636,7 +634,6 @@ Expr.prototype.getValueFromCallExpression=function(node, identifier, varMap, inn
 	if (verbose>1) console.log("CallExpression:\n", this._expr, "\n");
 
 	var callee_expr = new Expr(this._expr.callee);
-	console.log(callee_expr)
 	const funcName = callee_expr.getArg(node, identifier, varMap, true, verbose);
 	const args = this._expr.arguments;
 
