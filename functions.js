@@ -373,7 +373,6 @@ Expr.prototype.getToken=function(node, verbose=false){
 
 Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 	var arg,elem_array;
-
 	if (this._expr.type == "Literal") {
 		var token = this.getToken(node, this._expr)
 		if (token.type == "String") {
@@ -392,6 +391,7 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 		var expr = new Expr(this._expr);
 		arg = expr.getValueFromUnaryExpression(node, identifier, varMap, inner, verbose);
 	} else if (this._expr.type == "CallExpression") {
+		console.log(1)
 		var expr = new Expr(this._expr);
 		arg = expr.getValueFromCallExpression(node, identifier, varMap, inner, verbose);
 	} else if (this._expr.type == "NewExpression") {
@@ -402,6 +402,7 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 		elem_array = expr.getValueFromArrayExpression(node, identifier, varMap, inner, verbose);
 		return elem_array;
 	} else if (this._expr.type == "MemberExpression") {
+		console.log(2)
 		var expr = new Expr(this._expr);
 		elem_array = expr.getValueFromMemberExpression(node, identifier, varMap, inner, verbose);
 		return elem_array;
@@ -430,9 +431,8 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, in
 
 Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, inner, verbose=false) {
 	var identifier = this._expr.object.name;
-
 	if (this._expr.computed) {
-		//TODO: lookup a in varMap for x[a]
+
 		var val = this._expr.property.value;
 		if (this._expr.property.type == "Identifier") {
 			var ref_value = varMap.get(this._expr.property.name, verbose);
@@ -440,9 +440,14 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 		}
 		return identifier+"["+val+"]";
 	} else {
-		return identifier+"."+this._expr.property.name;
+		if (identifier) {
+			return identifier+"."+this._expr.property.name;
+		} else {
+			var arg = new Expr(this._expr.object);
+			var val = arg.getArg(node, identifier, varMap, true, verbose);
+			return val+"."+this._expr.property.name;
+		}
 	}
-	
 }
 
 Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=false) {
@@ -631,7 +636,7 @@ Expr.prototype.getValueFromCallExpression=function(node, identifier, varMap, inn
 	if (verbose>1) console.log("CallExpression:\n", this._expr, "\n");
 
 	var callee_expr = new Expr(this._expr.callee);
-
+	console.log(callee_expr)
 	const funcName = callee_expr.getArg(node, identifier, varMap, true, verbose);
 	const args = this._expr.arguments;
 
