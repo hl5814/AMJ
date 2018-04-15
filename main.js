@@ -94,6 +94,7 @@ function showResult(resultMap) {
 
 
 function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
+
 	// console.log(scope + ":\n\n>>>" + program, "<<<\n\n\n");
 	if (program.replace(/\s+/, "") == "") return varMap.toList();
 	var ast;
@@ -143,19 +144,27 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			}
 		}
 		else if (astNode.isExpressionStatement(i)) {
-
 			if (astNode.isAssignmentExpression(i)) {
-
 				var var_values = astNode.getAssignmentLeftRight(i, varMap, verbose);
-
-				for (var i in var_values[1]){
-					if (var_values[1][i].type == "BitwiseOperationExpression" ||
-						var_values[1][i].type == "FunctionCall") {
-						if (verbose>0) console.log("FEATURE[Assignment] in :" + scope + ", "+var_values[1][i].type +":" + var_values[0] + "=" +var_values[1][i].value);
+				for (var v in var_values[1]){
+					if (var_values[1][v].type == "BitwiseOperationExpression" ||
+						var_values[1][v].type == "FunctionCall") {
+						if (verbose>0) console.log("FEATURE[Assignment] in :" + scope + ", "+var_values[1][v].type +":" + var_values[0] + "=" +var_values[1][v].value);
 						updateResultMap(resultMap, "Assignment", coefficient);
-					} else if (var_values[1][i].type == "FunctionExpression") {
-						//parse function body
-						parseProgram(var_values[1][i].value, var_values[1][i].value, scopeCoefficient["function"], varMap, hasReturn, verbose);
+					} else if (var_values[1][v].type == "FunctionExpression") {
+						// parse function body
+						// main scope variable should be parsed into the function body, however 
+						// function body scope variable shoundn't affect the main scope therefore
+						// use the new @eVarMap instead of @varMap itself
+						var eVarMap = new Functions.VariableMap(new HashMap());
+						varMap.copy(eVarMap);
+						parseProgram(var_values[1][v].value, var_values[1][v].value, scopeCoefficient["function"], eVarMap, hasReturn, verbose);
+					} else {
+						ASTUtils.traverse(ast.body[i], function(node){
+							if (node.type == "CallExpression"){
+								parseProgram(ASTUtils.getCode(node), "CallExpression", scopeCoefficient["function"], varMap, hasReturn, verbose);
+							}
+						});
 					}
 				}
 

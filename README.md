@@ -100,9 +100,6 @@ inner blocks check:
 // ==>varMap: {key:a, value:["IF", "ELSE-IF","ELSE"]}
 
 
-
-
-
 <!-- for blocks -->
 // for for statements we check it in the same way as if statements, base on the conditions
 // program might skip the for block, therefore, we should store
@@ -189,13 +186,24 @@ inner blocks check:
 // ==>varMap: {key:x, value:[3]}
 
 
+<!-- Machine Learning Matrices 1-->
+// [#features-captured, weights]
+// when parsing the JS code, detect features, and given each feature a
+// corresponding weight points (multiplied by a scope coefficient), e.g.
+// feature in for loop should be more malicious (i.e. has higher weight)
+
+
+<!-- Machine Learning Matrices 2-->
+// [#JS-keywords, length-of-input-codes]
+// count number of javascript keywords in a given piece of code
+// very few keywords but long code ==>? malicious.
+// [hidden codes in html comments <!-- malicious JS codes -->, and then 
+// use some other simple codes to remove the comments and execute]
 
 
 
 TODO:
-
-1) add checks for function calls on object, e.g. XXX.toString().
-2) Build basic machine learning model using current features
+ (1)Build basic machine learning model using current features
 	==> SVM, python scikit-learn (svm)
 
 //	from sklearn import svm
@@ -209,10 +217,5 @@ TODO:
 //   (x,y) ==> x : number of occurances
 //		   y : total weight
 
-3) Extend more features
-
-
-
-
-
+ (2) issues with error html links, e.g. "var x = http:...."
 
