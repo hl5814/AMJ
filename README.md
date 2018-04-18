@@ -197,8 +197,15 @@ inner blocks check:
 // [#JS-keywords, length-of-input-codes]
 // count number of javascript keywords in a given piece of code
 // very few keywords but long code ==>? malicious.
+//
+// CASE 1:
 // [hidden codes in html comments <!-- malicious JS codes -->, and then 
 // use some other simple codes to remove the comments and execute]
+//
+// CASE 2:
+// long string manipulation
+
+
 
 
 

@@ -197,11 +197,11 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 
 			for (var i in lhs_type_values) {
 				if (lhs_type_values[i].type == "String"){
-					result_types.push({ type: "String", value: "(" + lhs_type_values[i].value + expression.operator + val + ")"});
+					result_types.push([{ type: "String", value: "(" + lhs_type_values[i].value + expression.operator + val + ")"}]);
 				} else if (rhs.type == "CallExpression"){
-					result_types.push({ type: "FunctionCall", value: "(" + lhs_type_values[i].value + expression.operator + val + ")"});
+					result_types.push([{ type: "FunctionCall", value: "(" + lhs_type_values[i].value + expression.operator + val + ")"}]);
 				} else {
-					result_types.push({ type: "Expression", value: "(" + lhs_type_values[i].value + expression.operator + val + ")"});
+					result_types.push([{ type: "Expression", value: "(" + lhs_type_values[i].value + expression.operator + val + ")"}]);
 				}
 			}
 			return [varName, result_types];
@@ -220,11 +220,11 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 							if (val.length > 30) {
 								val = val.substring(1, 30) + "...";
 							}
-							result_types.push({ type: "String", value: val});
+							result_types.push([{ type: "String", value: val}]);
 						} else if (bitOperators.indexOf(rhs.operator) != -1) {
-							result_types.push({ type: "BitwiseOperationExpression", value: val});
+							result_types.push([{ type: "BitwiseOperationExpression", value: val}]);
 						} else {
-							result_types.push({ type: "Expression", value: val});
+							result_types.push([{ type: "Expression", value: val}]);
 						}
 					}
 					return [varName, result_types];
@@ -378,6 +378,8 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 		if (token.type == "String") {
 			arg = "\"" + this._expr.value+"\"";
 		} else {
+			// if (this._expr.value === null)
+				// console.log(">",this._expr,?)?·
 			arg = this._expr.value;
 		}
 	} else if (this._expr.type == "String") {
@@ -422,7 +424,7 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, in
 		}
 		var arg = new Expr(element);
 		var val = arg.getArg(node, identifier, varMap, true, verbose);
-		elem_array.push([identifier+"["+e+"]", { type: element.type, value: val }]);
+		elem_array.push([identifier+"["+e+"]", [{ type: element.type, value: val }]]);
 	}
 	return elem_array;
 }
@@ -434,7 +436,12 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 		var val = this._expr.property.value;
 		if (this._expr.property.type == "Identifier") {
 			var ref_value = varMap.get(this._expr.property.name, verbose);
-			val = ref_value.value;
+			if (ref_value) {
+				val = ref_value.value;
+			} else {
+				val = "undefined";
+			}
+			
 		}
 		return identifier+"["+val+"]";
 	} else {
@@ -586,7 +593,7 @@ Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inne
 		//TODO check callee.name
 		// elem_array.push([identifier + "_" + callee.name + "["+e+"]", { type: element.type, value: val }]);
 
-		elem_array.push([identifier + "["+e+"]", { type: element.type, value: val }]);
+		elem_array.push([identifier + "["+e+"]", [{ type: element.type, value: val }]]);
 	}
 	return elem_array;
 }
