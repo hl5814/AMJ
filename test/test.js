@@ -90,8 +90,8 @@ describe('AST getVariableInitValue', function() {
             ["h", [ {type: "ArrayExpression",
                     value: 
                         [
-                            ["h[0]", { "type": "Literal", "value": 1} ],
-                            ["h[1]", {"type" : "Literal", "value": 2} ] 
+                            ["h[0]", [{ "type": "Literal", "value": 1}] ],
+                            ["h[1]", [{"type" : "Literal", "value": 2}] ] 
                         ]}
                    ]
             ]);
@@ -99,7 +99,7 @@ describe('AST getVariableInitValue', function() {
             ["i", [ {type: "NewExpression",
                     value: 
                         [
-                            ["i[0]", { "type": "Literal", "value": 1} ]
+                            ["i[0]", [{ "type": "Literal", "value": 1}] ]
                         ]}
                    ]
             ]);
