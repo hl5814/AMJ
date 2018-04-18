@@ -200,7 +200,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				var var_values = varMap.get(funcName);
 
 				for (var v in var_values) {
-					if (var_values[v].type != "pre_Function") {
+					if (var_values[v].type != "pre_Function" && var_values[v].type != "user_Function" ) {
 						continue; 
 					}
 
@@ -222,11 +222,11 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						updateResultMap(resultMap, "FunctionCall", coefficient);
 					}
 
-					
-					// if (funcNames.indexOf(funcName) != -1 || funcNames.indexOf(user_defined_funName) != -1) {
 					var funcNames = varMap.get(funcName);
 					for (var f in funcNames) {
-						if (funcNames[f].type == "pre_Function" || user_defined_funName == funcNames[f].value) {
+
+						if (funcNames[f].type == "pre_Function" || user_defined_funName == funcNames[f].value
+							|| funcNames[f].type == "user_Function") {
 							var args = astNode.getFunctionArguments(i, varMap);
 
 							// JS will ignore extra parameters, if function is defined with only one parameter
