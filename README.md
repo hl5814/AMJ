@@ -1,13 +1,25 @@
-node main.js
-node main.js -t 2
-node main.js -u -v
+JSDetector
+================================================================
+Malicious JavaScript Pattern Detector and Analyzer.
 
-<!-- unit test command for JSDetector -->
+## Usage
+#### main program:
+```
+node main.js [-v|verbose flag]? [-w|show weighted points for SVM]? [-s source|source file path]?
+````
+#### script for batch input files:
+```
+./checkFiles.sh [-s|--source] [filePath/directoryPath] [-v|--verbose]?
+```
+
+#### unit Test
+```
 mocha test
-
-// https://github.com/facebook/flow
-//==> dynamically stage, profiling on the code
-
+```
+#### regression Test
+```
+./testAll.sh
+```
 
 Current Patterns:
 ================================================================
@@ -236,3 +248,5 @@ y : total weight
 
 ## (2) issues with error html links, e.g. "var x = http:...."
 
+// https://github.com/facebook/flow
+//==> dynamically stage, profiling on the code
