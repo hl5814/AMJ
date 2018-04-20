@@ -22,7 +22,8 @@ const filePath = options.src;
 var init_varMap = new Functions.VariableMap(new HashMap());
 
 var funcNames = ["eval", "unescape", "replace", "document.write", "atob", "btoa",
-				 "setTimeout", "setInterval", "toString", "String.fromCharCode"];
+				 "setTimeout", "setInterval", "toString", "String.fromCharCode",
+				 "parseInt"];
 for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
@@ -62,7 +63,8 @@ const featureWeight = { "InitVariable" 		: 1,
 						"FunctionCall" 		: 3,
 						"ExpressionOp" 		: 4,
 						"StringOp"	   		: 5,
-						"FuncObfuscation" 	: 5};
+						"FuncObfuscation" 	: 5,
+						"UndefinedFunction"	: 5};
 
 
 
@@ -76,6 +78,7 @@ function updateResultMap(resultMap, featureType, coefScope) {
 	} else {
 		resultMap.set(featureType, [1, coef * featureWeight[featureType]]);
 	}
+	console.log("--,"+featureType+","+programTokens)
 }
 
 function showResult(resultMap, codeLength) {
@@ -88,10 +91,10 @@ function showResult(resultMap, codeLength) {
 		totalOccurances += value[0];
 		totalWeight     += value[1];
 	});
-	console.log("Total,"+totalOccurances);
-	console.log("Weight,"+totalWeight);
-	console.log("Length,"+codeLength);
-	console.log("Tokens,"+programTokens);
+	// console.log("Total,"+totalOccurances);
+	// console.log("Weight,"+totalWeight);
+	// console.log("Length,"+codeLength);
+	// console.log("Tokens,"+programTokens);
 	//console.log("POINT:",totalOccurances/codeLength+","+totalWeight/codeLength)
 }
 
@@ -130,6 +133,16 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						if (variableName_Types[v].type == "Expression") {
 							if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
 							updateResultMap(resultMap, "InitVariable", coefficient);
+							ASTUtils.traverse(ast.body[i], function(node){
+								if (node.type == "CallExpression"){
+									var callee = node.callee.name;
+									if (node.callee.name !== undefined && varMap.get(callee) === undefined) {
+
+										if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
+										updateResultMap(resultMap, "UndefinedFunction", coefficient);
+									}
+								}
+							});
 						} else if (astNode.hasFunctionExpression(i)) {
 							//FunctionExpression
 							ASTUtils.traverse(ast.body[i], function(node){
@@ -141,7 +154,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 										parseProgram(blocks[b], variableName_Types[v].value, "function", varMap, hasReturn, verbose);
 									}
 									updateResultMap(resultMap, "InitVariable", coefficient);
-								}
+								} 
 							});
 						}
 						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
@@ -157,6 +170,16 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						var_values[1][v].type == "FunctionCall") {
 						if (verbose>0) console.log("FEATURE[Assignment] in :" + scope + ", "+var_values[1][v].type +":" + var_values[0] + "=" +var_values[1][v].value);
 						updateResultMap(resultMap, "Assignment", coefficient);
+						ASTUtils.traverse(ast.body[i], function(node){
+							if (node.type == "CallExpression"){
+								var callee = node.callee.name;
+								if (node.callee.name !== undefined && varMap.get(callee) === undefined) {
+									if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
+									updateResultMap(resultMap, "UndefinedFunction", coefficient);
+								}
+							}
+						});
+						
 					} else if (var_values[1][v].type == "FunctionExpression") {
 						// parse function body
 						// main scope variable should be parsed into the function body, however 
@@ -168,6 +191,11 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					} else {
 						ASTUtils.traverse(ast.body[i], function(node){
 							if (node.type == "CallExpression"){
+								var callee = node.callee.name;
+								if (node.callee.name !== undefined && varMap.get(callee) === undefined) {
+									if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
+									updateResultMap(resultMap, "UndefinedFunction", coefficient);
+								}
 								parseProgram(ASTUtils.getCode(node), "CallExpression", "function", varMap, hasReturn, verbose);
 							}
 						});
@@ -252,6 +280,15 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 								} else if (args[0].type == "BinaryExpression" || args[0].type == "UnaryExpression" || args[0].type == "CallExpression") {
 									if (verbose>0) console.log("FEATURE[ExpressionOp] in :" + scope + ": "+funcName+"(" + args[0].type + ") => "+funcName+"[" + args[0].value + "]");
 									updateResultMap(resultMap, "ExpressionOp", coefficient);
+									ASTUtils.traverse(ast.body[i], function(node){
+										if (node.type == "CallExpression"){
+											var callee = node.callee.name;
+											if (node.callee.name !== undefined && varMap.get(callee) === undefined) {
+												if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
+												updateResultMap(resultMap, "UndefinedFunction", coefficient);
+											}
+										}
+									});
 								}
 							}
 						}
