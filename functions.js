@@ -125,7 +125,23 @@ AST.prototype.getFunctionBodyFromFunctionExpression=function(index, verbose=fals
 	return blockRanges;
 }
 
+AST.prototype.checkStaticMemberFunctionCall=function(node, varMap, verbose=false) {
+	const identifier = node.left.name;
+	if (node.right !== null){
+		const expression = new Expr(node.right);
+		const args = expression.getArg(this._node, identifier, varMap, false, verbose); 
+
+		var var_values = varMap.get(args, verbose);
+		for (var v in var_values) {
+			if (var_values[v].type == "pre_Function"){
+				return [identifier, var_values[v]];
+			}
+		}
+	}
+}
+
 AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false) {
+
 	const identifier = block.id.name;
 	const expression = new Expr(block.init);
 	if (block.init == null){

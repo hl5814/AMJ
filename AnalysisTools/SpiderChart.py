@@ -5,14 +5,14 @@ from math import pi
  
 # Set data
 df = pd.DataFrame({
-'group': ['183', 'code2'],
-'InitVariable':     [3.503,    2.082],
-'Assignment':       [2.738,    5.322],
-'FunctionCall':     [0.005,    3.132],
-'ExpressionOp':     [2.929,    5.067],
-'StringOp':         [2.770,    1.990],
-'FuncObfuscation':  [1.415,    2.500],
-'UndefinedFunction':[9.781,    3.439]
+'group':            ['183', 'code2'],
+'Assignment':       [641,    2.082],
+'ExpressionOp':     [510,    5.322],
+'FuncObfuscation':  [1  ,    3.132],
+'FunctionCall':     [536,    5.067],
+'InitVariable':     [507,    1.990],
+'StringOp':         [259,    2.500],
+'UndefinedFunction':[137,    3.439]
 })
 
 # ------- PART 1: Create background
@@ -37,12 +37,8 @@ plt.xticks(angles[:-1], categories)
  
 # Draw ylabels
 ax.set_rlabel_position(0)
-plt.yticks([2.5,5,7.5], ["2.5","5","7.5"], color="grey", size=8)
-plt.ylim(0,10)
-
-ax.set_rlabel_position(1)
-plt.yticks([2.5,5,7.5], ["2.5","5","7.5"], color="black", size=8)
-plt.ylim(0,10)
+plt.yticks([250,500,750], ["250","500","750"], color="grey", size=8)
+plt.ylim(0,1000)
  
  
 # ------- PART 2: Add plots

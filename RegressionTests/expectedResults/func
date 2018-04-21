@@ -6,5 +6,10 @@ FEATURE[InitVariable] in :User_Program, Init Variable by FunctionExpression:c=fu
 FEATURE[StringOp] in :function(){eval("str2.2");}: eval(STRING) => eval["str2.2"]
 FEATURE[StringOp] in :testScope2: eval(Object->STRING) => [test] ==> eval("inner2")
 FEATURE[StringOp] in :testScope1: eval(Object->STRING) => [test] ==> eval("inner1")
+FEATURE[FuncObfuscation] :[ b ] -> [ eval ]
+FEATURE[StringOp] in :User_Program: b(STRING) => b["test2"]
 FEATURE[FuncObfuscation] :[ a ] -> [ eval ]
+FEATURE[StringOp] in :User_Program: a(STRING) => a["test"]
+FEATURE[StringOp] in :User_Program: a(STRING) => a["test"]
+FEATURE[StringOp] in :User_Program: a(STRING) => a["test"]
 FEATURE[StringOp] in :User_Program: a(STRING) => a["test"]

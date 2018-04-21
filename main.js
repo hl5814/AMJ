@@ -78,7 +78,7 @@ function updateResultMap(resultMap, featureType, coefScope) {
 	} else {
 		resultMap.set(featureType, [1, coef * featureWeight[featureType]]);
 	}
-	console.log("--,"+featureType+","+programTokens)
+	// console.log("--,"+featureType+","+programTokens)
 }
 
 function showResult(resultMap, codeLength) {
@@ -114,8 +114,10 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 	for (var i in ast.body){
 		var astNode = new Functions.AST(ast);
 
-		// console.log(ast.body[i])
+		
 		if (verbose>1 && (ast.body[i].type != "Line")) console.log("======================\n", ast.body[i],"\n======================\n");
+		
+		// variable declaration, e.g. var x = ???;
 		if (astNode.isVariableDeclaration(i)) {
 			var declaration_blocks = astNode.getAllDeclarationBlocks(i);
 			for (var block in declaration_blocks) {
@@ -129,6 +131,9 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						for (var e in array_elems) {
 							varMap.setVariable(array_elems[e][0], array_elems[e][1], verbose);
 						}
+					} else if (variableName_Types[v].type == "pre_Function"){
+						if (verbose>0) console.log("FEATURE[FuncObfuscation] :[", variableName_Type[0], "] -> [", variableName_Types[v].value, "]")
+						updateResultMap(resultMap, "FuncObfuscation", coefficient);
 					} else {
 						if (variableName_Types[v].type == "Expression") {
 							if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
@@ -137,7 +142,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 								if (node.type == "CallExpression"){
 									var callee = node.callee.name;
 									if (node.callee.name !== undefined && varMap.get(callee) === undefined) {
-
 										if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
 										updateResultMap(resultMap, "UndefinedFunction", coefficient);
 									}
@@ -162,6 +166,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				}
 			}
 		}
+		// expressions, e.g. x = ???, eval(???).
 		else if (astNode.isExpressionStatement(i)) {
 			if (astNode.isAssignmentExpression(i)) {
 				var var_values = astNode.getAssignmentLeftRight(i, varMap, verbose);
@@ -190,7 +195,13 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						parseProgram(var_values[1][v].value, var_values[1][v].value, "function", eVarMap, hasReturn, verbose);
 					} else {
 						ASTUtils.traverse(ast.body[i], function(node){
-							if (node.type == "CallExpression"){
+							if (node.type == "AssignmentExpression") {
+								var var_value = astNode.checkStaticMemberFunctionCall(node, varMap);
+								if (var_value !== undefined) {
+									if (verbose>0) console.log("FEATURE[FuncObfuscation] :[", var_value[0], "] -> [", var_value[1].value, "]")
+									updateResultMap(resultMap, "FuncObfuscation", coefficient);
+								}
+							} else if (node.type == "CallExpression"){
 								var callee = node.callee.name;
 								if (node.callee.name !== undefined && varMap.get(callee) === undefined) {
 									if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
@@ -206,7 +217,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			} else if (astNode.isUpdateExpression(i)) {
 
 				var var_value = astNode.getUpdateExpression(i, varMap, verbose);
-				// no point to track ++, --
+				// ++, --, etc.
 			
 			} else {
 				// (astNode.isCallExpression(i)) and the rest expressions
@@ -218,7 +229,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					continue;
 				}
 
-
 				//List of malicious pre-defined functions
 				var funcName = "";
 				if (astNode._node.body[i].expression.callee) {
@@ -226,6 +236,18 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				}
 				
 				var var_values = varMap.get(funcName);
+				if (var_values === undefined) {
+					ASTUtils.traverse(ast.body[i], function(node){
+						if (node.type == "CallExpression"){
+							var callee = node.callee.name;
+							if (node.callee.name !== undefined && varMap.get(callee) === undefined) {
+								if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
+								updateResultMap(resultMap, "UndefinedFunction", coefficient);
+							}
+						}
+					});
+				}
+
 
 				for (var v in var_values) {
 					if (var_values[v].type != "pre_Function" && var_values[v].type != "user_Function" ) {
@@ -235,8 +257,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					var user_defined_funName = "";
 
 					if (var_values != undefined && var_values[v].value != funcName && var_values[v].type == "pre_Function"){
-						if (verbose>0) console.log("FEATURE[FuncObfuscation] :[", funcName, "] -> [", var_values[v].value, "]")
-						updateResultMap(resultMap, "FuncObfuscation", coefficient);
 						user_defined_funName = var_values[v].value;
 					}
 
@@ -297,7 +317,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			} 
 		} else if (astNode.isFunctionDeclaration(i)) {
 			// set hasReturn flag to true for parsing function body
-			
 			ASTUtils.traverse(ast.body[i].body, function(node, parent){
 				if (node.type == "ReturnStatement"){
 					hasReturn = true;
@@ -345,7 +364,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						}
 					} 
 				});
-				//diffMap.printMap();
 			}
 			diffMap.multipleUpdate(varMap);
 		}else if (astNode.isIfStatement(i)) {
@@ -555,7 +573,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			}
 		}
 	}
-	if (verbose>1)  console.log("-------------------------------------------\n")
 	if (verbose>1) varMap.printMap();
 	return varMap.toList();
 }
