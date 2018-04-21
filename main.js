@@ -23,7 +23,7 @@ var init_varMap = new Functions.VariableMap(new HashMap());
 
 var funcNames = ["eval", "unescape", "replace", "document.write", "atob", "btoa",
 				 "setTimeout", "setInterval", "toString", "String.fromCharCode",
-				 "parseInt"];
+				 "parseInt", "alert", "console.log"];
 for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
@@ -123,7 +123,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			for (var block in declaration_blocks) {
 				var variableName_Type = astNode.getVariableInitValue(i, declaration_blocks[block], varMap, verbose);
 				var variableName_Types = variableName_Type[1];
-
 				for (var v in variableName_Types) {
 					if (variableName_Types[v].type == "ArrayExpression" || 
 						variableName_Types[v].type == "NewExpression") {
@@ -140,10 +139,13 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 							updateResultMap(resultMap, "InitVariable", coefficient);
 							ASTUtils.traverse(ast.body[i], function(node){
 								if (node.type == "CallExpression"){
-									var callee = node.callee.name;
-									if (node.callee.name !== undefined && varMap.get(callee) === undefined) {
+									if (node.callee.type == "Identifier" && varMap.get(node.callee.name) === undefined) {
 										if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
 										updateResultMap(resultMap, "UndefinedFunction", coefficient);
+									} else if (node.callee.type == "FunctionExpression"){
+										var currentBlock = ASTUtils.getCode(node.callee);
+										// parse function body
+										parseProgram(currentBlock, variableName_Types[v].value, "function", varMap, hasReturn, verbose);
 									}
 								}
 							});

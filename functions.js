@@ -388,6 +388,7 @@ Expr.prototype.getToken=function(node, verbose=false){
 }
 
 Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
+	
 	var arg,elem_array;
 	if (this._expr.type == "Literal") {
 		var token = this.getToken(node, this._expr)
@@ -422,9 +423,20 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 		var expr = new Expr(this._expr);
 		elem_array = expr.getValueFromMemberExpression(node, identifier, varMap, inner, verbose);
 		return elem_array;
-	} 
+	} else if (this._expr.type == "FunctionExpression") {
+		var expr = new Expr(this._expr);
+		functionName = expr.getValueFromFunctionExpression(node, identifier, varMap, inner, verbose);
+		return functionName;
+	}
 	return arg;
 }
+
+Expr.prototype.getValueFromFunctionExpression=function(node, identifier, varMap, inner, verbose=false) {
+	//assert isExpressionStatement()
+	var functionBody = ASTUtils.getCode(this._expr);
+	return functionBody;
+}
+
 
 
 Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, inner, verbose=false) {
