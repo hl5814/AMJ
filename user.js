@@ -1,1 +1,3 @@
-var x = function a() {alert(1)}();
+
+var a = {f:1};
+a= 0;

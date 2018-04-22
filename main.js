@@ -162,6 +162,10 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 									updateResultMap(resultMap, "InitVariable", coefficient);
 								} 
 							});
+						} else if (variableName_Types[v].type == "ObjectExpression") {
+							for (var v in variableName_Types[v].value) {
+								varMap.setVariable(variableName_Types[v].value[v][0], variableName_Types[v].value[v][1], verbose);
+							}
 						}
 						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					}
@@ -172,6 +176,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 		else if (astNode.isExpressionStatement(i)) {
 			if (astNode.isAssignmentExpression(i)) {
 				var var_values = astNode.getAssignmentLeftRight(i, varMap, verbose);
+
 				for (var v in var_values[1]){
 					if (var_values[1][v].type == "BitwiseOperationExpression" ||
 						var_values[1][v].type == "FunctionCall") {
@@ -216,6 +221,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				}
 
 				varMap.updateVariable(var_values[0], var_values[1], verbose);
+
 			} else if (astNode.isUpdateExpression(i)) {
 
 				var var_value = astNode.getUpdateExpression(i, varMap, verbose);
@@ -416,6 +422,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			// parse for condition with empty varMap
 			var eVarMap = new Functions.VariableMap(new HashMap());
 			var subVarMapList = parseProgram(bodyExprs[0], "for_statements", "for", eVarMap, hasReturn, verbose);
+			
 			subVarMapList.forEach(function(val1) {
 				var prevValues = varMap.get(val1.key);
 				var typeSet = new Set();

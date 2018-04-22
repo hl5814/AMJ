@@ -166,6 +166,14 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 			functionName = ASTUtils.getCode(block.init);
 		}
 		return [identifier, [{ type: 'FunctionExpression', value: functionName }]];
+	} else if (block.init.type == "ObjectExpression") {
+		var properties = block.init.properties;
+		var results = [];
+		for (var p in properties) { 
+			var key = (new Expr(properties[p].key)).getArg(this._node, identifier, varMap, false, verbose);
+			results.push([identifier+"."+key, [{ type: properties[p].value.type, value: properties[p].value.value }]])
+		}
+		return [identifier, [{type:"ObjectExpression", value:results}]];
 	} else {
 		// check if is pre-defined functions, e.g. eval, atob, etc.
 		var var_value = varMap.get(args, verbose);
@@ -427,9 +435,19 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 		var expr = new Expr(this._expr);
 		functionName = expr.getValueFromFunctionExpression(node, identifier, varMap, inner, verbose);
 		return functionName;
+	} else if (this._expr.type == "ObjectExpression") {
+		var expr = new Expr(this._expr);
+		object = expr.getValueFromObjectExpression(node, identifier, varMap, inner, verbose);
+		return object;
 	}
 	return arg;
 }
+
+Expr.prototype.getValueFromObjectExpression=function(node, identifier, varMap, inner, verbose=false) {
+	var ObjectExpression = ASTUtils.getCode(this._expr);
+	return ObjectExpression;
+}
+
 
 Expr.prototype.getValueFromFunctionExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
