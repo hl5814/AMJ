@@ -126,10 +126,11 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				for (var v in variableName_Types) {
 					if (variableName_Types[v].type == "ArrayExpression" || 
 						variableName_Types[v].type == "NewExpression") {
-						var array_elems = variableName_Types[v].value;
-						for (var e in array_elems) {
-							varMap.setVariable(array_elems[e][0], array_elems[e][1], verbose);
-						}
+						// var array_elems = variableName_Types[v].value;
+						// for (var e in array_elems) {
+						// 	varMap.setVariable(array_elems[e][0], array_elems[e][1], verbose);
+						// }
+						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					} else if (variableName_Types[v].type == "pre_Function"){
 						if (verbose>0) console.log("FEATURE[FuncObfuscation] :[", variableName_Type[0], "] -> [", variableName_Types[v].value, "]")
 						updateResultMap(resultMap, "FuncObfuscation", coefficient);
@@ -163,9 +164,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 								} 
 							});
 						} else if (variableName_Types[v].type == "ObjectExpression") {
-							for (var v in variableName_Types[v].value) {
-								varMap.setVariable(variableName_Types[v].value[v][0], variableName_Types[v].value[v][1], verbose);
-							}
+							varMap.setVariable(variableName_Type[0], [variableName_Types[v].value], verbose);
 						}
 						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					}
@@ -284,7 +283,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						if (funcNames[f].type == "pre_Function" || user_defined_funName == funcNames[f].value
 							|| funcNames[f].type == "user_Function") {
 							var args = astNode.getFunctionArguments(i, varMap);
-
 							// JS will ignore extra parameters, if function is defined with only one parameter
 							// Attacker might add more unuse d parameters to confuse the detector
 							if (args.length >= 1) {
@@ -292,9 +290,36 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 									if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": " + funcName + "(STRING) => " + funcName + "[" + args[0].value + "]");
 									updateResultMap(resultMap, "StringOp", coefficient);
 								} else if (args[0].type == "Identifier" ||
-										   args[0].type == "MemberExpression") {
-									var ref_values = varMap.get(args[0].value, verbose);
+										   args[0].type == "ArrayMemberExpression" || 
+										   args[0].type == "FieldMemberExpression" ) {
 
+									if (args[0].type == "ArrayMemberExpression") {
+										var object = args[0].value[0];
+										var index = args[0].value[1];
+
+										var r_vs = varMap.get(object);
+										var ref_values = [];
+										for (var r in r_vs){
+											if (r_vs[r].type == "ArrayExpression" ||
+												r_vs[r].type == "NewExpression") {
+												ref_values = ref_values.concat(r_vs[r].value[index][1]);
+											}
+										}
+									} else if (args[0].type == "FieldMemberExpression") {
+										var object = args[0].value[0];
+										var field = args[0].value[1];
+
+										var r_vs = varMap.get(object);
+										var ref_values = [];
+
+										for (var r in r_vs){
+											if (r_vs[r].type == "ObjectExpression") {
+												ref_values = ref_values.concat(r_vs[r].value[field]);
+											}
+										}
+									} else {
+										var ref_values = varMap.get(args[0].value, verbose);
+									}
 									//get value of nested memberexpression e.g. a="str"; Array[0] = a;
 									for (var ref in ref_values) {
 										if (ref_values[ref] && ref_values[ref].type == "String") {
