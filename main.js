@@ -23,7 +23,7 @@ var init_varMap = new Functions.VariableMap(new HashMap());
 
 var funcNames = ["eval", "unescape", "replace", "document.write", "atob", "btoa",
 				 "setTimeout", "setInterval", "toString", "String.fromCharCode",
-				 "parseInt", "alert", "console.log"];
+				 "parseInt", "alert", "console.log", "Array"];
 for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
@@ -142,7 +142,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 							ASTUtils.traverse(ast.body[i], function(node){
 								if (node.type == "CallExpression"){
 									if (node.callee.type == "Identifier" && varMap.get(node.callee.name) === undefined) {
-										if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
+										if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + ASTUtils.getCode(node));
 										updateResultMap(resultMap, "UndefinedFunction", coefficient);
 									} else if (node.callee.type == "FunctionExpression"){
 										var currentBlock = ASTUtils.getCode(node.callee);
