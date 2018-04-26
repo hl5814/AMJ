@@ -353,6 +353,7 @@ AST.prototype.getCalleeName= function(index, varMap, verbose=false) {
 
 AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
 	//assert isExpressionStatement()
+
 	const expression = this._node.body[index].expression;
 	var args = [];
 	if (expression.arguments.length > 0) {
@@ -538,16 +539,12 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, in
 Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, inner, verbose=false) {
 	var identifier = this._expr.object.name;
 	if (this._expr.computed) {
-
-		var val = this._expr.property.value;
-		if (this._expr.property.type == "Identifier") {
-			var ref_value = varMap.get(this._expr.property.name, verbose);
-			if (ref_value) {
-				val = ref_value.value;
-			} else {
-				val = "undefined";
+		var val = (new Expr(this._expr.property)).getArg(node, identifier, varMap, true, verbose);
+		if (this._expr.property.type == "Identifier" || this._expr.property.type == "Literal") {
+			var index_val = varMap.get(val);
+			if (index_val !== undefined) {
+				val = index_val;
 			}
-			
 		}
 		return [identifier, val];
 	} else {

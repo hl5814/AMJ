@@ -64,7 +64,8 @@ const featureWeight = { "InitVariable" 		: 1,
 						"ExpressionOp" 		: 4,
 						"StringOp"	   		: 5,
 						"FuncObfuscation" 	: 5,
-						"UndefinedFunction"	: 5};
+						"UndefinedFunction"	: 5,
+						"ObjectOp"			: 2};
 
 
 
@@ -228,6 +229,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			
 			} else {
 				// (astNode.isCallExpression(i)) and the rest expressions
+
 				if (astNode._node.body[i].expression.type == "Identifier") {
 					var var_values = varMap.get(astNode._node.body[i].expression.name);
 					if (var_values === undefined) {
@@ -255,7 +257,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					});
 				}
 
-
 				for (var v in var_values) {
 					if (var_values[v].type != "pre_Function" && var_values[v].type != "user_Function" ) {
 						continue; 
@@ -278,11 +279,13 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 					}
 
 					var funcNames = varMap.get(funcName);
+
 					for (var f in funcNames) {
 
 						if (funcNames[f].type == "pre_Function" || user_defined_funName == funcNames[f].value
 							|| funcNames[f].type == "user_Function") {
 							var args = astNode.getFunctionArguments(i, varMap);
+							console.log(args)
 							// JS will ignore extra parameters, if function is defined with only one parameter
 							// Attacker might add more unuse d parameters to confuse the detector
 							if (args.length >= 1) {
@@ -295,30 +298,43 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 
 									if (args[0].type == "ArrayMemberExpression") {
 										var object = args[0].value[0];
-										var index = args[0].value[1];
-
-										var r_vs = varMap.get(object);
+										var indices = args[0].value[1];
 										var ref_values = [];
-										for (var r in r_vs){
-											if (r_vs[r].type == "ArrayExpression" ||
-												r_vs[r].type == "NewExpression") {
-												ref_values = ref_values.concat(r_vs[r].value[index][1]);
+										for (var inx in indices) {
+											var index = indices[inx].value;
+											var r_vs = varMap.get(object);
+											for (var r in r_vs){
+												if (r_vs[r].type == "ArrayExpression" ||
+													r_vs[r].type == "NewExpression") {
+													if (index !== undefined) {
+														ref_values = ref_values.concat(r_vs[r].value[index][1]);
+													} 
+												}
 											}
 										}
 									} else if (args[0].type == "FieldMemberExpression") {
 										var object = args[0].value[0];
-										var field = args[0].value[1];
+										var fields = args[0].value[1];
 
 										var r_vs = varMap.get(object);
 										var ref_values = [];
-
-										for (var r in r_vs){
-											if (r_vs[r].type == "ObjectExpression") {
-												ref_values = ref_values.concat(r_vs[r].value[field]);
+										for (var f in fields) {
+											var field = fields[f];
+											for (var r in r_vs){
+												if (r_vs[r].type == "ObjectExpression") {
+													if (field !== undefined) {
+														ref_values = ref_values.concat(r_vs[r].value[field]);
+													} 
+												}
 											}
 										}
 									} else {
 										var ref_values = varMap.get(args[0].value, verbose);
+									}
+
+									if (ref_values.length == 0)  {
+										if (verbose>0) console.log("FEATURE[ObjectOp] in :" + scope + ": "+ASTUtils.getCode(ast.body[i]));
+										updateResultMap(resultMap, "ObjectOp", coefficient);
 									}
 									//get value of nested memberexpression e.g. a="str"; Array[0] = a;
 									for (var ref in ref_values) {

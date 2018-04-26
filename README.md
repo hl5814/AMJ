@@ -50,6 +50,19 @@ Current Patterns:
 	* while/do-while
 	* function body
 
+## Data Structure used for tracking variables: varMap [Variable Map]
+use the variable name as the varMap key (String type)
+use a list to store all possible values, value based on the variable types
+#### String, Number
+{key: variable_name, value: [raw_values]}
+#### ArrayExpression & NewExpression
+{key: variable_name, value: [["index1", [values]],["index2",[values]]]}
+#### ObjectExpression
+{key: variable_name, value: [["field1", [values]],["field2",[values]]]}
+#### object reference
+will check the current varMap, and assign the corresponding value for the reference object as its value.
+================================================================
+
 ## Updates for variables with multiple possibe values
 for variables with multiple possible values (e.g. {key:a, value:[1, "string"]})
 #### case 1:  [equal assignment a=b]
