@@ -1,20 +1,2 @@
->>> [ Property {
-    type: 'Property',
-    key: Literal { type: 'Literal', value: 'f', raw: '"f"', range: [Array] },
-    computed: false,
-    value: Literal { type: 'Literal', value: 0, raw: '0', range: [Array] },
-    kind: 'init',
-    method: false,
-    shorthand: false,
-    range: [ 9, 14 ] },
-  Property {
-    type: 'Property',
-    key: Literal { type: 'Literal', value: 'test', raw: '"test"', range: [Array] },
-    computed: false,
-    value: Literal { type: 'Literal', value: 1, raw: '1', range: [Array] },
-    kind: 'init',
-    method: false,
-    shorthand: false,
-    range: [ 16, 24 ] } ]
 {"f":0, "test":1}
 FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [a,f] ==> eval("str")

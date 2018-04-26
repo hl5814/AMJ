@@ -285,7 +285,6 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						if (funcNames[f].type == "pre_Function" || user_defined_funName == funcNames[f].value
 							|| funcNames[f].type == "user_Function") {
 							var args = astNode.getFunctionArguments(i, varMap);
-							console.log(args)
 							// JS will ignore extra parameters, if function is defined with only one parameter
 							// Attacker might add more unuse d parameters to confuse the detector
 							if (args.length >= 1) {
@@ -297,14 +296,25 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 										   args[0].type == "FieldMemberExpression" ) {
 
 									if (args[0].type == "ArrayMemberExpression") {
+
 										var object = args[0].value[0];
 										var indices = args[0].value[1];
 										var ref_values = [];
-										for (var inx in indices) {
-											var index = indices[inx].value;
-											var r_vs = varMap.get(object);
+										
+										
+										var r_vs = varMap.get(object);
+										for (var inx in indices){
+											if (indices[inx] == "") continue;
+											index = indices[inx].value;
+
 											for (var r in r_vs){
-												if (r_vs[r].type == "ArrayExpression" ||
+												var fields = r_vs[r].value[index];
+												if (r_vs[r].type == "ObjectExpression") {
+													var field = r_vs[r].value[index];
+													if (field !== undefined) {
+														ref_values = ref_values.concat(field);
+													} 
+												} else if (r_vs[r].type == "ArrayExpression" ||
 													r_vs[r].type == "NewExpression") {
 													if (index !== undefined) {
 														ref_values = ref_values.concat(r_vs[r].value[index][1]);
@@ -312,6 +322,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 												}
 											}
 										}
+										
 									} else if (args[0].type == "FieldMemberExpression") {
 										var object = args[0].value[0];
 										var fields = args[0].value[1];
@@ -331,7 +342,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 									} else {
 										var ref_values = varMap.get(args[0].value, verbose);
 									}
-
+									
 									if (ref_values.length == 0)  {
 										if (verbose>0) console.log("FEATURE[ObjectOp] in :" + scope + ": "+ASTUtils.getCode(ast.body[i]));
 										updateResultMap(resultMap, "ObjectOp", coefficient);

@@ -483,7 +483,7 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 Expr.prototype.getValueFromObjectExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//TODO: update object.f in varMap
 	var ObjectExpression = ASTUtils.getCode(this._expr);
-	console.log(">>>",this._expr.properties)
+	// console.log(">>>",this._expr.properties)
 	console.log(ObjectExpression)
 	return ObjectExpression;
 }
@@ -540,12 +540,15 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 	var identifier = this._expr.object.name;
 	if (this._expr.computed) {
 		var val = (new Expr(this._expr.property)).getArg(node, identifier, varMap, true, verbose);
-		if (this._expr.property.type == "Identifier" || this._expr.property.type == "Literal") {
+		if (this._expr.property.type == "Identifier") {
 			var index_val = varMap.get(val);
 			if (index_val !== undefined) {
 				val = index_val;
 			}
+		} else if (this._expr.property.type == "Literal") {
+			val = [ {type : "Numeric", value: this._expr.property.value}]
 		}
+
 		return [identifier, val];
 	} else {
 		if (identifier) {

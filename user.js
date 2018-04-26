@@ -1,8 +1,8 @@
 
-var a = {"f":0, "test":1};
+// var a = {"f":0, "test":1};
 // a.f = "str";
 // var b = "f";
-eval(a["f"])
+// eval(a["f"])
 
 // var a = [1,2,3];
 // a[2] = "str";
