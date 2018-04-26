@@ -481,10 +481,8 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 }
 
 Expr.prototype.getValueFromObjectExpression=function(node, identifier, varMap, inner, verbose=false) {
-	//TODO: update object.f in varMap
 	var ObjectExpression = ASTUtils.getCode(this._expr);
-	// console.log(">>>",this._expr.properties)
-	console.log(ObjectExpression)
+	// console.log(ObjectExpression)
 	return ObjectExpression;
 }
 

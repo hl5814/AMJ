@@ -2,6 +2,11 @@
 // var a = {"f":0, "test":1};
 // a.f = "str";
 // var b = "f";
+// eval(a[b])
+
+// var a = {"f":0, "test":1};
+// a.f = "str";
+// var b = "f";
 // eval(a["f"])
 
 // var a = [1,2,3];

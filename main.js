@@ -285,6 +285,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						if (funcNames[f].type == "pre_Function" || user_defined_funName == funcNames[f].value
 							|| funcNames[f].type == "user_Function") {
 							var args = astNode.getFunctionArguments(i, varMap);
+
 							// JS will ignore extra parameters, if function is defined with only one parameter
 							// Attacker might add more unuse d parameters to confuse the detector
 							if (args.length >= 1) {
@@ -304,13 +305,15 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 										
 										var r_vs = varMap.get(object);
 										for (var inx in indices){
+
+											// skip " when handling object field access aka o["f"] => o.f
+											// indices will be `"f"` instead of [{type:"Numeric", value:2}]
 											if (indices[inx] == "") continue;
 											index = indices[inx].value;
-
 											for (var r in r_vs){
 												var fields = r_vs[r].value[index];
 												if (r_vs[r].type == "ObjectExpression") {
-													var field = r_vs[r].value[index];
+													var field = r_vs[r].value[index.replace(/"/g,"")];
 													if (field !== undefined) {
 														ref_values = ref_values.concat(field);
 													} 
@@ -342,7 +345,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 									} else {
 										var ref_values = varMap.get(args[0].value, verbose);
 									}
-									
+
 									if (ref_values.length == 0)  {
 										if (verbose>0) console.log("FEATURE[ObjectOp] in :" + scope + ": "+ASTUtils.getCode(ast.body[i]));
 										updateResultMap(resultMap, "ObjectOp", coefficient);
