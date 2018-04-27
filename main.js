@@ -23,7 +23,7 @@ var init_varMap = new Functions.VariableMap(new HashMap());
 
 var funcNames = ["eval", "unescape", "replace", "document.write", "atob", "btoa",
 				 "setTimeout", "setInterval", "toString", "String.fromCharCode",
-				 "parseInt", "alert", "console.log", "Array"];
+				 "parseInt", "alert", "console.log", "Array","charCodeAt"];
 for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
@@ -184,10 +184,22 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 						updateResultMap(resultMap, "Assignment", coefficient);
 						ASTUtils.traverse(ast.body[i], function(node){
 							if (node.type == "CallExpression"){
-								var callee = node.callee.name;
-								if (node.callee.name !== undefined && varMap.get(callee) === undefined) {
+								if (node.callee.type == "MemberExpression") {
+									var callee = node.callee.property.name;
+								} else {
+									var callee = node.callee.name;
+								}
+								if (callee !== undefined && varMap.get(callee) === undefined) {
 									if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
 									updateResultMap(resultMap, "UndefinedFunction", coefficient);
+								} else {
+									var types = varMap.get(callee);
+									for (var t in types) {
+										if (types[t].type == "pre_Function") {
+											if (verbose>0) console.log("FEATURE[FunctionCall] :", ASTUtils.getCode(node));
+											updateResultMap(resultMap, "FunctionCall", coefficient);
+										}
+									}
 								}
 							}
 						});

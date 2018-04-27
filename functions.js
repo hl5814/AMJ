@@ -141,9 +141,9 @@ AST.prototype.checkStaticMemberFunctionCall=function(node, varMap, verbose=false
 }
 
 AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false) {
-
 	const identifier = block.id.name;
 	const expression = new Expr(block.init);
+
 	if (block.init == null){
 		return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 	}
@@ -212,37 +212,26 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		var lhs = expression.left;
 		var varName = lhs.name;
 		var rhs = expression.right;
-		var binaryOPs = ["+=", "-=", "|=", "&=", "*=", "/=", "%="];
-		if (binaryOPs.indexOf(expression.operator) != -1) {
-			var val = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
-			var lhs_type_values = varMap.get(lhs.name, verbose);
-
-			if (lhs_type_values === undefined) {
-				//update varMap if variable undefined
-				varMap.setVariable(varName, [{ type: undefined, value: undefined }]);
-				lhs_type_values = [{ type: undefined, value: undefined }];
-			}
-			var result_types = [];
-
-			for (var i in lhs_type_values) {
-				if (lhs_type_values[i].type == "String"){
-					result_types.push([{ type: "String", value: "(" + lhs_type_values[i].value + expression.operator + val + ")"}]);
-				} else if (rhs.type == "CallExpression"){
-					result_types.push([{ type: "FunctionCall", value: "(" + lhs_type_values[i].value + expression.operator + val + ")"}]);
-				} else {
-					result_types.push([{ type: "Expression", value: "(" + lhs_type_values[i].value + expression.operator + val + ")"}]);
-				}
-			}
-			return [varName, result_types];
-		} else if (rhs.type == "BinaryExpression") {
-			var bitOperators = [">>", "<<", "|", "&", "^", "~", ">>>"];
+		var binaryOPs = ["+=", "-=", "|=", "&=", "*=", "/=", "%=", ">>=", "<<=", "^=", "~=", ">>>="];
+		if (binaryOPs.indexOf(expression.operator) != -1 || rhs.type == "BinaryExpression") {
+			var bitOperators = [">>", "<<", "|", "&", "^", "~", ">>>",
+								">>=", "<<=", "|=", "&=", "^=", "~=", ">>>="];
 
 			var val = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
 
 			var result_types = [];
-			var token = (new Expr(rhs.left)).getToken(this._node);
-			if (rhs.left.type == "Identifier") {
-				var ref_values = varMap.get(rhs.left.name, verbose);
+
+			var token, rhs_left;
+			if (rhs.left !== undefined) {
+				token = (new Expr(rhs.left)).getToken(this._node);
+				rhs_left = rhs.left;
+			} else {
+				token = (new Expr(lhs)).getToken(this._node);
+				rhs_left = lhs;
+			}
+
+			if (rhs_left.type == "Identifier") {
+				var ref_values = varMap.get(rhs_left.name, verbose);
 				if (ref_values) {
 					for (var i in ref_values) {
 						if (ref_values[i].type == "String") {
@@ -313,7 +302,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			if (var_values !== undefined) {
 				for (var v in var_values) {
 					if (var_values[v].type != "ArrayExpression" && var_values[v].type != "NewExpression") continue;
-					var_values[v].value[lhs_index][1] = [{ type: token.type, value: token.value}];
+					if (var_values[v].value.length > 0) var_values[v].value[lhs_index][1] = [{ type: token.type, value: token.value}];
 					
 				}
 				return [identifier , var_values];
@@ -729,11 +718,11 @@ Expr.prototype.getValueFromCallExpression=function(node, identifier, varMap, inn
 	const funcName = callee_expr.getArg(node, identifier, varMap, true, verbose);
 	const args = this._expr.arguments;
 
-	var argList = "";
+	var argList = [];
 	if (args.length > 0) {
 		for (var i in args) {
 			const exprArg = new Expr(args[i]);
-			argList += exprArg.getArg(node, identifier, varMap, true, verbose);
+			argList.push(exprArg.getArg(node, identifier, varMap, true, verbose));
 		}
 	}
 
