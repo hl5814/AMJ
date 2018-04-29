@@ -1,6 +1,5 @@
-var y = 1;
-function test(y,z) {
-	eval(y);
-};
+var a = {s:"str",t:0};
+for (a.t=0; a.t<2;a.t++){
 
-var x = "str";
+}
+eval(a.s)

@@ -4,50 +4,56 @@ for (var i = 0; i < 5; i++) {
 	x = "for";
 }
 eval(x);
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("for")
 
 // new variable created in for body
 for (var i = 0; i < 5; i++) {
 	var y = "for";
 }
 eval(y);
-
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [y] ==> eval("for")
 
 // variable override in condition
 var testList = [1,2,3];
 
 // [for-loop]
 // CASE 1: variable declaration in condition
-var case1 = "case1"
-for (var case1 = 0; case1 < 5; case1 ++) {
+var c1 = "case1"
+for (var c1 = 0; c1 < 5; c1 ++) {
 	// do something
 }
-eval(case1);
+eval(c1);
 
 // CASE 2: variable assignment in condition
-var case2 = "case2"
-for (case2 = 0; case2 < 5; case2 ++) {
+var c2 = "case2"
+for (c2 = 0; c2 < 5; c2 ++) {
 	// do something
 }
-eval(case2);
+eval(c2);
 
 // CASE 3: variable expression in condition
-var case3 = "case3"
-for (case3; case3 < 5; case3 ++) {
+var c3 = "case3"
+for (c3; c3 < 5; c3 ++) {
 	// do something
 }
-eval(case3);
+eval(c3);
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [c3] ==> eval("case3")
 
 // [for-in-loop]
 // CASE 4: variable declaration in condition
-var case4 = "case4"
-for (var case4 in testList) {
+var c4 = "case4"
+for (var c4 in testList) {
 	// do something
 }
-eval(case4);
+eval(c4);
 
 // CASE 5: variable expression in condition
-var case5 = "case5"
-for (case5 in testList) {
+var c5 = "case5"
+for (c5 in testList) {
 	// do something
 }
-eval(case5);
+eval(c5);
+
+
+
+

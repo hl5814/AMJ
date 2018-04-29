@@ -171,7 +171,8 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 		var results = [];
 		for (var p in properties) { 
 			var key = (new Expr(properties[p].key)).getArg(this._node, identifier, varMap, false, verbose);
-			results.push([key.replace(/"/g,''), [{ type: properties[p].value.type, value: properties[p].value.value }]])
+			var token = (new Expr(properties[p].value)).getToken(this._node);
+			results.push([key.replace(/"/g,''), [{ type: token.type, value: token.value }]])
 		}
 
 		var object = {};
@@ -204,6 +205,7 @@ AST.prototype.getUpdateExpression= function(index, varMap, verbose=false) {
 
 AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 	//assert isExpressionStatement()
+
 	const expression = this._node.body[index].expression;
 	var lhs = new Expr(expression.left);
 	var identifier = lhs.getIdentifier(varMap);
@@ -299,6 +301,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			var token = (new Expr(rhs)).getToken(this._node);
 
 			var var_values = varMap.get(lhs_object);
+			// console.log(var_values)
 			if (var_values !== undefined) {
 				for (var v in var_values) {
 					if (var_values[v].type != "ArrayExpression" && var_values[v].type != "NewExpression") continue;
@@ -307,6 +310,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 				}
 				return [identifier , var_values];
 			}
+			// console.log(token)
 			return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 		} else {
 			//StaticMemberExpression

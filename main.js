@@ -358,6 +358,7 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 										var ref_values = varMap.get(args[0].value, verbose);
 									}
 
+									
 									if (ref_values.length == 0)  {
 										if (verbose>0) console.log("FEATURE[ObjectOp] in :" + scope + ": "+ASTUtils.getCode(ast.body[i]));
 										updateResultMap(resultMap, "ObjectOp", coefficient);
@@ -488,9 +489,9 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 			const diffMap = new Functions.VariableMap(new HashMap());
 
 
-			// parse for condition with empty varMap
+			// parse for condition with empty varMap?? why empty varMap
 			var eVarMap = new Functions.VariableMap(new HashMap());
-			var subVarMapList = parseProgram(bodyExprs[0], "for_statements", "for", eVarMap, hasReturn, verbose);
+			var subVarMapList = parseProgram(bodyExprs[0], "for_statements", "for", varMap, hasReturn, verbose);
 			
 			subVarMapList.forEach(function(val1) {
 				var prevValues = varMap.get(val1.key);
