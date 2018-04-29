@@ -154,15 +154,6 @@ therefore we need to capture both cases.
 when a variable is overwritten in the condition line, the problem became more complicated
 it has 5 different cases (details see RegressionTests/testPrograms/for.js)
 
-## KNOWN ISSUE: 
-current implementation is get the code and parse it with empty varMap in order 
-to get the variable name, and check if value is undefined,  however, empty map 
-will cause issues with array element and object field
-
-#### e.g. 	
-            for(a[0];a[0]<2;a[0]++){}
-            for(a.f;a.f<2;a.f++){}
-
 
 ## while blocks
 different to for blocks, while blocks don't have assignment in condition, so we only need

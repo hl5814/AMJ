@@ -1,5 +1,5 @@
 var a = {s:"str",t:0};
-for (a.t=0; a.t<2;a.t++){
+for (a.s=0; a.s<2;a.s++){
 
 }
 eval(a.s)
