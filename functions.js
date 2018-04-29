@@ -340,6 +340,27 @@ AST.prototype.getCalleeName= function(index, varMap, verbose=false) {
 	return callee_expr.getArg(this._node, "", varMap, false, verbose);
 };
 
+AST.prototype.getFunctionParams= function(index, varMap, verbose=false) {
+	const params = this._node.body[index].params;
+
+	for (var p in params) {
+		// Assume all parameters are Identifiers
+		if (params[p].type == "Identifier"){
+			var var_values = varMap.get(params[p].name);
+			if (var_values === undefined) {
+				varMap.setVariable(params[p].name, [{ type: 'String', value: 'STR' }]);
+			} else {
+				var_values.push({ type: 'String', value: 'STR' });
+				varMap.setVariable(params[p].name, var_values)
+			}
+			varMap.printMap();
+		} else {
+			console.err("Function Declaration's Parameter not Identifier!!!!!!!!!!");
+		}
+		
+	}
+}
+
 AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
 	//assert isExpressionStatement()
 

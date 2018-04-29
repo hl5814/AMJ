@@ -43,11 +43,11 @@ Current Patterns:
 	* String
 	* functionExpressions
 
-
 * inner blocks check:
 	* if/else
 	* for/for-in
 	* while/do-while
+	* try/catch/finally
 	* function body
 
 ## Data Structure used for tracking variables: varMap [Variable Map]
@@ -260,6 +260,16 @@ very few keywords but long code ==>? malicious.
 y : total weight
 
 ## (2) issues with error html links, e.g. "var x = http:...."
+## (3) parse function parameters?
+1. Double parse (i.e. parse program once and get all global variables, then parse second time for all function bodies)
+2. ->Assume all functon parameters might be STRING type and parse once.
+
+
+
+
+
 
 // https://github.com/facebook/flow
 //==> dynamically stage, profiling on the code
+
+

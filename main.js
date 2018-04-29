@@ -391,6 +391,8 @@ function parseProgram(program, scope, coefficient, varMap, hasReturn, verbose){
 				}
 			} 
 		} else if (astNode.isFunctionDeclaration(i)) {
+			var params = astNode.getFunctionParams(i, varMap);
+
 			// set hasReturn flag to true for parsing function body
 			ASTUtils.traverse(ast.body[i].body, function(node, parent){
 				if (node.type == "ReturnStatement"){
