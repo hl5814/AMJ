@@ -234,7 +234,6 @@ describe('AST Function', function() {
     });
 });
 
-
 describe('Get Function Arguments', function() {
     it(`isFunction()`, function() {
         const program = `eval();eval(a);

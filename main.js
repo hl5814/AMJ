@@ -265,6 +265,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									   args[0].type == "FieldMemberExpression" ) {
 								// pre-processing 
 								if (args[0].type == "ArrayMemberExpression") {
+
 									const object  = args[0].value[0];
 									const indices = args[0].value[1];
 									const r_vs = varMap.get(object);
@@ -277,6 +278,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										index = indices[inx].value;
 										for (var r in r_vs){
 											const fields = r_vs[r].value[index];
+
 											if (r_vs[r].type == "ObjectExpression") {
 												const field = r_vs[r].value[index.replace(/"/g,"")];
 												if (field !== undefined) {
@@ -299,7 +301,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										const field = fields[f];
 										for (var r in r_vs){
 											if (r_vs[r].type == "ObjectExpression" && field !== undefined) {
-												ref_values = ref_values.concat(r_vs[r].value[field]);
+												ref_values = ref_values.concat(r_vs[r].value[field.value]);
 											}
 										}
 									}

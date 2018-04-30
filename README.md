@@ -254,9 +254,8 @@ y : total weight
 	2. -> Assume all functon parameters might be STRING type and parse once.
 ## (4)HTML comments didn't work for JS functions
 	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//7e2e44b3e68595c538c677c25ecb92f5 user.js
-## (5)Limited for one JS file, (want to check for undefined function calls, however, due to the one file limitation, this is 	pointless, since the checker will treate all library function calls as undefined functions)
+## (5)Limited for one JS file, (want to check for undefined function calls, however, due to the one file limitation, this is 	pointless, since the checker will treat all library function calls as undefined functions)
 ## (6)prototype.function
-## (7)const variable declarations
 
 // https://github.com/facebook/flow
 //==> dynamically stage, profiling on the code
