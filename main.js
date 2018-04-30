@@ -270,6 +270,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									const indices = args[0].value[1];
 									const r_vs = varMap.get(object);
 
+
 									var ref_values = [];
 									for (var inx in indices){
 										// skip " when handling object field access aka o["f"] => o.f
@@ -277,17 +278,21 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										if (indices[inx] == "") continue;
 										index = indices[inx].value;
 										for (var r in r_vs){
-											const fields = r_vs[r].value[index];
-
+											var array_values = r_vs[r];
 											if (r_vs[r].type == "ObjectExpression") {
 												const field = r_vs[r].value[index.replace(/"/g,"")];
 												if (field !== undefined) {
 													ref_values = ref_values.concat(field);
 												} 
-											} else if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
-												if (index !== undefined) {
-													ref_values = ref_values.concat(r_vs[r].value[index][1]);
-												} 
+												continue;
+											}
+											
+											for (var a in array_values) {
+												if (array_values[a].type == "ArrayExpression" || array_values[a].type == "NewExpression") {
+													if (index !== undefined) {
+														ref_values = ref_values.concat(array_values[a].value[index][1]);
+													} 
+												}
 											}
 										}
 									}
