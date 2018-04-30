@@ -1,4 +1,5 @@
 const ASTUtils = require("esprima-ast-utils");		  // load esprima-ast-utils
+const HashMap = require('hashmap');					  // load hashmap
 // *****************************
 // * AST Pattern Check Functions
 // *****************************
@@ -59,6 +60,13 @@ AST.prototype.isCallExpression= function(index) {
 AST.prototype.isBlockStatement= function(index) {
 	return  (this._node.body[index].type == "BlockStatement");
 };
+
+AST.prototype.removeJumpInstructions=function(index) {
+	ASTUtils.traverse(this._node, function(node){
+		if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
+			ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
+	})
+}
 
 AST.prototype.hasFunctionExpression= function(index) {
 	if (this._node.body[index].type == "VariableDeclaration") {
@@ -344,7 +352,7 @@ AST.prototype.getCalleeName= function(index, varMap, verbose=false) {
 	return callee_expr.getArg(this._node, "", varMap, false, verbose);
 };
 
-AST.prototype.getFunctionParams= function(index, varMap, verbose=false) {
+AST.prototype.updateFunctionParams= function(index, varMap, verbose=false) {
 	const params = this._node.body[index].params;
 
 	for (var p in params) {
@@ -357,7 +365,6 @@ AST.prototype.getFunctionParams= function(index, varMap, verbose=false) {
 				var_values.push({ type: 'String', value: 'STR' });
 				varMap.setVariable(params[p].name, var_values)
 			}
-			varMap.printMap();
 		} else {
 			console.err("Function Declaration's Parameter not Identifier!!!!!!!!!!");
 		}
@@ -599,7 +606,7 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 	return blockRanges;
 }
 
-Expr.prototype.parseWhileStatementExpr=function(node, varMap, blockRanges,verbose=false) {
+Expr.prototype.parseWhileStatementExpr=function(node, varMap, blockRanges, verbose=false) {
 	if (this._expr.body){
 		var body = new Expr(this._expr.body);
 		var code = ASTUtils.getCode(body._expr);
@@ -613,7 +620,7 @@ Expr.prototype.parseWhileStatementExpr=function(node, varMap, blockRanges,verbos
 	return blockRanges;
 }
 
-Expr.prototype.parseTryStatementExpr=function(node, varMap, blockRanges,verbose=false) {
+Expr.prototype.parseTryStatementExpr=function(node, varMap, blockRanges, verbose=false) {
 
 	if (this._expr.block){
 		var block = new Expr(this._expr.block);
@@ -768,9 +775,12 @@ Expr.prototype.getValueFromCallExpression=function(node, identifier, varMap, inn
 // * Variable Value HashMap Functions
 // *****************************
 function VariableMap(varMap) {
-	this._varMap = varMap; 
+	var vMap = new HashMap();
+	varMap.forEach(function(value, key){
+		vMap.set(key, value);
+	});
+	this._varMap = vMap;
 }
-
 
 VariableMap.prototype.updateVariable = function(key, value, verbose=false) {
 	if (value.type == "Identifier") {
@@ -824,7 +834,7 @@ VariableMap.prototype.multipleUpdate = function(destinationVarMap) {
 	});
 }
 
-VariableMap.prototype.copy = function(destinationVarMap) {
+VariableMap.prototype.copyTo = function(destinationVarMap) {
 	this._varMap.forEach(function(value, key){
 		destinationVarMap._varMap.set(key, value);
 	});

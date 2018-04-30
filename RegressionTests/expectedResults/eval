@@ -1,8 +1,6 @@
-FEATURE[StringOp] in :User_Program: eval(STRING) => eval["xxx"]
-FEATURE[StringOp] in :User_Program: eval(STRING) => eval["helloworld"]
+FEATURE[StringOp] in :User_Program: pre_Function:eval(STRING) => eval["xxx"]
+FEATURE[StringOp] in :User_Program: pre_Function:eval(STRING) => eval["helloworld"]
 FEATURE[ExpressionOp] in :User_Program: eval(BinaryExpression) => eval[1+1]
 FEATURE[ExpressionOp] in :User_Program: eval(CallExpression) => eval[foo((1+(bar())))]
-FEATURE[UndefinedFunction] in :User_Program:foo
-FEATURE[UndefinedFunction] in :User_Program:bar
 FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [c] ==> eval("alert(b)")
 FEATURE[FuncObfuscation] :[ a ] -> [ eval ]

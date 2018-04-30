@@ -1,5 +1,9 @@
-var a = {s:"str",t:0};
-for (a.s=0; a.s<2;a.s++){
-
+// assignment override function variable in varMap
+function a(){};
+function b(){};
+if (1>2){
+	a=eval;
+} else {
+	a=b;
 }
-eval(a.s)
+a("test");
