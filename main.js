@@ -277,6 +277,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										// indices will be `"f"` instead of [{type:"Numeric", value:2}]
 										if (indices[inx] == "") continue;
 										index = indices[inx].value;
+										
 										for (var r in r_vs){
 											var array_values = r_vs[r];
 											if (r_vs[r].type == "ObjectExpression") {
@@ -287,15 +288,18 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 												continue;
 											}
 											
-											for (var a in array_values) {
-												if (array_values[a].type == "ArrayExpression" || array_values[a].type == "NewExpression") {
+											// for (var a in array_values) {
+
+												if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
 													if (index !== undefined) {
-														ref_values = ref_values.concat(array_values[a].value[index][1]);
+														
+														ref_values = ref_values.concat(r_vs[r].value[index][1]);
 													} 
 												}
-											}
+											// }
 										}
 									}
+
 								} else if (args[0].type == "FieldMemberExpression") {
 									const object = args[0].value[0];
 									const fields = args[0].value[1];

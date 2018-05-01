@@ -19,3 +19,15 @@ eval(l[2])
 var i = 2;
 eval(l[2])
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [l,[object Object]] ==> eval("str2")
+
+// multiple possible indice access
+var x=["str1", "str2", "str3"];
+var index = 0;
+if (1>2){
+	index = 1;
+} else {
+	index = 2;
+}
+eval(x[index]);
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object],[object Object]] ==> eval("str2")
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object],[object Object]] ==> eval("str3")

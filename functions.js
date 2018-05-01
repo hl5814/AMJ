@@ -219,7 +219,6 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 	var rhs = expression.right;
 	var identifier = (new Expr(lhs)).getIdentifier(varMap);
 
-
 	// pre-process if left hand side is MemberExpression
 	if (expression.left.type == "MemberExpression") {
 
@@ -243,13 +242,11 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 							if (var_values[v].value.length > 0) var_values[v].value[index][1] = [{ type: token.type, value: token.value}];
 						}
 						var_values = varMap.get(lhs_object);
-						vals.push(var_values);
-					} else {
-						// console.log(lhs_index[1])
+						
 					}
-					
+					vals.push(var_values[v]);
 				}
-				// console.log(vals)
+
 				return [identifier , vals];
 			}
 		} else {
@@ -543,6 +540,7 @@ AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
 
 	const expression = this._node.body[index].expression;
 	var args = [];
+
 	if (expression.arguments.length > 0) {
 		for (var i in expression.arguments) {
 			if (expression.arguments[i].type == "BinaryExpression") {
