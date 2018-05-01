@@ -256,7 +256,7 @@ y : total weight
 	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//7e2e44b3e68595c538c677c25ecb92f5 user.js
 ## (5)Limited for one JS file, (want to check for undefined function calls, however, due to the one file limitation, this is 	pointless, since the checker will treat all library function calls as undefined functions)
 ## (6)prototype.function
-
+## (7)multiple array element values, multiple array values
 // https://github.com/facebook/flow
 //==> dynamically stage, profiling on the code
 

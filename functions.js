@@ -156,7 +156,6 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 		return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 	}
 	const args = expression.getArg(this._node, identifier, varMap, false, verbose); 
-
 	if  (block.init.type == "Literal") {
 		var token = (new Expr(block.init)).getToken(this._node);
 		return [identifier, [{ type: token.type, value: token.value }]];
@@ -222,6 +221,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 	// pre-process if left hand side is MemberExpression
 	if (expression.left.type == "MemberExpression") {
 
+
 		if (lhs.computed) {
 			//ComputedMemberExpression
 			var lhs_object = lhs.object.name; // a
@@ -246,10 +246,10 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 					}
 					vals.push(var_values[v]);
 				}
-
 				return [identifier , vals];
 			}
 		} else {
+
 			//StaticMemberExpression
 			var lhs_object = lhs.object.name;
 			var lhs_field = lhs.property.name;
@@ -373,134 +373,6 @@ Expr.prototype.getPropertyValue=function(node, varMap, rhsExpr, verbose=false) {
 		}
 	}
 }
-
-
-// AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
-// 	const expression = this._node.body[index].expression;
-// 	var lhs = new Expr(expression.left);
-// 	var identifier = lhs.getIdentifier(varMap);
-
-// 	if (expression.left.type == "Identifier") {
-// 		var lhs = expression.left;
-// 		var varName = lhs.name;
-// 		var rhs = expression.right;
-// 		var binaryOPs = ["+=", "-=", "|=", "&=", "*=", "/=", "%=", ">>=", "<<=", "^=", "~=", ">>>="];
-// 		if (binaryOPs.indexOf(expression.operator) != -1 || rhs.type == "BinaryExpression") {
-// 			var bitOperators = [">>", "<<", "|", "&", "^", "~", ">>>",
-// 								">>=", "<<=", "|=", "&=", "^=", "~=", ">>>="];
-
-// 			var val = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
-
-// 			var result_types = [];
-
-// 			var token, rhs_left;
-// 			if (rhs.left !== undefined) {
-// 				token = (new Expr(rhs.left)).getToken(this._node);
-// 				rhs_left = rhs.left;
-// 			} else {
-// 				token = (new Expr(lhs)).getToken(this._node);
-// 				rhs_left = lhs;
-// 			}
-
-// 			if (rhs_left.type == "Identifier") {
-// 				var ref_values = varMap.get(rhs_left.name, verbose);
-// 				if (ref_values) {
-// 					for (var i in ref_values) {
-// 						if (ref_values[i].type == "String") {
-// 							if (val.length > 30) {
-// 								val = val.substring(1, 30) + "...";
-// 							}
-// 							result_types.push([{ type: "String", value: val}]);
-// 						} else if (bitOperators.indexOf(rhs.operator) != -1) {
-// 							result_types.push([{ type: "BitwiseOperationExpression", value: val}]);
-// 						} else {
-// 							result_types.push([{ type: "Expression", value: val}]);
-// 						}
-// 					}
-// 					return [varName, result_types];
-// 				}
-// 			} else {
-// 				if (token.type == "String") {
-// 					if (val.length > 30) {
-// 						val = val.substring(1, 30) + "...";
-// 					}
-// 					return [varName, [{ type: "String", value: val}]];
-// 				}
-// 				if (bitOperators.indexOf(rhs.operator) != -1) {
-// 					return [varName, [{ type: "BitwiseOperationExpression", value: val}]];
-// 				}
-// 			}
-// 			return [varName, [{ type: "Expression", value: val}]];
-// 		} else if (rhs.type == "CallExpression") {
-// 			var arg = new Expr(rhs);
-// 			var val = arg.getArg(this._node, identifier, varMap, false, verbose);
-// 			return [varName, [{ type: "FunctionCall", value: val}]];
-// 		} else if (rhs.type == "Identifier") {
-// 			var ref_values = varMap.get(rhs.name, verbose);
-// 			if (ref_values) {
-// 				return [varName, ref_values];
-// 			} else {
-// 				// varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
-// 				return [varName, [{ type: 'undefined', value: 'undefined' }]];
-// 			}
-// 		} else if (rhs.type == "FunctionExpression") {
-// 			var val = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
-
-// 			var funcBody = null;
-// 			if (rhs.id) {
-// 				funcBody= this.getFunctionBodyFromFunctionExpression(index)
-// 			} else {
-// 				funcBody = ASTUtils.getCode(rhs).match(/{.*}/)[0].slice(1,-1);
-// 			}
-// 			return [varName, [{ type: 'FunctionExpression', value: funcBody }]];
-// 		} else {
-// 			var token = (new Expr(rhs)).getToken(this._node);
-// 			return [varName, [{ type: token.type, value: token.value}]];
-// 		}
-// 	} else if (expression.left.type == "MemberExpression") {
-// 		var lhs = expression.left;
-// 		var rhs = expression.right;
-// 		// left:
-// 		var lhs_computed = lhs.computed;
-// 		if (lhs.computed) {
-// 			//ComputedMemberExpression
-// 			var lhs_object = lhs.object.name; // a
-// 			var lhs_property = new Expr(lhs.property);
-// 			var lhs_index = lhs_property.getArg(this._node, identifier, varMap, false, verbose);
-			
-// 			var token = (new Expr(rhs)).getToken(this._node);
-
-// 			var var_values = varMap.get(lhs_object);
-// 			// console.log(var_values)
-// 			if (var_values !== undefined) {
-// 				for (var v in var_values) {
-// 					if (var_values[v].type != "ArrayExpression" && var_values[v].type != "NewExpression") continue;
-// 					if (var_values[v].value.length > 0) var_values[v].value[lhs_index][1] = [{ type: token.type, value: token.value}];
-					
-// 				}
-// 				return [identifier , var_values];
-// 			}
-// 			// console.log(token)
-// 			return [identifier, [{ type: 'undefined', value: 'undefined' }]];
-// 		} else {
-// 			//StaticMemberExpression
-// 			var lhs_object = lhs.object.name;
-// 			var lhs_field = lhs.property.name;
-
-// 			var token = (new Expr(rhs)).getToken(this._node);
-
-// 			var var_values = varMap.get(lhs_object);
-// 			if (var_values !== undefined) {
-// 				for (var v in var_values) {
-// 					if (var_values[v].type != "ObjectExpression") continue;
-// 					var_values[v].value[lhs_field] = [{ type: token.type, value: token.value}];
-// 				}
-// 				return [identifier , var_values];
-// 			}
-// 			return [identifier, [{ type: 'undefined', value: 'undefined' }]];
-// 		}
-// 	}
-// };
 
 
 AST.prototype.isFunction= function(funcName, index) {
@@ -945,7 +817,28 @@ Expr.prototype.getValueFromCallExpression=function(node, identifier, varMap, inn
 function VariableMap(varMap) {
 	var vMap = new HashMap();
 	varMap.forEach(function(value, key){
-		vMap.set(key, value);
+		var vals = [];
+		for (var v in value) {
+			if (value[v].type == "ObjectExpression") {
+				var newObject = {};
+				for (const [key, val] of Object.entries(value[v].value)) {
+				  	newObject[key] = val;
+				}
+				vals.push({type:"ObjectExpression", value:newObject});
+				continue;
+			} else if (value[v].type == "ArrayExpression") {
+				var newList = [];
+				for (const l of value[v].value) {
+					var index = l[0];
+					var values = l[1];
+					newList.push([index, values]);
+				}
+				vals.push({type:"ArrayExpression", value:newList});
+				continue;
+			}
+			vals.push(value[v])
+		}
+		vMap.set(key, vals);
 	});
 	this._varMap = vMap;
 }

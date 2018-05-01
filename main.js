@@ -28,14 +28,35 @@ for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
 
+function listEqual(list1, list2) {
+	if (list1.length != list2.length) return false;
+	for (var i in list1) {
+		if (list1[i].type != list2[i].type ||
+			list1[i].value != list2[i].value)
+			return false;  
+	}
+	return true;
+}
+
 Set.prototype.my_add=function(values){
 	var hasSame = false;
 	var toAddList = [];
-
 	for (var v in values) {
 		var exists = false;
 		this.forEach(function(item) { 
-			if (values[v].key == item[0].key && values[v].value == item[0].value) {
+			if (values[v].type == "ArrayExpression") {
+				for (var val in values[v].value) {
+					if (values[v].value[val][0] != item[0].value[val][0] ||
+						values[v].value[val][1] != item[0].value[val][1]) {
+						if (values[v].value[val][0] == item[0].value[val][0]) {
+							item[0].value[val][1].push(values[v].value[val][1][0]);
+						}
+						exists = false;
+						break;
+					}
+				}
+				exists = true;
+			} else if (values[v].type == item[0].type && values[v].value == item[0].value) {
 				exists = true;
 			}
 		});
@@ -272,12 +293,12 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 
 									var ref_values = [];
+
 									for (var inx in indices){
 										// skip " when handling object field access aka o["f"] => o.f
 										// indices will be `"f"` instead of [{type:"Numeric", value:2}]
 										if (indices[inx] == "") continue;
 										index = indices[inx].value;
-										
 										for (var r in r_vs){
 											var array_values = r_vs[r];
 											if (r_vs[r].type == "ObjectExpression") {
@@ -288,15 +309,11 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 												continue;
 											}
 											
-											// for (var a in array_values) {
-
-												if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
-													if (index !== undefined) {
-														
-														ref_values = ref_values.concat(r_vs[r].value[index][1]);
-													} 
-												}
-											// }
+											if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
+												if (index !== undefined) {
+													ref_values = ref_values.concat(r_vs[r].value[index][1]);
+												} 
+											}
 										}
 									}
 
@@ -362,7 +379,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			
 			const branchExprs = astNode.parseIfStatement(i, varMap, verbose);
 			var diffMap = new Functions.VariableMap(new HashMap());
-
+			// varMap.printMap();
 			for (var b in branchExprs){
 				var eVarMap = new Functions.VariableMap(varMap._varMap);
 				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", "if", eVarMap, verbose);
@@ -372,22 +389,46 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					var var_values = varMap.get(val1.key);
 
 					// value updated in if-branch OR new value created in if-branche
-					if (var_values != val1.value) {
-						var prevValues = diffMap.get(val1.key);
+					// console.log (listEqual(var_values, val1.value))
 
-						// check if value already in @diffMap
-						if (prevValues) { 
-							prevValues.my_add(val1.value);
-							diffMap.setVariable(val1.key, prevValues);
-						} else {
-							var typeSet = new Set();
-							typeSet.my_add(val1.value);
-							diffMap.setVariable(val1.key, typeSet);
-						}
-					} 
+					for (var v in var_values) {
+						// if (var_values[v].type == "ArrayExpression"||var_values[v].type == "NewExpression") {
+						// 	// console.log("var_values[v]===", var_values[v].value);
+						// 	var values = val1.value;
+						// 	var has = false;
+						// 	for (var val of var_values[v].value) {
+						// 		console.log(">", val)
+						// 	}
+
+						// 	for (var val of values) {
+						// 		for (var vv of val.value) {
+						// 			console.log(">>>", vv)
+						// 		}
+								
+						// 	}
+						// }
+
+
+						if (var_values[v] != val1.value) {
+							var prevValues = diffMap.get(val1.key);
+							
+							// check if value already in @diffMap
+							if (prevValues) { 
+								prevValues.my_add(val1.value);
+								diffMap.setVariable(val1.key, prevValues);
+							} else {
+								var typeSet = new Set();
+								typeSet.my_add(val1.value);
+								diffMap.setVariable(val1.key, typeSet);
+							}
+						} 
+					}
+					
 				});
 			}
+
 			diffMap.multipleUpdate(varMap);
+
 		}else if (astNode.isIfStatement(i)) {
 			astNode.removeJumpInstructions(i);
 

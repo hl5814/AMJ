@@ -16,14 +16,17 @@
 // a[1] = "str1";
 // eval(a[1])
 
-var x={a:"str1", b:"str2", c:"str3"};
-x.f = "a";
+var x=["str1", "str2", "str3"];
 if (1>2){
-	x.f = "b";
+	x[0] = "a";
 } else {
-	x.f = "c";
+	x[0] = "b";
 }
-eval(x.f);
+eval(x[0]);
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object],[object Object]] ==> eval("str2")
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object],[object Object]] ==> eval("str3")
+
+// multiple values for array element
 
 // // var myAST = new AST();
 // // myAST.foo("str");

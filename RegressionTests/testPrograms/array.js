@@ -31,3 +31,14 @@ if (1>2){
 eval(x[index]);
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object],[object Object]] ==> eval("str2")
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object],[object Object]] ==> eval("str3")
+
+// multiple values for array element
+var x=["str1", "str2", "str3"];
+if (1>2){
+	x[0] = "a";
+} else {
+	x[0] = "b";
+}
+eval(x[0]);
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("a")
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b")
