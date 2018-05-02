@@ -1,16 +1,8 @@
-var x = "main";
-switch (1) {
-	default:
-		x = "default";
-		break;
-    case 0:
-    case 1:
-        x = "1";
-        break;
-    case 2:
-        x = "2";
-    case 3:
-        x = "3";
-        break;
-}
-eval(x);
+// var x;
+// var foo = String.fromCharCode;
+// x += foo(1);
+// eval(x);
+
+var x = {a:"a"};
+ y = x.a;
+eval(y);
