@@ -1,10 +1,16 @@
-
-var x = {a:"a"};
-if (1>2) {
-	x = {b:"b1"};
-} else {
-	x = {b:"b2"};
+var x = "main";
+switch (1) {
+	default:
+		x = "default";
+		break;
+    case 0:
+    case 1:
+        x = "1";
+        break;
+    case 2:
+        x = "2";
+    case 3:
+        x = "3";
+        break;
 }
-eval(x.a);
-eval(x.b);
-
+eval(x);

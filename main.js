@@ -77,7 +77,8 @@ const scopeCoefficient = {  "test"      : 0,
 							"for"   	: 2,
 							"while" 	: 2,
 							"function"	: 3,
-							"try"		: 2};
+							"try"		: 2,
+							"switch"	: 2};
 
 const featureWeight = { "InitVariable" 		: 1,
 					    "Assignment"   		: 2,
@@ -594,6 +595,49 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			} else {
 				diffMap.multipleUpdate(varMap);
 			}
+		} else if (astNode.isSwitchStatement(i)) {
+			// astNode.removeJumpInstructions(i, ast);
+
+			const bodyExprs_defaultCaseIndex = astNode.parseSwitchStatement(ast, i, varMap, verbose);
+			const bodyExprs = bodyExprs_defaultCaseIndex[0];
+			const default_case = bodyExprs_defaultCaseIndex[1];
+
+			var diffMap = new Functions.VariableMap(new HashMap());
+
+
+			if (default_case != -1) {
+				// parse default case first, this case will be executed if non-of the cases matched,
+				// i.e. will override main scope values anyway
+				parseProgram(bodyExprs[default_case], "switch_statements", "switch", varMap, false);
+			}
+
+			for (var b = 0; b < bodyExprs.length; b++){
+				// skip the default case
+				if (b == default_case) continue;
+
+				var eVarMap = new Functions.VariableMap(varMap._varMap);
+				const switchBranchVarMapList = parseProgram(bodyExprs[b], "switch_statements", "switch", eVarMap, verbose);
+
+				switchBranchVarMapList.forEach(function(val1) {
+					var prevBranch = diffMap.get(val1.key);
+
+					// check if value already in @diffMap
+					if (prevBranch) {
+						prevBranch.my_add(val1.value);
+						diffMap.setVariable(val1.key, prevBranch);
+					} else {
+						const prevValues = varMap.get(val1.key);
+						var typeSet = new Set();
+
+						// if variable exists in main program and been updated in if-branch, add the prev_value
+						if (prevValues && !listEqual(prevValues, val1.value)) typeSet.my_add(prevValues);
+
+						typeSet.my_add(val1.value);
+						diffMap.setVariable(val1.key, typeSet);
+					}
+				});
+			}
+			diffMap.multipleUpdate(varMap);
 		}
 	}
 	if (verbose>1 && scope == "User_Program") varMap.printMap();

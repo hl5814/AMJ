@@ -61,6 +61,10 @@ AST.prototype.isBlockStatement= function(index) {
 	return  (this._node.body[index].type == "BlockStatement");
 };
 
+AST.prototype.isSwitchStatement= function(index) {
+	return  (this._node.body[index].type == "SwitchStatement");
+};
+
 AST.prototype.removeJumpInstructions=function(index, ast) {
 	ASTUtils.traverse(this._node, function(node){
 		if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
@@ -108,8 +112,13 @@ AST.prototype.parseForStatement=function(index, varMap, verbose=false){
 }
 
 AST.prototype.parseWhileStatement=function(index, varMap, verbose=false){
-	const forExpr = new Expr(this._node.body[index]);
-	return forExpr.parseWhileStatementExpr(this._node, varMap, [], verbose);
+	const whileExpr = new Expr(this._node.body[index]);
+	return whileExpr.parseWhileStatementExpr(this._node, varMap, [], verbose);
+}
+
+AST.prototype.parseSwitchStatement=function(ast, index, varMap, verbose=false){
+	const switchExpr = new Expr(this._node.body[index]);
+	return switchExpr.parseSwitchStatementExpr(ast, this._node, varMap, [], verbose);
 }
 
 AST.prototype.parseTryStatement=function(index, varMap, verbose=false){
@@ -663,6 +672,43 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 		}
 	}
 	return blockRanges;
+}
+
+Expr.prototype.parseSwitchStatementExpr=function(ast, node, varMap, blockRanges, verbose=false) {
+	// console.log(this._expr)
+	var discriminant = this._expr.discriminant;
+	var d_code = ASTUtils.getCode(discriminant);
+	blockRanges.push(d_code);
+
+	var cases = this._expr.cases;
+	var code = "";
+
+	var default_case = -1;
+	for (var c = 0; c<cases.length;c++) {
+		// default case
+		if (cases[c].test === null) {
+			default_case = c+1;
+		}
+
+		var case_body = cases[c].consequent;
+		var hasBreak = false;
+		ASTUtils.traverse(cases[c], function(node){
+			if (node.type == "BreakStatement") {
+				ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
+				hasBreak = true;
+			}
+		});
+
+		for (var b of case_body) {
+			var b_code = ASTUtils.getCode(b);
+			code += b_code;
+		}
+		if (hasBreak || (c == cases.length-1)) {
+			blockRanges.push(code);
+			code = "";
+		}
+	}
+	return [blockRanges, default_case];
 }
 
 Expr.prototype.parseWhileStatementExpr=function(node, varMap, blockRanges, verbose=false) {
