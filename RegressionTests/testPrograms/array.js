@@ -42,3 +42,15 @@ if (1>2){
 eval(x[0]);
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("a")
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b")
+
+// multiple values for array object
+var x = ["0",2,3];
+if (1>2) {
+	x = ["1"];
+} else if (1>2) {
+	x = ["2"];
+}
+eval(x[0]);
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("0")
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("1")
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("2")

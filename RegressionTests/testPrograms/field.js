@@ -23,3 +23,15 @@ if (1>2){
 eval(x.a);
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b")
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("c")
+
+//multiple values for field object
+var x = {a:"a"};
+if (1>2) {
+	x = {b:"b1"};
+} else {
+	x = {b:"b2"};
+}
+eval(x.a);
+eval(x.b);
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b1")
+// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b2")

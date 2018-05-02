@@ -6,3 +6,6 @@ FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object],[
 FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object],[object Object]] ==> eval("str3")
 FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("a")
 FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b")
+FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("0")
+FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("1")
+FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("2")

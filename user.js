@@ -1,9 +1,10 @@
 
-var x = ["0",2,3];
+var x = {a:"a"};
 if (1>2) {
-	x = ["1"];
-} else if (1>2) {
-	x = ["2"];
+	x = {b:"b1"};
+} else {
+	x = {b:"b2"};
 }
-eval(x[0]);
+eval(x.a);
+eval(x.b);
 

@@ -174,19 +174,20 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 		}
 		return [identifier, [{ type: 'FunctionExpression', value: functionName }]];
 	} else if (block.init.type == "ObjectExpression") {
-		var properties = block.init.properties;
-		var results = [];
-		for (var p in properties) { 
-			var key = (new Expr(properties[p].key)).getArg(this._node, identifier, varMap, false, verbose);
-			var token = (new Expr(properties[p].value)).getToken(this._node);
-			results.push([key.replace(/"/g,''), [{ type: token.type, value: token.value }]])
-		}
+		// var properties = block.init.properties;
+		// var results = [];
+		// for (var p in properties) { 
+		// 	var key = (new Expr(properties[p].key)).getArg(this._node, identifier, varMap, false, verbose);
+		// 	var token = (new Expr(properties[p].value)).getToken(this._node);
+		// 	results.push([key.replace(/"/g,''), [{ type: token.type, value: token.value }]])
+		// }
 
-		var object = {};
-		for (var r in results) {
-			object[results[r][0]] = results[r][1]
-		}
-		return [identifier, [{type:"ObjectExpression", value:object}]];
+		// var object = {};
+		// for (var r in results) {
+		// 	object[results[r][0]] = results[r][1]
+		// }
+
+		return [identifier, [{type:"ObjectExpression", value:args}]];
 	} else {
 		// check if is pre-defined functions, e.g. eval, atob, etc.
 		var var_value = varMap.get(args, verbose);
@@ -336,8 +337,11 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		}
 		return [identifier, [{ type: 'FunctionExpression', value: funcBody }]];
 	} else if (rhs.type == "ArrayExpression" ){
-		var args = (new Expr(rhs)).getArg(this._node, varName, varMap, false, verbose);
+		var args = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
 		return [identifier, [{ type: 'ArrayExpression', value: args }]];
+	} else if (rhs.type == "ObjectExpression" ){
+		var args = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
+		return [identifier, [{ type: 'ObjectExpression', value: args }]];
 	} else {
 		var token = (new Expr(rhs)).getToken(this._node);
 		return [identifier, [{ type: token.type, value: token.value}]];
@@ -542,8 +546,20 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 
 Expr.prototype.getValueFromObjectExpression=function(node, identifier, varMap, inner, verbose=false) {
 	var ObjectExpression = ASTUtils.getCode(this._expr);
-	// console.log(ObjectExpression)
-	return ObjectExpression;
+	var properties = this._expr.properties;
+	var results = [];
+	for (var p in properties) { 
+		var key = (new Expr(properties[p].key)).getArg(node, identifier, varMap, false, verbose);
+		var token = (new Expr(properties[p].value)).getToken(node);
+		results.push([key.replace(/"/g,''), [{ type: token.type, value: token.value }]])
+	}
+
+	var object = {};
+	for (var r in results) {
+		object[results[r][0]] = results[r][1]
+	}
+
+	return object;
 }
 
 
