@@ -119,7 +119,7 @@ function showResult(resultMap, codeLength) {
 var programTokens = 0;
 function parseProgram(program, scope, coefficient, varMap, verbose){
 
-	if (program.replace(/\s+/, "") == "") return varMap.toList();
+	if (program.replace(/\s+/g, "") == "") return varMap.toList();
 	var ast = ASTUtils.parse(program);
 
 	if (scope == "User_Program") programTokens = ast.tokens.length;
@@ -211,6 +211,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						// function body scope variable shoundn't affect the main scope therefore
 						// use the new @eVarMap instead of @varMap itself
 						var eVarMap = new Functions.VariableMap(varMap._varMap);
+						astNode.updateFunctionParams(i, eVarMap);
 						parseProgram(var_values[1][v].value, var_values[1][v].value, "function", eVarMap, verbose);
 					} else {
 						ASTUtils.traverse(ast.body[i], function(node){
@@ -261,6 +262,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				// 		}
 				// 	});
 				// }
+
 				for (var f in funcNames) {
 					if (funcNames[f].type != "pre_Function" && funcNames[f].type != "user_Function" ) {
 						continue; 
@@ -334,6 +336,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								} else {
 									/* args[0].type == "Identifier" */
 									var ref_values = varMap.get(args[0].value, verbose);
+									if (ref_values === undefined) {
+										ref_values = [ { type: 'String', value: 'UNKNOWN' } ];
+									}
 								}
 
 								if (ref_values.length == 0)  {
@@ -364,7 +369,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				}
 			} 
 		} else if (astNode.isFunctionDeclaration(i)) {
-			astNode.removeJumpInstructions(i);
+			astNode.removeJumpInstructions(i, ast);
 
 			// if node type is FunctionDeclaration, it must has function Name
 			funcName = astNode.getFunctionName(i);
@@ -375,7 +380,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			astNode.updateFunctionParams(i, emptyVarMap);
 			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, "function", emptyVarMap, verbose);
 		} else if (astNode.isIfElseStatement(i)) {
-			astNode.removeJumpInstructions(i);
+			astNode.removeJumpInstructions(i, ast);
 			
 			const branchExprs = astNode.parseIfStatement(i, varMap, verbose);
 			var diffMap = new Functions.VariableMap(new HashMap());
@@ -392,23 +397,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					// console.log (listEqual(var_values, val1.value))
 
 					for (var v in var_values) {
-						// if (var_values[v].type == "ArrayExpression"||var_values[v].type == "NewExpression") {
-						// 	// console.log("var_values[v]===", var_values[v].value);
-						// 	var values = val1.value;
-						// 	var has = false;
-						// 	for (var val of var_values[v].value) {
-						// 		console.log(">", val)
-						// 	}
-
-						// 	for (var val of values) {
-						// 		for (var vv of val.value) {
-						// 			console.log(">>>", vv)
-						// 		}
-								
-						// 	}
-						// }
-
-
 						if (var_values[v] != val1.value) {
 							var prevValues = diffMap.get(val1.key);
 							
@@ -430,7 +418,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			diffMap.multipleUpdate(varMap);
 
 		}else if (astNode.isIfStatement(i)) {
-			astNode.removeJumpInstructions(i);
+			astNode.removeJumpInstructions(i, ast);
 
 			const branchExprs = astNode.parseIfStatement(i, varMap, verbose);
 			var diffMap = new Functions.VariableMap(new HashMap());
@@ -451,7 +439,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						var typeSet = new Set();
 
 						// if variable exists in main program and been updated in if-branch, add the prev_value
-						if (prevValues && prevValues != val1.value) typeSet.my_add(prevValues);
+						if (prevValues && !listEqual(prevValues, val1.value)) typeSet.my_add(prevValues);
 
 						typeSet.my_add(val1.value);
 						diffMap.setVariable(val1.key, typeSet);
@@ -461,7 +449,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			diffMap.multipleUpdate(varMap);
 
 		} else if (astNode.isForStatement(i) || astNode.isForInStatement(i)) {
-			astNode.removeJumpInstructions(i);
+			astNode.removeJumpInstructions(i, ast);
 
 			const bodyExprs = astNode.parseForStatement(i, varMap, verbose);
 			var diffMap = new Functions.VariableMap(new HashMap());
@@ -472,7 +460,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				var typeSet = new Set();
 				if (astNode.isForInStatement(i)) {
 					typeSet.my_add([ { type: 'Numeric', value: '0' } ]);
-				} else if (astNode.isForStatement(i)){
+				} else if (astNode.isForStatement(i) && val1.value.length > 0){
 					if (val1.value[0].type == "undefined" && val1.value[0].value == "undefined") {
 						typeSet.my_add(varMap.get(val1.key));
 					} else {
@@ -500,7 +488,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			diffMap.multipleUpdate(varMap);
 
 		} else if (astNode.isWhileStatement(i)) {
-			astNode.removeJumpInstructions(i);
+			astNode.removeJumpInstructions(i, ast);
 
 			const bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
 			var diffMap = new Functions.VariableMap(new HashMap());
@@ -520,13 +508,13 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			diffMap.multipleUpdate(varMap);
 
 		} else if (astNode.isDoWhileStatement(i)) {
-			astNode.removeJumpInstructions(i);
+			astNode.removeJumpInstructions(i, ast);
 
 			const bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
 			// update varMap directly since the body code will always be executed at least once in do-while
 			parseProgram(bodyExprs[0], "while_statements", "while", varMap, verbose);
 		} else if (astNode.isTryStatement(i)) {
-			astNode.removeJumpInstructions(i);
+			astNode.removeJumpInstructions(i, ast);
 
 			const bodyExprs = astNode.parseTryStatement(i, varMap, verbose);
 
