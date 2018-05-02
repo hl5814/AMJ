@@ -3,6 +3,10 @@
 // x += foo(1);
 // eval(x);
 
-var x = {a:"a"};
- y = x.a;
-eval(y);
+// var x = {a:"a"};
+//  y = x.a;
+// eval(y);
+
+var x = ["0", "1", "2"];
+ y = x[0];
+eval(y)

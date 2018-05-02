@@ -188,7 +188,7 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 		const object = (new Expr(block.init)).getValueFromMemberExpression(this._node, identifier, varMap, false, verbose);
 		const object_name = object[0];
 		const field_name  = object[1];
-		
+
 		const field = varMap.get(object_name);
 		var values = [];
 		if (field !== undefined) {
@@ -197,6 +197,11 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 					for (const fn of field_name) {
 						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
 						values = values.concat(f.value[f_name]);
+					}
+				} else if (f.type == "ArrayExpression") {
+					for (const fn of field_name) {
+						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
+						values = values.concat(f.value[f_name][1]);
 					}
 				}
 			}
@@ -399,6 +404,11 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
 						values = values.concat(f.value[f_name]);
 					}
+				} else if (f.type == "ArrayExpression") {
+					for (const fn of field_name) {
+						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
+						values = values.concat(f.value[f_name][1]);
+					}
 				}
 			}
 		}
@@ -560,7 +570,7 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 		}
 	} else if (this._expr.type == "String") {
 		arg = "\"" + this._expr.value+"\"";
-	} else if (this._expr.type == "keyword") {
+	} else if (this._expr.type == "keyword"|| this._expr.type == "Numeric") {
 		arg = this._expr.value;
 	} else if (this._expr.type == "Identifier") {
 		arg = this._expr.name;
