@@ -38,7 +38,7 @@ if [ -d $SOURCE ]; then
     echo "$SOURCE is a directory"
     for filename in $SOURCE/*; do
     	echo $filename
-        node main.js -s $filename ${VERBOSE}  -w 2>/dev/null  | grep -E "FEATURE|POINT|Length|Weight|Total|Tokens|--"
+        node main.js -s $filename ${VERBOSE}  -w   | grep -E "FEATURE|POINT|Length|Weight|Total|Tokens|--"
     done
 elif [ -f $SOURCE ]; then
     node main.js -s $SOURCE -w ${VERBOSE}

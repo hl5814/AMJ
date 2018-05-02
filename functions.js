@@ -191,21 +191,23 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 
 		const field = varMap.get(object_name);
 		var values = [];
+
 		if (field !== undefined) {
 			for (const f of field) {
 				if (f.type == "ObjectExpression") {
 					for (const fn of field_name) {
 						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-						values = values.concat(f.value[f_name]);
+						if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name]);
 					}
 				} else if (f.type == "ArrayExpression") {
 					for (const fn of field_name) {
 						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-						values = values.concat(f.value[f_name][1]);
+						if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name][1]);
 					}
 				}
 			}
 		}
+
 		return [identifier, values];
 	} else {
 		// check if is pre-defined functions, e.g. eval, atob, etc.
@@ -309,7 +311,6 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			var ref_values = varMap.get(rhs_left.name, verbose);
 			if (ref_values) {
 				for (var i in ref_values) {
-					console.log(ref_values[i])
 					if (ref_values[i].type == "String") {
 						if (val.length > 30) {
 							val = val.substring(1, 30) + "...";
@@ -344,17 +345,21 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 
 				if (callee !== undefined ) {
 					var types = varMap.get(callee);
-					console.log(callee)
-					console.log(types)
-				}
-
-				var arg = new Expr(node);
-				var val = arg.getArg(parentNode, identifier, varMap, false, verbose);
-				var stringConvertFunctions = ["toString", "fromCharCode", "btoa"];
-				for (var f of stringConvertFunctions) {
-					if (val.indexOf(f) !== -1) {
-						foundStringFunc = true;
-						console.log()
+					if (types !== undefined) {
+						for (var t of types) {
+							if (t.type == "pre_Function") {
+								var val = t.value;
+							} else {
+								var val = (new Expr(node)).getArg(parentNode, identifier, varMap, false, verbose);
+							}
+							var stringConvertFunctions = ["toString", "fromCharCode", "btoa"];
+							for (var f of stringConvertFunctions) {
+								if (val.indexOf(f) !== -1) {
+									foundStringFunc = true;
+								}
+							}
+							
+						}
 					}
 				}
 			}
@@ -402,12 +407,12 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 				if (f.type == "ObjectExpression") {
 					for (const fn of field_name) {
 						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-						values = values.concat(f.value[f_name]);
+						if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name]);
 					}
 				} else if (f.type == "ArrayExpression") {
 					for (const fn of field_name) {
 						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-						values = values.concat(f.value[f_name][1]);
+						if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name][1]);
 					}
 				}
 			}

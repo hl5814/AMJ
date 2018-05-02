@@ -21,12 +21,16 @@ const filePath = options.src;
 //===============================MainProgram=================================
 var init_varMap = new Functions.VariableMap(new HashMap());
 
-var funcNames = ["eval", "unescape", "replace", "document.write", "atob", "btoa",
-				 "setTimeout", "setInterval", "toString", "String.fromCharCode",
-				 "parseInt", "alert", "console.log", "Array","charCodeAt"];
+var funcNames = ["eval", "unescape", "replace", "write", "document.write", "atob", "btoa",
+				 "setTimeout", "setInterval", "toString", "String.fromCharCode", "fromCharCode",
+				 "parseInt", "alert", "Array","charCodeAt" , "substr"];
 for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
+init_varMap.setVariable("String", [{ type: 'ObjectExpression', value: {"fromCharCode": [{type: 'pre_Function', value: "fromCharCode"}]} }] );
+init_varMap.setVariable("document", [{ type: 'ObjectExpression', value: {"write": [{type: 'pre_Function', value: "write"}]} }] );
+
+
 
 function listEqual(list1, list2) {
 	if (list1.length != list2.length) return false;
@@ -46,11 +50,22 @@ Set.prototype.my_add=function(values){
 		this.forEach(function(item) { 
 			if (values[v].type == "ArrayExpression") {
 				for (var val in values[v].value) {
+					if (item[0].value[val] === undefined) continue;
 					if (values[v].value[val][0] != item[0].value[val][0] ||
 						values[v].value[val][1] != item[0].value[val][1]) {
 						if (values[v].value[val][0] == item[0].value[val][0]) {
 							item[0].value[val][1].push(values[v].value[val][1][0]);
 						}
+						exists = false;
+						break;
+					}
+				}
+				exists = true;
+			} else if (values[v].type == "ObjectExpression") {
+				for (var val in values[v].value) {
+					if (item[0].value[val] === undefined) continue;
+					if (values[v].value[val][0] != item[0].value[val][0]) {
+						item[0].value[val].push(values[v].value[val][0]);
 						exists = false;
 						break;
 					}
@@ -144,6 +159,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						// e.g. var myVariable = eval;	
 						if (verbose>0) console.log("FEATURE[FuncObfuscation] :[", variableName_Type[0], "] -> [", variableName_Types[v].value, "]")
 						updateResultMap(resultMap, "FuncObfuscation", coefficient);
+						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					} else {
 						if (variableName_Types[v].type == "Expression") {
 							if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
@@ -224,6 +240,22 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								}
 							} else if (node.type == "CallExpression"){
 								parseProgram(ASTUtils.getCode(node), "CallExpression", "function", varMap, verbose);
+								if (node.type == "CallExpression"){
+								if (node.callee.type == "MemberExpression") {
+									var callee = node.callee.property.name;
+								} else {
+									var callee = node.callee.name;
+								}
+								if (callee !== undefined ) {
+									var types = varMap.get(callee);
+									for (var t in types) {
+										if (types[t].type == "pre_Function") {
+											if (verbose>0) console.log("FEATURE[FunctionCall] :", ASTUtils.getCode(node));
+											updateResultMap(resultMap, "FunctionCall", coefficient);
+										}
+									}
+								}
+							}
 							}
 						});
 					}

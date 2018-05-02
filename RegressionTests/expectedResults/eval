@@ -4,3 +4,4 @@ FEATURE[ExpressionOp] in :User_Program: eval(BinaryExpression) => eval[1+1]
 FEATURE[ExpressionOp] in :User_Program: eval(CallExpression) => eval[foo((1+(bar())))]
 FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [c] ==> eval("alert(b)")
 FEATURE[FuncObfuscation] :[ a ] -> [ eval ]
+FEATURE[StringOp] in :User_Program: pre_Function:a(STRING) => eval["test"]
