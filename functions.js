@@ -72,15 +72,22 @@ AST.prototype.removeJumpInstructions=function(index, ast) {
 	})
 }
 
-AST.prototype.hasFunctionExpression= function(index) {
-	if (this._node.body[index].type == "VariableDeclaration") {
-		for (var i in this.getAllDeclarationBlocks(index)){
-			if (this._node.body[index].declarations[i].init === null) continue;
-			if (this._node.body[index].declarations[i].init.type == "FunctionExpression") {
-				return i;
-			}
-		}
-	}	     
+AST.prototype.getReturnInstructions=function(index, ast) {
+	var returnStatements = [];
+	ASTUtils.traverse(this._node, function(node){
+		if (node.type == "ReturnStatement") returnStatements.push(ASTUtils.getCode(node.argument));
+	});
+
+	return returnStatements;
+}
+
+AST.prototype.hasFunctionExpression= function(index, ast) {
+	var hasFunctionExpression = false;;
+	ASTUtils.traverse(this._node, function(node){
+		if (node.type == "FunctionExpression")
+			hasFunctionExpression = true;
+	});
+	return hasFunctionExpression;    
 };
 
 AST.prototype.getFunctionName= function(index) {

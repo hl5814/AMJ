@@ -1,4 +1,4 @@
-FEATURE[StringOp] in :a: pre_Function:eval(STRING) => eval("str1.1")
+FEATURE[StringOp] in :function a (){eval("str1.1");}: pre_Function:eval(STRING) => eval("str1.1")
 FEATURE[InitVariable] in :User_Program, Init Variable by FunctionExpression:b=a
 FEATURE[StringOp] in :a: pre_Function:eval(STRING) => eval("str1.2")
 FEATURE[StringOp] in :eval("str2.1");: pre_Function:eval(STRING) => eval("str2.1")

@@ -93,7 +93,8 @@ const scopeCoefficient = {  "test"      : 0,
 							"while" 	: 2,
 							"function"	: 3,
 							"try"		: 2,
-							"switch"	: 2};
+							"switch"	: 2,
+							"return"	: 3};
 
 const featureWeight = { "InitVariable" 		: 1,
 					    "Assignment"   		: 2,
@@ -161,32 +162,32 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						updateResultMap(resultMap, "FuncObfuscation", coefficient);
 						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					} else {
-						if (variableName_Types[v].type == "Expression") {
-							if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
-							updateResultMap(resultMap, "InitVariable", coefficient);
-							ASTUtils.traverse(ast.body[i], function(node){
-								if (node.type == "CallExpression"){
-									if (node.callee.type == "FunctionExpression"){
-										var currentBlock = ASTUtils.getCode(node.callee);
-										// parse function body
-										parseProgram(currentBlock, variableName_Types[v].value, "function", varMap, verbose);
-									}
-								}
-							});
-							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
-						} else if (astNode.hasFunctionExpression(i)) {
+						if (astNode.hasFunctionExpression(i)) {
 							//FunctionExpression
 							ASTUtils.traverse(ast.body[i], function(node){
 								if (node.type == "FunctionExpression"){
 									if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
-									var blocks = astNode.getFunctionBodyFromFunctionExpression(i);
-									for (var b in blocks){
-										// parse function body
-										parseProgram(blocks[b], variableName_Types[v].value, "function", varMap, verbose);
+								
+									var emptyVarMap = new Functions.VariableMap(varMap._varMap);
+									// assume all function parameters might be String type when parsing function body
+									astNode.updateFunctionParams(i, emptyVarMap);
+									
+									var returnStatement = astNode.getReturnInstructions(i, ast);
+									astNode.removeJumpInstructions(i, ast);
+									// parse function body
+									parseProgram(ASTUtils.getCode(node.body).slice(1,-1), variableName_Types[v].value, "function", emptyVarMap, verbose);
+									for (var returnS of returnStatement) {
+										// parse return statement
+										parseProgram(returnS, "ReturnStatement in " + variableName_Types[v].value, "return", emptyVarMap, verbose);
 									}
+
 									updateResultMap(resultMap, "InitVariable", coefficient);
 								} 
 							});
+							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
+						} else if (variableName_Types[v].type == "Expression") {
+							if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
+							updateResultMap(resultMap, "InitVariable", coefficient);
 							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 						} else {
 							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
@@ -224,13 +225,30 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						});
 						
 					} else if (var_values[1][v].type == "FunctionExpression") {
-						// parse function body
-						// main scope variable should be parsed into the function body, however 
-						// function body scope variable shoundn't affect the main scope therefore
-						// use the new @eVarMap instead of @varMap itself
-						var eVarMap = new Functions.VariableMap(varMap._varMap);
-						astNode.updateFunctionParams(i, eVarMap);
-						parseProgram(var_values[1][v].value, var_values[1][v].value, "function", eVarMap, verbose);
+						ASTUtils.traverse(ast.body[i], function(node){
+							if (node.type == "FunctionExpression"){
+								var emptyVarMap = new Functions.VariableMap(varMap._varMap);
+								// assume all function parameters might be String type when parsing function body
+								astNode.updateFunctionParams(i, emptyVarMap);
+								var blocks = node.body.body;
+								var bodyCode = "";
+								var returnStatement = "";
+
+								for (var b of blocks) {
+									if (b.type == "ReturnStatement") {
+										returnStatement = ASTUtils.getCode(b.argument);
+									} else {
+										bodyCode += ASTUtils.getCode(b);
+									}
+								}
+								// parse function body
+								parseProgram(bodyCode, var_values[1][v].value, "function", emptyVarMap, verbose);
+								if (returnStatement != "") {
+									// parse return statement
+									parseProgram(returnStatement, "ReturnStatement in " + var_values[1][v].value, "return", emptyVarMap, verbose);
+								}
+							} 
+						});
 					} else {
 						ASTUtils.traverse(ast.body[i], function(node){
 							if (node.type == "AssignmentExpression") {
@@ -239,24 +257,27 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									if (verbose>0) console.log("FEATURE[FuncObfuscation] :[", var_value[0], "] -> [", var_value[1].value, "]")
 									updateResultMap(resultMap, "FuncObfuscation", coefficient);
 								}
-							} else if (node.type == "CallExpression"){
+							}
+							if (node.type == "CallExpression"){
+								console.log(">>", ASTUtils.getCode(node))
 								parseProgram(ASTUtils.getCode(node), "CallExpression", "function", varMap, verbose);
+
 								if (node.type == "CallExpression"){
-								if (node.callee.type == "MemberExpression") {
-									var callee = node.callee.property.name;
-								} else {
-									var callee = node.callee.name;
-								}
-								if (callee !== undefined ) {
-									var types = varMap.get(callee);
-									for (var t in types) {
-										if (types[t].type == "pre_Function") {
-											if (verbose>0) console.log("FEATURE[FunctionCall] :", ASTUtils.getCode(node));
-											updateResultMap(resultMap, "FunctionCall", coefficient);
+									if (node.callee.type == "MemberExpression") {
+										var callee = node.callee.property.name;
+									} else {
+										var callee = node.callee.name;
+									}
+									if (callee !== undefined ) {
+										var types = varMap.get(callee);
+										for (var t in types) {
+											if (types[t].type == "pre_Function") {
+												if (verbose>0) console.log("FEATURE[FunctionCall] :", ASTUtils.getCode(node));
+												updateResultMap(resultMap, "FunctionCall", coefficient);
+											}
 										}
 									}
 								}
-							}
 							}
 						});
 					}
@@ -325,7 +346,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									var object  = args[0].value[0];
 									var indices = args[0].value[1];
 									var r_vs;
-									// console.log(object)
+
 									if (object instanceof Array) {
 										var indx = [];
 										while (object instanceof Array) {
@@ -430,8 +451,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				}
 			} 
 		} else if (astNode.isFunctionDeclaration(i)) {
-			astNode.removeJumpInstructions(i, ast);
-
 			// if node type is FunctionDeclaration, it must has function Name
 			funcName = astNode.getFunctionName(i);
 			varMap.setVariable(funcName, [{ type: 'user_Function', value: funcName }]);
@@ -439,7 +458,15 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 			// assume all function parameters might be String type when parsing function body
 			astNode.updateFunctionParams(i, emptyVarMap);
+			
+			var returnStatement = astNode.getReturnInstructions(i, ast);
+			astNode.removeJumpInstructions(i, ast);
+			// parse function body
 			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, "function", emptyVarMap, verbose);
+			for (var returnS of returnStatement) {
+				// parse return statement
+				parseProgram(returnS, "ReturnStatement in " + funcName, "return", emptyVarMap, verbose);
+			}
 		} else if (astNode.isIfElseStatement(i)) {
 			astNode.removeJumpInstructions(i, ast);
 			
@@ -456,7 +483,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 					// value updated in if-branch OR new value created in if-branche
 					// console.log (listEqual(var_values, val1.value))
-
 					for (var v in var_values) {
 						if (var_values[v] != val1.value) {
 							var prevValues = diffMap.get(val1.key);
