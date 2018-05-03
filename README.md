@@ -66,9 +66,13 @@ will check the current varMap, and assign the corresponding value for the refere
 e.g. 
 ==>varMap:
 >{key : a, value : "a"}
+
 	var b = a;
+	
 ==>varMap:
+
 >{key : a, value : "a"}, {key : b, value : "a"}
+
 ================================================================
 
 ## Updates for variables with multiple possibe values
