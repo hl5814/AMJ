@@ -252,7 +252,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								}
 							}
 							if (node.type == "CallExpression"){
-								console.log(">>", ASTUtils.getCode(node))
+								// TODO: parse body?
+								// x += String.fromCharCode(0);
+								// console.log(">>", ASTUtils.getCode(node))
 								parseProgram(ASTUtils.getCode(node), "CallExpression", "function", varMap, verbose);
 
 								if (node.type == "CallExpression"){

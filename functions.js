@@ -565,7 +565,6 @@ Expr.prototype.getIdentifier=function(varMap, verbose=false){
 		var expr = new Expr(this._expr.object);
 		return expr.getIdentifier(varMap);
 	}
-	// else if (this._expr.typer == )
 }
 
 Expr.prototype.getToken=function(node, verbose=false){

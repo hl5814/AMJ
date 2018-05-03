@@ -37,6 +37,7 @@ Current Patterns:
     * bitwiseOperations
 	* expression assignment
 	* [String + (anything) will be treated as type string]
+	* pre-defined String Functions (e.g. String.fromCharCode)
 
 * Malicious Initialization:
 	* expression
@@ -48,6 +49,7 @@ Current Patterns:
 	* for/for-in
 	* while/do-while
 	* try/catch/finally
+	* switch cases
 	* function body
 
 ## Data Structure used for tracking variables: varMap [Variable Map]
@@ -61,6 +63,12 @@ use a list to store all possible values, value based on the variable types
 {key: variable_name, value: [["field1", [values]],["field2",[values]]]}
 #### object reference
 will check the current varMap, and assign the corresponding value for the reference object as its value.
+e.g. {key : a, value : "a"}
+	
+	var b = a;
+	
+==> {key : a, value : "a"}, {key : b, value : "a"}
+
 ================================================================
 
 ## Updates for variables with multiple possibe values
