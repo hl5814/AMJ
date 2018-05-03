@@ -66,15 +66,9 @@ will check the current varMap, and assign the corresponding value for the refere
 e.g. 
 ==>varMap:
 >{key : a, value : "a"}
-
 	var b = a;
-	
 ==>varMap:
-
 >{key : a, value : "a"}, {key : b, value : "a"}
-
-================================================================
-
 ## Updates for variables with multiple possibe values
 for variables with multiple possible values (e.g. {key:a, value:[1, "string"]})
 #### case 1:  [equal assignment a=b]
