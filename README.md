@@ -309,6 +309,17 @@ very few keywords but long code ==>? malicious.
 	var a = new Array([{a:"a",b:"b"},"2"]);
 	eval(a[0].b)
 
+## PLAN
+```
+Week 2 	(7	8	9	10	11) <- finish static part
+Week 3 	(14	15	16	17	18) <- finish SVM
+Week 4 	(21	22	23	24	25) <- evaluation & start writing report
+Week 5	(28	29	30	31	1 )
+Week 6 	(4	5	6	7	8 ) <- finish Draft Report & extensions
+=> make change based on report-feedbacks/suggestions
+```
+									
+
 # Other:
 // https://github.com/facebook/flow
 //==> dynamically stage, profiling on the code
