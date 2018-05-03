@@ -230,22 +230,15 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								var emptyVarMap = new Functions.VariableMap(varMap._varMap);
 								// assume all function parameters might be String type when parsing function body
 								astNode.updateFunctionParams(i, emptyVarMap);
-								var blocks = node.body.body;
-								var bodyCode = "";
-								var returnStatement = "";
+								
+								var returnStatement = astNode.getReturnInstructions(i, ast);
+								astNode.removeJumpInstructions(i, ast);
 
-								for (var b of blocks) {
-									if (b.type == "ReturnStatement") {
-										returnStatement = ASTUtils.getCode(b.argument);
-									} else {
-										bodyCode += ASTUtils.getCode(b);
-									}
-								}
 								// parse function body
-								parseProgram(bodyCode, var_values[1][v].value, "function", emptyVarMap, verbose);
-								if (returnStatement != "") {
+								parseProgram(ASTUtils.getCode(node.body).slice(1,-1), var_values[1][v].value, "function", emptyVarMap, verbose);
+								for (var returnS of returnStatement) {
 									// parse return statement
-									parseProgram(returnStatement, "ReturnStatement in " + var_values[1][v].value, "return", emptyVarMap, verbose);
+									parseProgram(returnS, "ReturnStatement in " + var_values[1][v].value, "return", emptyVarMap, verbose);
 								}
 							} 
 						});
@@ -415,7 +408,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								} else {
 									/* args[0].type == "Identifier" 
 									 * we assume the parameter passed in can be type String */
-
 									var ref_values = varMap.get(args[0].value, verbose);
 									if (ref_values === undefined) {
 										ref_values = [ { type: 'String', value: 'UNKNOWN' } ];
@@ -458,7 +450,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 			// assume all function parameters might be String type when parsing function body
 			astNode.updateFunctionParams(i, emptyVarMap);
-			
 			var returnStatement = astNode.getReturnInstructions(i, ast);
 			astNode.removeJumpInstructions(i, ast);
 			// parse function body

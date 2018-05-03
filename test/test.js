@@ -114,11 +114,6 @@ describe('AST getVariableInitValue', function() {
     });
 });
 
-//TODO: getAssignmentLeftRight()
-
-
-
-
 
 describe('AST IfStatements', function() {
     const program = `if (1>2) {}
@@ -255,10 +250,10 @@ describe('Get Function Arguments', function() {
         const block = new Functions.AST(ASTUtils.parse(program));
 
         expect(block.getFunctionName(0)).to.deep.equal("foo");
-        expect(block.hasFunctionExpression(1)).to.deep.equal("0");
+        expect(block.hasFunctionExpression(1, block)).to.deep.equal(true);
         expect(block.getFunctionName(1)).to.deep.equal("a");
-        expect(block.hasFunctionExpression(2)).to.deep.equal("1");
-        expect(block.getFunctionName(2)).to.deep.equal("b");
+        // expect(block.hasFunctionExpression(2, block)).to.deep.equal(true);
+        // expect(block.getFunctionName(2)).to.deep.equal("b");
     });
 
     it(`getFunctionArguments() for empty/single argument`, function() {

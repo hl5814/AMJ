@@ -66,7 +66,7 @@ AST.prototype.isSwitchStatement= function(index) {
 };
 
 AST.prototype.removeJumpInstructions=function(index, ast) {
-	ASTUtils.traverse(this._node, function(node){
+	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
 			ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
 	})
@@ -74,16 +74,17 @@ AST.prototype.removeJumpInstructions=function(index, ast) {
 
 AST.prototype.getReturnInstructions=function(index, ast) {
 	var returnStatements = [];
-	ASTUtils.traverse(this._node, function(node){
-		if (node.type == "ReturnStatement") returnStatements.push(ASTUtils.getCode(node.argument));
+	ASTUtils.traverse(this._node.body[index], function(node){
+		if (node.type == "ReturnStatement" && node.argument !== null){
+			returnStatements.push(ASTUtils.getCode(node.argument));
+		}
 	});
-
 	return returnStatements;
 }
 
 AST.prototype.hasFunctionExpression= function(index, ast) {
 	var hasFunctionExpression = false;;
-	ASTUtils.traverse(this._node, function(node){
+	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "FunctionExpression")
 			hasFunctionExpression = true;
 	});
@@ -94,8 +95,18 @@ AST.prototype.getFunctionName= function(index) {
 	if (this.isFunctionDeclaration(index)) {
 		return  this._node.body[index].id.name;
 	} else {
-		var i = this.hasFunctionExpression(index);
-		if (i) return this._node.body[index].declarations[i].id.name;
+		var name;
+		ASTUtils.traverse(this._node.body[index], function(node){
+			if (node.type == "VariableDeclaration"){
+				var declarations = node.declarations;
+				for (var d of declarations) {
+					if (d.init.type == "FunctionExpression") {
+						name = d.id.name;
+					}
+				}
+			}
+		});
+		return name;
 	}
 };
 
@@ -388,14 +399,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		}
 	} else if (rhs.type == "FunctionExpression") {
 		var val = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
-
-		var funcBody = null;
-		if (rhs.id) {
-			funcBody= this.getFunctionBodyFromFunctionExpression(index)
-		} else {
-			funcBody = ASTUtils.getCode(rhs.body).slice(1,-1).replace(/\s+/g, "");
-		}
-		return [identifier, [{ type: 'FunctionExpression', value: funcBody }]];
+		return [identifier, [{ type: 'FunctionExpression', value: ASTUtils.getCode(rhs) }]];
 	} else if (rhs.type == "ArrayExpression" ){
 		var args = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
 		return [identifier, [{ type: 'ArrayExpression', value: args }]];
@@ -469,7 +473,7 @@ AST.prototype.getCalleeName= function(index, varMap, verbose=false) {
 };
 
 AST.prototype.updateFunctionParams= function(index, varMap, verbose=false) {
-	ASTUtils.traverse(this._node, function(node){
+	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "FunctionExpression") {
 			const params = node.params;
 			for (var p in params) {

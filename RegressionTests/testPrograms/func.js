@@ -48,7 +48,6 @@ a("test");
 
 // prototype functions
 a.prototype.myFunc=function(x) {
-	eval(x);
-	return x;
+	return eval(x);
 }
 //FEATURE[StringOp] in :eval(x);;: eval(Object->STRING) => [x] ==> eval(STR)

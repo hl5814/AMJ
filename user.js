@@ -1,1 +1,2 @@
-var c=function(){eval("str2.2");};
+var a = new Array([{a:"a",b:"b"},"2"]);
+eval(a[0].b)

@@ -293,9 +293,11 @@ very few keywords but long code ==>? malicious.
             b[i] = mult_GF256(state[i][j], 2) 
      ...
 ## (5)Limited for one JS file, (want to check for undefined function calls, however, due to the one file limitation, this is 	pointless, since the checker will treat all library function calls as undefined functions)
-## (6)parse return statement, e.g. (xxx.replace(xxx))
-## (7)Other types of Script languages (e.g. VBScript) 
+## (6)Other types of Script languages (e.g. VBScript) 
 	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//c6ac9d09a655f11a8643ddb869288649 user.js 
+## (7)Implement nested Array/Field Objects
+	var a = new Array([{a:"a",b:"b"},"2"]);
+	eval(a[0].b)
 
 # Other:
 // https://github.com/facebook/flow
