@@ -11,3 +11,4 @@ FEATURE[StringOp] in :User_Program: user_Function:b(STRING) => b("test2")
 FEATURE[FuncObfuscation] :[ a ] -> [ eval ]
 FEATURE[StringOp] in :User_Program: pre_Function:a(STRING) => eval("test")
 FEATURE[StringOp] in :User_Program: user_Function:a(STRING) => b("test")
+FEATURE[StringOp] in :eval(x);;: eval(Object->STRING) => [x] ==> eval(STR)

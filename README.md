@@ -265,50 +265,26 @@ Switch cases statements might share code body between cases (no break instructio
 >{key:x, value:["main", "1", "2"]}
 
 
-# SVM
+# TODO & ISSUES:
+## (1) SVM -- Build basic machine learning model using current features 
 ### Machine Learning Matrices 1: [#features-captured, weights]
 when parsing the JS code, detect features, and given each feature a
 corresponding weight points (multiplied by a scope coefficient), e.g.
 feature in for loop should be more malicious (i.e. has higher weight)
-
-
 ### Machine Learning Matrices 2: [#JS-keywords, length-of-input-codes]
 count number of javascript keywords in a given piece of code
 very few keywords but long code ==>? malicious.
-
 * CASE 1:
     * [hidden codes in html comments `<!-- malicious JS codes -->`, and then use some other simple codes to remove the comments and execute]
-
 * CASE 2:
     * long string manipulation
 
-
-
-# TODO:
-## (1)Build basic machine learning model using current features 
-==> SVM, python scikit-learn (svm)
-
-        from sklearn import svm
-        X = [[0, 0], [1, 1]]
-        y = [0, 1]
-        clf = svm.SVC()
-        clf.fit(X, y)
-        clf.predict([[2., 2.]])
-        >> array([1])
-        
-(x,y) ==> x : number of occurances
-y : total weight
-
-## (2)issues with error html links, e.g. "var x = http:...."
+## (2)issues with error html links, e.g. "var x = http:...." 
+	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//9117d956a6d8559154c86a081ebfc489 user.js 
 ## (3)parse function parameters? 
 	1. Double parse (i.e. parse program once and get all global variables, then parse second time for all function bodies)
 	2. -> Assume all functon parameters might be STRING type and parse once.
-## (4)HTML comments didn't work for JS functions
-	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//7e2e44b3e68595c538c677c25ecb92f5 user.js
-## (5)Limited for one JS file, (want to check for undefined function calls, however, due to the one file limitation, this is 	pointless, since the checker will treat all library function calls as undefined functions)
-## (6)prototype.function
-## (7)parse return statement, e.g. (xxx.replace(xxx))
-## (8)function parameter as Array/Field Object
+## (4)function parameter as Array/Field Object
 	function mixColumn(state, direction) {
       var b = [];                            // Result of matrix multiplications
       for (var j = 0; j < Nb; j++) {         // Go through each column...
@@ -316,7 +292,12 @@ y : total weight
           if (direction == "encrypt")
             b[i] = mult_GF256(state[i][j], 2) 
      ...
+## (5)Limited for one JS file, (want to check for undefined function calls, however, due to the one file limitation, this is 	pointless, since the checker will treat all library function calls as undefined functions)
+## (6)parse return statement, e.g. (xxx.replace(xxx))
+## (7)Other types of Script languages (e.g. VBScript) 
+	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//c6ac9d09a655f11a8643ddb869288649 user.js 
 
+# Other:
 // https://github.com/facebook/flow
 //==> dynamically stage, profiling on the code
 
