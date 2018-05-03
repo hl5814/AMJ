@@ -214,6 +214,57 @@ value
 >{key:x, value:[3]}
 
 
+## switch cases blocks
+Switch cases blocks, might has an default case or not. Switch-with-default will update the 
+main scope variable into default value if non of the case matches. 
+
+#### example:
+            var x = "main";
+			switch (1) {
+			    case 0:
+			        x = "0";
+			        break;
+			    case 1:
+			        x = "1";
+			        break;
+			    default: 
+			        x = "default";
+			}
+
+==>varMap:
+>{key:x, value:["0", "1", "default"]}
+
+However for switch-without-default, main scope variable might keep its previous value.
+#### example:
+            var x = "main";
+			switch (1) {
+			    case 0:
+			        x = "0";
+			        break;
+			    case 1:
+			        x = "1";
+			}
+
+==>varMap:
+>{key:x, value:["main", "0", "1"]}
+
+Switch cases statements might share code body between cases (no break instruction at the end of case).
+#### example:
+            var x = "main";
+			switch (1) {
+			    case 0:
+			        x = "0";
+			    case 1:
+			        x = "1";
+			        break;
+			    case 2:
+			    	x = "2";
+			}
+
+==>varMap:
+>{key:x, value:["main", "1", "2"]}
+
+
 # SVM
 ### Machine Learning Matrices 1: [#features-captured, weights]
 when parsing the JS code, detect features, and given each feature a

@@ -646,7 +646,7 @@ Expr.prototype.getValueFromFunctionExpression=function(node, identifier, varMap,
 }
 Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	if (verbose>1) console.log("NewExpression:\n", this._expr, "\n")
+	// console.log("NewExpression:\n", this._expr, "\n")
 	const callee = this._expr.callee;
 	
 	const elements = this._expr.arguments;
@@ -688,10 +688,18 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, in
 
 Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, inner, verbose=false) {
 	
-	// console.log(this._expr);
-	var identifier = this._expr.object.name;
+	if (this._expr.object.type == "MemberExpression") {
+		var val = (new Expr(this._expr.object)).getValueFromMemberExpression(node, identifier, varMap, true, verbose);
+		// console.log("val", val)
+		var identifier = val;
+	} else {
+		var identifier = this._expr.object.name;
+	}
+	
+
 	if (this._expr.computed) {
 		var val = (new Expr(this._expr.property)).getArg(node, identifier, varMap, true, verbose);
+
 		if (this._expr.property.type == "Identifier") {
 			var index_val = varMap.get(val);
 			if (index_val !== undefined) {
@@ -702,7 +710,6 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 		} else if (this._expr.property.type == "Literal") {
 			val = [ {type : "Numeric", value: this._expr.property.value}]
 		}
-
 		return [identifier, val];
 	} else {
 		if (identifier) {
@@ -1005,11 +1012,7 @@ VariableMap.prototype.get = function(key) {
 
 VariableMap.prototype.printMap = function() {
 	this._varMap.forEach(function(value, key){
-		if (value[0].type == "NewExpression") {
-			console.log(key, ":", value[0].value[0]);
-		} else {
-			console.log(key, ":", value);
-		}
+		console.log(key, ":", value);
 	});
 }
 

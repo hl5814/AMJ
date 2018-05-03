@@ -173,6 +173,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									}
 								}
 							});
+							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 						} else if (astNode.hasFunctionExpression(i)) {
 							//FunctionExpression
 							ASTUtils.traverse(ast.body[i], function(node){
@@ -186,10 +187,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									updateResultMap(resultMap, "InitVariable", coefficient);
 								} 
 							});
-						} else if (variableName_Types[v].type == "ObjectExpression") {
-							varMap.setVariable(variableName_Type[0], [variableName_Types[v].value], verbose);
+							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
+						} else {
+							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 						}
-						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					}
 				}
 			}
@@ -321,18 +322,32 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									   args[0].type == "FieldMemberExpression" ) {
 								// pre-processing 
 								if (args[0].type == "ArrayMemberExpression") {
-
-									const object  = args[0].value[0];
-									const indices = args[0].value[1];
-									const r_vs = varMap.get(object);
-
-
+									var object  = args[0].value[0];
+									var indices = args[0].value[1];
+									var r_vs;
+									if (object.length > 1) {
+										var indx = [];
+										while (object instanceof Array) {
+											var obj = varMap.get(object[0]);
+											indx = indx.concat(object[1]);
+											object = object[0];
+										}
+										for (var ii = indx.length-1; ii >=0;ii--){
+											var objIndex = indx[ii].value;
+											obj = obj[0].value[objIndex][1];
+										}
+										r_vs = obj;
+									} else {
+										r_vs = varMap.get(object);
+									}
+									
 									var ref_values = [];
 
 									for (var inx in indices){
 										// skip " when handling object field access aka o["f"] => o.f
 										// indices will be `"f"` instead of [{type:"Numeric", value:2}]
 										if (indices[inx] == "") continue;
+
 										index = indices[inx].value;
 										for (var r in r_vs){
 											var array_values = r_vs[r];
@@ -358,6 +373,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									const r_vs = varMap.get(object);
 
 									var ref_values = [];
+									
 									for (var f in fields) {
 										const field = fields[f];
 										for (var r in r_vs){
