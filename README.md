@@ -308,6 +308,14 @@ y : total weight
 ## (5)Limited for one JS file, (want to check for undefined function calls, however, due to the one file limitation, this is 	pointless, since the checker will treat all library function calls as undefined functions)
 ## (6)prototype.function
 ## (7)parse return statement, e.g. (xxx.replace(xxx))
+## (8)function parameter as Array/Field Object
+	function mixColumn(state, direction) {
+      var b = [];                            // Result of matrix multiplications
+      for (var j = 0; j < Nb; j++) {         // Go through each column...
+        for (var i = 0; i < 4; i++) {        // and for each row in the column...
+          if (direction == "encrypt")
+            b[i] = mult_GF256(state[i][j], 2) 
+     ...
 
 // https://github.com/facebook/flow
 //==> dynamically stage, profiling on the code

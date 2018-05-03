@@ -789,7 +789,7 @@ Expr.prototype.parseWhileStatementExpr=function(node, varMap, blockRanges, verbo
 	if (this._expr.body){
 		var body = new Expr(this._expr.body);
 		var code = ASTUtils.getCode(body._expr);
-		if (code.indexOf("{") != -1) {
+		if (this._expr.body.type == "BlockStatement") {
 			blockRanges.push(code.slice(1,-1));
 		} else {
 			blockRanges.push(code);
@@ -800,11 +800,10 @@ Expr.prototype.parseWhileStatementExpr=function(node, varMap, blockRanges, verbo
 }
 
 Expr.prototype.parseTryStatementExpr=function(node, varMap, blockRanges, verbose=false) {
-
 	if (this._expr.block){
 		var block = new Expr(this._expr.block);
 		var code = ASTUtils.getCode(block._expr);
-		if (code.indexOf("{") != -1) {
+		if (this._expr.block.type == "BlockStatement") {
 			blockRanges.push(code.slice(1,-1));
 		} else {
 			blockRanges.push(code);
@@ -815,7 +814,7 @@ Expr.prototype.parseTryStatementExpr=function(node, varMap, blockRanges, verbose
 		if (this._expr.handler.body) {
 			var block = new Expr(this._expr.handler.body);
 			var code = ASTUtils.getCode(block._expr);
-			if (code.indexOf("{") != -1) {
+			if (this._expr.handler.body.type == "BlockStatement") {
 				blockRanges.push(code.slice(1,-1));
 			} else {
 				blockRanges.push(code);
@@ -823,16 +822,14 @@ Expr.prototype.parseTryStatementExpr=function(node, varMap, blockRanges, verbose
 		}
 	}
 
-	if (this._expr.finalizer){
-		if (this._expr.finalizer) {
-			var block = new Expr(this._expr.finalizer);
-			var code = ASTUtils.getCode(block._expr);
+	if (this._expr.finalizer) {
+		var block = new Expr(this._expr.finalizer);
+		var code = ASTUtils.getCode(block._expr);
 
-			if (code.indexOf("{") != -1) {
-				blockRanges.push(code.slice(1,-1));
-			} else {
-				blockRanges.push(code);
-			}
+		if (this._expr.finalizer.type == "BlockStatement") {
+			blockRanges.push(code.slice(1,-1));
+		} else {
+			blockRanges.push(code);
 		}
 	}
 
@@ -872,7 +869,7 @@ Expr.prototype.parseIfBranches=function(node, varMap, blockRanges, verbose=false
 		return blockRanges.concat.apply([], innerResult);
 	} else {
 		var code = ASTUtils.getCode(this._expr);
-		if (code.indexOf("{") != -1) {
+		if (this._expr.type == "BlockStatement") {
 			blockRanges.push(code.slice(1,-1));
 		} else {
 			blockRanges.push(code);

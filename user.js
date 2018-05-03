@@ -1,28 +1,12 @@
-// var xy = [
-//   ["1", "2"],
-//   ["3", "4"],
-//   ["5", "6"]
-// ];
-// eval(xy[1][0]);
 
-// var xyz = [
-//   [
-//   	["1","2"],
-//   	["3","4"],
-//   ],
-//   [
-//   	["5","6"],
-//   	["7","8"],
-//   ],
-//   [
-//   	["9","10"],
-//   	["11","12"],
-//   ]
-// ];
-// eval(xyz[2][1][0]);
 
-// var xy = [1,2,3];
-// eval(xy[1]);
-var a = {"f":0, "test":1};
-a.f = "str";
-eval(a.f)
+// main scope variable override in both try/catch and finally blocks
+var a = "STR5";
+try{
+    a = "TRY5";
+}catch(e){
+    a = "CATCH5";
+}finally{
+    a = "FINALLY5";
+}
+eval(a);

@@ -315,7 +315,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						// Attacker might add more unuse d parameters to confuse the detector
 						if (args.length >= 1) {
 							if (args[0].type == "String") {
-								if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": " + funcNames[f].type + ":" + funcName + "(STRING) => " + funcNames[f].value + "[" + args[0].value + "]");
+								if (verbose>0) console.log("FEATURE[StringOp] in :" + scope + ": " + funcNames[f].type + ":" + funcName + "(STRING) => " + funcNames[f].value + "(" + args[0].value + ")");
 								updateResultMap(resultMap, "StringOp", coefficient);
 							} else if (args[0].type == "Identifier" ||
 									   args[0].type == "ArrayMemberExpression" || 
@@ -325,20 +325,29 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									var object  = args[0].value[0];
 									var indices = args[0].value[1];
 									var r_vs;
-									if (object.length > 1) {
+									// console.log(object)
+									if (object instanceof Array) {
 										var indx = [];
 										while (object instanceof Array) {
 											var obj = varMap.get(object[0]);
+											if (obj == undefined) {
+												if (verbose>0) console.log("FEATURE[ObjectOp] in :" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
+												updateResultMap(resultMap, "ObjectOp", coefficient);
+											}
 											indx = indx.concat(object[1]);
 											object = object[0];
 										}
 										for (var ii = indx.length-1; ii >=0;ii--){
 											var objIndex = indx[ii].value;
-											obj = obj[0].value[objIndex][1];
+											if (obj !== undefined) obj = obj[0].value[objIndex][1];
 										}
 										r_vs = obj;
 									} else {
 										r_vs = varMap.get(object);
+										if (r_vs === undefined) { 
+											if (verbose>0) console.log("FEATURE[ObjectOp] in :" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
+											updateResultMap(resultMap, "ObjectOp", coefficient);
+										}
 									}
 									
 									var ref_values = [];
@@ -373,7 +382,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									const r_vs = varMap.get(object);
 
 									var ref_values = [];
-									
+
 									for (var f in fields) {
 										const field = fields[f];
 										for (var r in r_vs){
@@ -383,7 +392,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										}
 									}
 								} else {
-									/* args[0].type == "Identifier" */
+									/* args[0].type == "Identifier" 
+									 * we assume the parameter passed in can be type String */
+
 									var ref_values = varMap.get(args[0].value, verbose);
 									if (ref_values === undefined) {
 										ref_values = [ { type: 'String', value: 'UNKNOWN' } ];
@@ -391,8 +402,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								}
 
 								if (ref_values.length == 0)  {
-									if (verbose>0) console.log("FEATURE[ObjectOp] in :" + scope + ": "+ASTUtils.getCode(ast.body[i]));
-									updateResultMap(resultMap, "ObjectOp", coefficient);
+									console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", args[0])
+									// if (verbose>0) console.log("FEATURE[ObjectOp] in :" + scope + ": "+ASTUtils.getCode(ast.body[i]));
+									// updateResultMap(resultMap, "ObjectOp", coefficient);
 									continue;
 								}
 
@@ -407,7 +419,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									}
 								}							
 							} else if (args[0].type == "BinaryExpression" || args[0].type == "UnaryExpression" || args[0].type == "CallExpression") {
-								if (verbose>0) console.log("FEATURE[ExpressionOp] in :" + scope + ": "+funcName+"(" + args[0].type + ") => "+funcName+"[" + args[0].value + "]");
+								if (verbose>0) console.log("FEATURE[ExpressionOp] in :" + scope + ": "+funcName+"(" + args[0].type + ") => "+funcName+"(" + args[0].value + ")");
 								updateResultMap(resultMap, "ExpressionOp", coefficient);
 							} else {
 								// args[0].type == "Numeric"
@@ -542,7 +554,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			const bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
 			var diffMap = new Functions.VariableMap(new HashMap());
 			var eVarMap = new Functions.VariableMap(varMap._varMap);
-
+			
 			const subVarMapList = parseProgram(bodyExprs[0], "while_statements", "while", eVarMap, verbose);
 			subVarMapList.forEach(function(val1) {
 				const prevValues = varMap.get(val1.key);
@@ -699,6 +711,7 @@ if (filePath !== undefined && filePath !== null) {
 
 	// extract all scattered <script>blocks</script>
 	var match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+
 	var scriptCodes = "";
 	if (match !== null) {
 		while (match !== null) {
@@ -706,6 +719,14 @@ if (filePath !== undefined && filePath !== null) {
 			const scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
 
 			// ignore all HTML comments <!-- COMMENTs -->
+			var htmlCommentMatch = sourcefile.match(/<!--[\s\S]*?-->/g);
+			if (htmlCommentMatch !== null) {
+				// console.log(htmlCommentMatch[0].slice(4,-3))
+				var comments = htmlCommentMatch[0].slice(4,-3);
+				// console.log(comments)
+				// parseProgram(comments, "comments", "main", init_varMap, verbose);
+			}
+
 			scriptCodes = scriptCodes + scriptBlock.replace(/<!--[\s\S]*?-->/g, "");
 			sourcefile = sourcefile.substring(matchLength+1, sourcefile.length);
 			match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
@@ -714,7 +735,6 @@ if (filePath !== undefined && filePath !== null) {
 		// file only contains JS codes
 		scriptCodes = sourcefile.replace(/<!--[\s\S]*?-->/g, "");
 	}
-
 	parseProgram(scriptCodes, "User_Program", "main", init_varMap, verbose);
 	if (calcualteWeight && resultMap.size > 0) showResult(resultMap, scriptCodes.length);
 } 
