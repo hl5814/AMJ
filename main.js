@@ -554,7 +554,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			const bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
 			var diffMap = new Functions.VariableMap(new HashMap());
 			var eVarMap = new Functions.VariableMap(varMap._varMap);
-			
+
 			const subVarMapList = parseProgram(bodyExprs[0], "while_statements", "while", eVarMap, verbose);
 			subVarMapList.forEach(function(val1) {
 				const prevValues = varMap.get(val1.key);
@@ -718,22 +718,12 @@ if (filePath !== undefined && filePath !== null) {
 			const matchLength = match[0].length;
 			const scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
 
-			// ignore all HTML comments <!-- COMMENTs -->
-			var htmlCommentMatch = sourcefile.match(/<!--[\s\S]*?-->/g);
-			if (htmlCommentMatch !== null) {
-				// console.log(htmlCommentMatch[0].slice(4,-3))
-				var comments = htmlCommentMatch[0].slice(4,-3);
-				// console.log(comments)
-				// parseProgram(comments, "comments", "main", init_varMap, verbose);
-			}
-
-			scriptCodes = scriptCodes + scriptBlock.replace(/<!--[\s\S]*?-->/g, "");
+			scriptCodes = scriptCodes + scriptBlock;
 			sourcefile = sourcefile.substring(matchLength+1, sourcefile.length);
 			match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
 		}
 	} else {
-		// file only contains JS codes
-		scriptCodes = sourcefile.replace(/<!--[\s\S]*?-->/g, "");
+		scriptCodes = sourcefile;
 	}
 	parseProgram(scriptCodes, "User_Program", "main", init_varMap, verbose);
 	if (calcualteWeight && resultMap.size > 0) showResult(resultMap, scriptCodes.length);
