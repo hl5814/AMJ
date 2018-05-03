@@ -63,12 +63,12 @@ use a list to store all possible values, value based on the variable types
 {key: variable_name, value: [["field1", [values]],["field2",[values]]]}
 #### object reference
 will check the current varMap, and assign the corresponding value for the reference object as its value.
-e.g. {key : a, value : "a"}
-	
+e.g. 
+==>varMap:
+>{key : a, value : "a"}
 	var b = a;
-	
-==> {key : a, value : "a"}, {key : b, value : "a"}
-
+==>varMap:
+>{key : a, value : "a"}, {key : b, value : "a"}
 ================================================================
 
 ## Updates for variables with multiple possibe values
