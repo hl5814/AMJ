@@ -106,38 +106,35 @@ const scopes = [	"test",
 					"function",
 					"try",
 					"switch",
-					"return"];
+					"return",
+					"file"];
 
 for (var f of features) {
-	// var scopeMap = new HashMap();
-	// for (var s of scopes) {
-	// 	scopeMap.set(s, 0);
-	// }
 	resultMap.set(f, 0);
 }
+// for (var f of features) {
+// 	for (var s of scopes) {
+// 		resultMap.set(f+s, 0);
+// 	}
+// 	// resultMap.set(s, 0);
+// }
+
+
 
 function updateResultMap(resultMap, featureType, scope) {
 	var prevValue = resultMap.get(featureType);
-	// console.log(scope)
 	resultMap.set(featureType, prevValue+1);
+	// var prevValue = resultMap.get(featureType+scope);
+	// if (prevValue === undefined) console.log("--", featureType+scope)
+	// resultMap.set(featureType+scope, prevValue+1);
 }
 
 function showResult(resultMap, codeLength) {
-	var totalOccurances = 0;
-	var totalWeight     = 0;
-	//console.log("Features,Occurances,TotalWeight");
 	var resultArray = [];
 	resultMap.forEach(function(value, key){
 		resultArray.push(value)
-		// totalOccurances += value[0];
-		// totalWeight     += value[1];
 	});
 	console.log(`"`+filePath+`":`+resultArray)
-	// console.log("Total,"+totalOccurances);
-	// console.log("Weight,"+totalWeight);
-	// console.log("Length,"+codeLength);
-	// console.log("Tokens,"+programTokens);
-	// console.log("POINT:",totalOccurances+","+totalWeight)
 }
 
 var programTokens = 0;
