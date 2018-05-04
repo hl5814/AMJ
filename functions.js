@@ -110,6 +110,22 @@ AST.prototype.getFunctionName= function(index) {
 	}
 };
 
+AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
+	var longString = "";
+	var parentNode = this._node;
+	ASTUtils.traverse(this._node.body[index], function(node){
+		if (node.type == "BinaryExpression" && node.operator == "+" && longString == ""){
+			var lhs = new Expr(node.left);
+			var token = lhs.getToken(parentNode);
+			if (token.type == "String") {
+				longString = ASTUtils.getCode(node);
+			}
+			
+		}
+	});
+	return longString;
+}
+
 AST.prototype.getAllDeclarationBlocks=function(index, verbose=false) {
 	return this._node.body[index].declarations;
 }
@@ -749,7 +765,7 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 	if (this._expr.body){
 		var body = new Expr(this._expr.body);
 		var code = ASTUtils.getCode(body._expr);
-		if (code.indexOf("{") != -1) {
+		if (this._expr.body.type == "BlockStatement") {
 			blockRanges.push(code.slice(1,-1));
 		} else {
 			blockRanges.push(code);

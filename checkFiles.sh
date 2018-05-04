@@ -35,10 +35,10 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 
 # check if the given source path is directory/file
 if [ -d $SOURCE ]; then
-    echo "$SOURCE is a directory"
+    # echo "$SOURCE is a directory"
     for filename in $SOURCE/*; do
-    	echo $filename
-        node main.js -s $filename ${VERBOSE}  -w   | grep -E "FEATURE|POINT|Length|Weight|Total|Tokens|--"
+    	# echo $filename
+        node main.js -s $filename ${VERBOSE}  -w  2>/dev/null | grep -E "FEATURE|POINT|Length|Weight|Total|Tokens|IndividualProject"
     done
 elif [ -f $SOURCE ]; then
     node main.js -s $SOURCE -w ${VERBOSE}

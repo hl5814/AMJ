@@ -68,7 +68,7 @@ for name, penalty in (('unreg', 1), ('reg', 0.05)):
     plt.yticks(())
     fignum = fignum + 1
 
-# plt.show()
+plt.show()
 
 
 result = clf.predict([[0., 0.5]])
