@@ -92,8 +92,10 @@ for i in range(len(linkage)-clusternum+1):
 # create result directories for different clusters
 RESULT_DIR = os.path.join(file_path, "cluster_result")
 
-shutil.rmtree(RESULT_DIR)
 if not os.path.exists(RESULT_DIR):
+    os.makedirs(RESULT_DIR)
+else:
+    shutil.rmtree(RESULT_DIR)
     os.makedirs(RESULT_DIR)
 
 for key, value in clustdict.items():
