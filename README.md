@@ -1,6 +1,6 @@
-JSDetector
+MJSA
 ================================================================
-Malicious JavaScript Pattern Detector and Analyzer.
+Malicious JavaScript Code Analyser. Parse the given JavaScript Codes and extract features, and then cluster the given samples into different groups.
 
 ## Usage
 #### main program:
@@ -25,7 +25,6 @@ EXAMPLE:
 ```
 #### clustering
 ```
-
 usage: cluster.py [-h] [-d] level
 	python3 Clustering/cluster.py 5
 ```
