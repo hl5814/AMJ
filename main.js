@@ -112,18 +112,18 @@ const scopes = [	"test",
 for (var f of features) {
 	resultMap.set(f, 0);
 }
-// for (var f of features) {
-// 	for (var s of scopes) {
-// 		resultMap.set(f+s, 0);
-// 	}
-// 	// resultMap.set(s, 0);
-// }
+for (var s of scopes) {
+	resultMap.set(s, 0);
+}
 
 
 
 function updateResultMap(resultMap, featureType, scope) {
 	var prevValue = resultMap.get(featureType);
 	resultMap.set(featureType, prevValue+1);
+
+	prevValue = resultMap.get(scope);
+	resultMap.set(scope, prevValue+1);
 	// var prevValue = resultMap.get(featureType+scope);
 	// if (prevValue === undefined) console.log("--", featureType+scope)
 	// resultMap.set(featureType+scope, prevValue+1);
@@ -137,13 +137,47 @@ function showResult(resultMap, codeLength) {
 	console.log(`"`+filePath+`":`+resultArray)
 }
 
-var programTokens = 0;
+// static analysis fields
+var numberOfTokens = 0;
+
+const KEYWORDS = [	"break", "case", "catch", "continue", "debugger", "default", 
+					"delete", "do", "else", "finally", "for", "function", "if", 
+					"in", "instanceof", "new", "return", "switch", "this", "throw",
+					"try", "typeof", "var", "void", "while", "with"];
+const PUNCTUATORS = [	"!","!=",	"!==","%","%=","&","&&","&=","(",")","*","*=","+",
+						"++","+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=",
+						"<=","=","==","===",">",">=",">>",">>=",">>>",">>>","?","[","]",
+						"^","^=","{","|","|=","||","}","~"];
+
+for (var k of KEYWORDS) {
+	resultMap.set(k, 0);
+}
+for (var p of PUNCTUATORS) {
+	resultMap.set(p, 0);
+}
+
+
 function parseProgram(program, scope, coefficient, varMap, verbose){
 	// TODO: check program === null, program == undefined
 	if (program === null || program === undefined || program.replace(/\s+/g, "") == "") return varMap.toList();
 	var ast = ASTUtils.parse(program);
 
-	if (scope == "User_Program") programTokens = ast.tokens.length;
+	// parse main program tokens
+	if (scope == "User_Program") {
+		numberOfTokens = ast.tokens.length;
+		for (const pt of ast.tokens) {
+			if (pt.type == "Keyword") {
+				var prevValue = resultMap.get(pt.value);
+				if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
+				resultMap.set(pt.value, prevValue+1);
+			} else if (pt.type == "Punctuator") {
+				var prevValue = resultMap.get(pt.value);
+				if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
+				resultMap.set(pt.value, prevValue+1);
+			}
+		}
+	}
+
 	// iterate through each AST node
 	for (var i in ast.body){
 		var astNode = new Functions.AST(ast);
@@ -771,7 +805,6 @@ if (filePath !== undefined && filePath !== null) {
 		scriptCodes = sourcefile;
 	}
 	parseProgram(scriptCodes, "User_Program", "main", init_varMap, verbose);
+	// if (calcualteWeight && resultMap.size > 0) showResult(resultMap, scriptCodes.length);
 	if (calcualteWeight && resultMap.size > 0) showResult(resultMap, scriptCodes.length);
 } 
-
-

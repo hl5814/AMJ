@@ -276,18 +276,14 @@ Switch cases statements might share code body between cases (no break instructio
 
 
 # TODO & ISSUES:
-## (1) SVM -- Build basic machine learning model using current features 
-### Machine Learning Matrices 1: [#features-captured, weights]
-when parsing the JS code, detect features, and given each feature a
-corresponding weight points (multiplied by a scope coefficient), e.g.
-feature in for loop should be more malicious (i.e. has higher weight)
-### Machine Learning Matrices 2: [#JS-keywords, length-of-input-codes]
-count number of javascript keywords in a given piece of code
-very few keywords but long code ==>? malicious.
-* CASE 1:
-    * [hidden codes in html comments `<!-- malicious JS codes -->`, and then use some other simple codes to remove the comments and execute]
-* CASE 2:
-    * long string manipulation
+## (1)Clustering
+	DataArray:
+	Fi: #Feature i
+	Sj: #Scope j
+	[F1, F2, ..., Fi]
+	[S1, S2, ..., Sj]
+	[F1, F2, ..., Fi, S1, S2, ..., Sj]
+	[F1-S1, F1-S2, ..., F1-Sj, ..., Fi_Sj]
 
 ## (2)issues with error html links, e.g. "var x = http:...." 
 	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//9117d956a6d8559154c86a081ebfc489 user.js 

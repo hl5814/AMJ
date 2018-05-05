@@ -1,8 +1,21 @@
 from matplotlib import pyplot as plt
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 import numpy as np
-import csv
+import csv, os, shutil
 from io import StringIO
+from shutil import copyfile
+import argparse
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(description="Cluster Malicious JS files based on features")
+parser.add_argument("-d", "--dendrogram", action="store_true", help="draw dendrogram")
+parser.add_argument("level", type=int, help="number of clusters")
+
+args = parser.parse_args()
+LEVEL = args.level
+
+print("Clustering to " + str(LEVEL) + " clusters . . .\n")
+
 
 def fancy_dendrogram(*args, **kwargs):
     max_d = kwargs.pop('max_d', None)
@@ -28,9 +41,13 @@ def fancy_dendrogram(*args, **kwargs):
             plt.axhline(y=max_d, c='k')
     return ddata
 
-with open("/Users/hongtao/Desktop/JSDetector/Clustering/FeaturesArray.csv", 'r+') as csvfile:
-# with open("/Users/hongtao/Desktop/JSDetector/Clustering/ScopeArray.csv", 'r+') as csvfile:
-# with open("/Users/hongtao/Desktop/JSDetector/Clustering/FeatureScopeArray.csv", 'r+') as csvfile:
+
+DATA_FILES = ["FeaturesArray.csv" , "ScopeArray.csv", "FeatureScopeArray.csv", "Feature_Scope_Keyword_Punctuator.csv"]
+DATA_FILE_INDEX = 1;    #Feature_Scope_Keyword_Punctuator.csv
+
+file_path = os.path.abspath(os.path.dirname(__file__))
+dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
+with open(dataCSV, 'r+') as csvfile:
     spamreader = csv.reader(csvfile, delimiter=':', quotechar='|')
     fileData = ""
     fileIndex = []
@@ -40,24 +57,10 @@ with open("/Users/hongtao/Desktop/JSDetector/Clustering/FeaturesArray.csv", 'r+'
         
 
 dataArray = np.loadtxt(StringIO(fileData), delimiter=',')
-    
 X = np.array(dataArray)
 
-# generate the linkage matrix
-# Z = linkage(X, 'ward')
-Z = linkage(X, 'complete')
-
-# calculate full dendrogram
-plt.figure(figsize=(25, 10))
-plt.title('Hierarchical Clustering Dendrogram')
-plt.xlabel('sample index')
-plt.ylabel('distance')
-dendrogram(
-    Z,
-    leaf_rotation=90.,  # rotates the x axis labels
-    leaf_font_size=8.,  # font size for the x axis labels
-)
-plt.show()
+# generate the linkage matrix ['complete', 'single', etc.]
+Z = linkage(X, 'ward')
 
 
 # # set cut-off to 50
@@ -77,7 +80,7 @@ plt.show()
 
 # Print out file index within each cluster
 linkage = Z
-clusternum = 10
+clusternum = LEVEL
 clustdict = {i:[i] for i in range(len(linkage)+1)}
 for i in range(len(linkage)-clusternum+1):
     clust1= int(linkage[i][0])
@@ -85,10 +88,40 @@ for i in range(len(linkage)-clusternum+1):
     clustdict[max(clustdict)+1] = clustdict[clust1] + clustdict[clust2]
     del clustdict[clust1], clustdict[clust2]
 
-for key, value in clustdict.items():
-    print(key)
-    print(value)
-    # for v in value:
-        # print(fileIndex[v])
 
-print(fileIndex[99])
+# create result directories for different clusters
+RESULT_DIR = os.path.join(file_path, "cluster_result")
+
+shutil.rmtree(RESULT_DIR)
+if not os.path.exists(RESULT_DIR):
+    os.makedirs(RESULT_DIR)
+
+for key, value in clustdict.items():
+    CLUSTER_DIR = os.path.join(file_path, "cluster_result", str(key))
+    if not os.path.exists(CLUSTER_DIR):
+        os.makedirs(CLUSTER_DIR)
+    for v in value:
+        FILE_PATH = os.path.join(CLUSTER_DIR, str(v)+".js")
+        copyfile(fileIndex[v][1:-1], FILE_PATH)
+    print(key, "\n", value, "\n")
+
+
+# calculate full dendrogram
+plt.figure(figsize=(25, 10))
+plt.title('Hierarchical Clustering Dendrogram')
+plt.xlabel('sample index')
+plt.ylabel('distance')
+dendrogram(
+    Z,
+    leaf_rotation=90.,  # rotates the x axis labels
+    leaf_font_size=8.,  # font size for the x axis labels
+)
+
+if (args.dendrogram):
+        plt.show();
+
+
+
+
+
+
