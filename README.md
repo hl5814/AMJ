@@ -7,11 +7,6 @@ Malicious JavaScript Pattern Detector and Analyzer.
 ```
 node main.js [-v|verbose flag]? [-w|show weighted points for SVM]? [-s source|source file path]?
 ````
-#### script for batch input files:
-```
-./checkFiles.sh [-s|--source] [filePath/directoryPath] [-v|--verbose]?
-```
-
 #### unit Test
 ```
 mocha test
@@ -20,7 +15,20 @@ mocha test
 ```
 ./testAll.sh
 ```
+#### script for batch input files:
+```
+./checkFiles.sh [-s|--source] [filePath/directoryPath] [-v|--verbose]?
+```
+EXAMPLE:
+```
+./checkFiles.sh -s /Users/hongtao/Desktop/IndividualProject/jsob/samples/badstuff/malwareforum/  > Clustering/Feature_Scope_Keyword_Punctuator.csv
+```
+#### clustering
+```
 
+usage: cluster.py [-h] [-d] level
+	python3 Clustering/cluster.py 5
+```
 Current Patterns:
 ================================================================
 * Direct Function Calls:
@@ -287,10 +295,7 @@ Switch cases statements might share code body between cases (no break instructio
 
 ## (2)issues with error html links, e.g. "var x = http:...." 
 	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//9117d956a6d8559154c86a081ebfc489 user.js 
-## (3)parse function parameters? 
-	1. Double parse (i.e. parse program once and get all global variables, then parse second time for all function bodies)
-	2. -> Assume all functon parameters might be STRING type and parse once.
-## (4)function parameter as Array/Field Object
+## (3)function parameter as Array/Field Object
 	function mixColumn(state, direction) {
       var b = [];                            // Result of matrix multiplications
       for (var j = 0; j < Nb; j++) {         // Go through each column...
@@ -298,17 +303,17 @@ Switch cases statements might share code body between cases (no break instructio
           if (direction == "encrypt")
             b[i] = mult_GF256(state[i][j], 2) 
      ...
-## (5)Limited for one JS file, (want to check for undefined function calls, however, due to the one file limitation, this is 	pointless, since the checker will treat all library function calls as undefined functions)
-## (6)Other types of Script languages (e.g. VBScript) 
+## (4)Limited for one JS file, (want to check for undefined function calls, however, due to the one file limitation, this is 	pointless, since the checker will treat all library function calls as undefined functions)
+## (5)Other types of Script languages (e.g. VBScript) 
 	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//c6ac9d09a655f11a8643ddb869288649 user.js 
-## (7)Implement nested Array/Field Objects
+## (6)Implement nested Array/Field Objects
 	var a = new Array([{a:"a",b:"b"},"2"]);
 	eval(a[0].b)
 
 # PLAN
 ```
-Week 2 	(7	8	9	10	11) <- finish static part
-Week 3 	(14	15	16	17	18) <- finish SVM
+Week 2 	(7	8	9	10	11) <- finish static part & darft version of clustering
+Week 3 	(14	15	16	17	18) 
 Week 4 	(21	22	23	24	25) <- evaluation & start writing report
 Week 5	(28	29	30	31	1 )
 Week 6 	(4	5	6	7	8 ) <- finish Draft Report & extensions
