@@ -1,4 +1,4 @@
-MJSA
+MJSA [Malicious JavaScript Code Analyser]
 ================================================================
 Malicious JavaScript Code Analyser. Parse the given JavaScript Codes and extract features, and then cluster the given samples into different groups.
 
