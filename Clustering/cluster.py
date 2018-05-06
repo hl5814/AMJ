@@ -11,12 +11,11 @@ import argparse
 parser = argparse.ArgumentParser(description="Cluster Malicious JS files based on features")
 parser.add_argument("-d", "--dendrogram", action="store_true", help="draw dendrogram")
 parser.add_argument("level", type=int, help="number of clusters")
+parser.add_argument('--verbose', '-v', action='count', default=-1,help="-v print file index for each cluster,-vv print top 3 features of each cluster")
 
 args = parser.parse_args()
 LEVEL = args.level
-
-print("Clustering to " + str(LEVEL) + " clusters . . .\n")
-
+VERBOSE = args.verbose
 
 def fancy_dendrogram(*args, **kwargs):
     max_d = kwargs.pop('max_d', None)
@@ -44,10 +43,13 @@ def fancy_dendrogram(*args, **kwargs):
 
 
 DATA_FILES = ["test.csv", "FeaturesArray.csv" , "ScopeArray.csv", "FeatureScopeArray.csv", "Feature_Scope_Keyword_Punctuator.csv"]
-DATA_FILE_INDEX = 0;    #Feature_Scope_Keyword_Punctuator.csv
+DATA_FILE_INDEX = 0;
 
 file_path = os.path.abspath(os.path.dirname(__file__))
 dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
+
+if (VERBOSE >= 0) : print("Reading data from: " + str(dataCSV))
+if (VERBOSE >= 0) : print("Clustering into " + str(LEVEL) + " clusters . . .\n")
 
 
 df = pd.read_csv(dataCSV)
@@ -97,6 +99,7 @@ else:
     shutil.rmtree(RESULT_DIR)
     os.makedirs(RESULT_DIR)
 
+CLUSTER_FEATURE = {}
 for key, value in clustdict.items():
     CLUSTER_DIR = os.path.join(file_path, "cluster_result", str(key))
     if not os.path.exists(CLUSTER_DIR):
@@ -112,9 +115,10 @@ for key, value in clustdict.items():
         c_df.loc[v] = X[v]
         index += 1
 
-
     # Cluster Report DataFrames Processing
-    feature_df = c_df[["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","htmlCommentInScriptBlock"]]
+    file_df = c_df[["TokenPerFile"]]
+
+    feature_df = c_df[["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock"]]
     feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
     feature_df = feature_df.reindex(feature_df.sum().sort_values(ascending=False).index, axis=1)
 
@@ -122,34 +126,51 @@ for key, value in clustdict.items():
     scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
     scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
 
-    keywords_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "void", "while", "with"]]
-    keywords_df = keywords_df.loc[:, (keywords_df != 0).any(axis=0)]
-    keywords_df = keywords_df.reindex(keywords_df.sum().sort_values(ascending=False).index, axis=1)
+    keyword_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "void", "while", "with", "document"]]
+    keyword_df = keyword_df.loc[:, (keyword_df != 0).any(axis=0)]
+    keyword_df = keyword_df.reindex(keyword_df.sum().sort_values(ascending=False).index, axis=1)
+
+    punctuator_df = c_df[["!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+","++",
+                        "+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=","<=",
+                        "=","==","===",">",">=",">>",">>=",">>>","?","[","]","^",
+                        "^=","{","|","|=","||","}","~"]]
+    punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
+    punctuator_df = punctuator_df.reindex(punctuator_df.sum().sort_values(ascending=False).index, axis=1)
 
 
     f = open(CLUSTER_REPORT, 'a')
-    f.write('\n# Features\n\n')
+    file_df.to_csv(f, encoding='utf-8', index=True)
+
+    f.write('\n# Features:\n\n')
     f.write('FileIndex')
     feature_df.to_csv(f, encoding='utf-8', index=True)
     f.write('\nTop 3: ' + str(feature_df.columns.values[:3]))
     f.write('\n--------------------------------------------------\n')
+    CLUSTER_FEATURE[str(key)] = str(feature_df.columns.values[:3])
 
-    f.write('\n# Scopes\n\n')
+    f.write('\n# Scopes:\n\n')
     f.write('FileIndex')
     scope_df.to_csv(f, encoding='utf-8', index=True)
     f.write('\nTop 3: ' + str(scope_df.columns.values[:3]))
     f.write('\n--------------------------------------------------\n')
 
-    f.write('\n# Keywords\n\n')
+    f.write('\n# Keywords:\n\n')
     f.write('FileIndex')
-    keywords_df.to_csv(f, encoding='utf-8', index=True)
-    f.write('\nTop 3: ' + str(keywords_df.columns.values[:3]))
+    keyword_df.to_csv(f, encoding='utf-8', index=True)
+    f.write('\nTop 3: ' + str(keyword_df.columns.values[:3]))
     f.write('\n--------------------------------------------------\n')
+
+    f.write('\n# Punctuators:\n\n')
+    f.write('FileIndex')
+    punctuator_df.to_csv(f, encoding='utf-8', index=True)
+    f.write('\nTop 3: ' + str(punctuator_df.columns.values[:3]))
+    f.write('\n--------------------------------------------------\n')
+
     f.close()
-    # f = open(CLUSTER_REPORT,'w')
-    # f.write(REPORT_STR)
-    # f.close()
-    print(key, "\n", value, "\n")
+
+    if (VERBOSE >= 1): print(CLUSTER_FEATURE[str(key)])
+    if (VERBOSE >= 0): print(key, value, "\n")
+    
 
 
 # calculate full dendrogram
@@ -163,8 +184,10 @@ dendrogram(
     leaf_font_size=8.,  # font size for the x axis labels
 )
 
-# if (args.dendrogram):
-#         plt.show();
+# for key, value in CLUSTER_FEATURE.items():
+#     print(key + "" + value)
+if (args.dendrogram):
+        plt.show();
 
 
 

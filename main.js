@@ -23,14 +23,16 @@ const filePath = options.src;
 //===============================MainProgram=================================
 var init_varMap = new Functions.VariableMap(new HashMap());
 
-var funcNames = ["eval", "unescape", "replace", "write", "document.write", "atob", "btoa",
-				 "setTimeout", "setInterval", "toString", "String.fromCharCode", "fromCharCode",
-				 "parseInt", "alert", "Array","charCodeAt" , "substr"];
+var funcNames = ["eval", "unescape", "replace", "write", "document.write", "document.writeln", "document.createElement",
+				 "atob", "btoa", "setTimeout", "setInterval", "toString", "String.fromCharCode", "fromCharCode",
+				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring"];
 for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
 init_varMap.setVariable("String", [{ type: 'ObjectExpression', value: {"fromCharCode": [{type: 'pre_Function', value: "fromCharCode"}]} }] );
-init_varMap.setVariable("document", [{ type: 'ObjectExpression', value: {"write": [{type: 'pre_Function', value: "write"}]} }] );
+init_varMap.setVariable("document", [{ type: 'ObjectExpression', value: {"createElement": [{type: 'pre_Function', value: "createElement"}],
+																		 "write": [{type: 'pre_Function', value: "write"}],
+																		 "writeln": [{type: 'pre_Function', value: "writeln"}]} }] );
 
 
 
@@ -86,7 +88,7 @@ Set.prototype.my_add=function(values){
 
 var resultMap = new HashMap();
 
-const features = [	"InitVariable",
+const FEATURES = [	"InitVariable",
 					"AssignWithFuncCall",
 					"AssignWithBitOperation",
 					"PreFunctionObfuscation",
@@ -97,9 +99,9 @@ const features = [	"InitVariable",
 					"FuncCallOnStringVariable",
 					"FuncCallOnCallExpr",
 					"NonLocalArrayAccess",
-					"htmlCommentInScriptBlock"]
+					"HtmlCommentInScriptBlock"]
 
-const scopes = [	"in_test",
+const SCOPES = [	"in_test",
 					"in_main",
 					"in_if",
 					"in_loop",
@@ -112,41 +114,64 @@ const scopes = [	"in_test",
 const KEYWORDS = [	"break", "case", "catch", "continue", "debugger", "default", 
 					"delete", "do", "else", "finally", "for", "function", "if", 
 					"in", "instanceof", "new", "return", "switch", "this", "throw",
-					"try", "typeof", "var", "void", "while", "with"];
+					"try", "typeof", "var", "void", "while", "with","document"];
 
 const PUNCTUATORS = [	"!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+",
 						"++","+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=",
-						"<=","=","==","===",">",">=",">>",">>=",">>>",">>>","?","[","]",
+						"<=","=","==","===",">",">=",">>",">>=",">>>","?","[","]",
 						"^","^=","{","|","|=","||","}","~"];
 
-for (var k of KEYWORDS) {
+const LENGTH = ["TokenPerFile"]
+
+for (const k of KEYWORDS) {
 	resultMap.set(k, 0);
 }
-for (var p of PUNCTUATORS) {
+for (const p of PUNCTUATORS) {
 	resultMap.set(p, 0);
 }
 
-for (var f of features) {
+for (const f of FEATURES) {
 	resultMap.set(f, 0);
 }
-for (var s of scopes) {
+for (const s of SCOPES) {
 	resultMap.set(s, 0);
 }
 
+resultMap.set("TokenPerFile", 0);
 
+var FILE_LENGTH = 0;
+var FEATURE_SCOPE_TOTAL = 0;
+var KEYWORD_TOTAL = 0;
+var PUNCTUATOR_TOTAL = 0;
 
-function updateResultMap(resultMap, featureType, scope) {
+function updateResultMap(resultMap, featureType, scope, point=1) {
 	var prevValue = resultMap.get(featureType);
-	resultMap.set(featureType, prevValue+1);
+	resultMap.set(featureType, prevValue+point);
 
 	prevValue = resultMap.get(scope);
-	resultMap.set(scope, prevValue+1);
+	resultMap.set(scope, prevValue+point);
+	FEATURE_SCOPE_TOTAL++;
 }
 
 function showResult(resultMap, codeLength) {
 	var resultArray = [];
 	resultMap.forEach(function(value, key){
-		resultArray.push(value);
+		if (KEYWORDS.indexOf(key) > -1) {
+			// console.log("KEYWORDS:", key," value: ",value/KEYWORD_TOTAL);
+			var val = (value > 0) ? value/KEYWORD_TOTAL : 0;
+		} else if (PUNCTUATORS.indexOf(key) > -1) {
+			// console.log("PUNCTUATORS:", key," value: ",value/PUNCTUATOR_TOTAL);
+			var val = (value > 0) ? value/PUNCTUATOR_TOTAL : 0;
+		} else if (FEATURES.indexOf(key) > -1) {
+			// console.log("FEATURES:", key," value: ",value/FEATURE_SCOPE_TOTAL);
+			var val = (value > 0) ? value/FEATURE_SCOPE_TOTAL : 0;
+		} else if (SCOPES.indexOf(key) > -1) {
+			// console.log("SCOPES:", key," value: ",value/FEATURE_SCOPE_TOTAL);
+			var val = (value > 0) ? value/FEATURE_SCOPE_TOTAL : 0;
+		} else {
+			var val = value;
+		}
+		resultArray.push(val);
 	});
 	console.log(`"`+filePath+`",`+resultArray)
 }
@@ -159,8 +184,6 @@ function printHeader(resultMap) {
 	console.log("header,"+header);
 }
 
-// static analysis fields
-var numberOfTokens = 0;
 
 function parseProgram(program, scope, coefficient, varMap, verbose){
 	// TODO: check program === null, program == undefined
@@ -169,17 +192,27 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 	// parse main program tokens
 	if (scope == "User_Program") {
-		numberOfTokens = ast.tokens.length;
+		resultMap.set("TokenPerFile", ast.tokens.length/FILE_LENGTH);
 		for (const pt of ast.tokens) {
 			if (pt.type == "Keyword") {
 				var prevValue = resultMap.get(pt.value);
 				if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
 				resultMap.set(pt.value, prevValue+1);
+				KEYWORD_TOTAL++;
 			} else if (pt.type == "Punctuator") {
 				var prevValue = resultMap.get(pt.value);
 				if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
 				resultMap.set(pt.value, prevValue+1);
+				PUNCTUATOR_TOTAL++;
+			} else if (pt.type == "Identifier") {
+				if (pt.value == "document") {
+					var prevValue = resultMap.get(pt.value);
+					if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
+					resultMap.set(pt.value, prevValue+1);
+					KEYWORD_TOTAL++;
+				}
 			}
+			
 		}
 	}
 
@@ -787,7 +820,7 @@ if (showHeader) {
 	printHeader(resultMap)
 } else if (filePath !== undefined && filePath !== null) {
 	var sourcefile = fs.readFileSync(filePath, "utf8");
-
+	FILE_LENGTH = sourcefile.length;
 	// extract all scattered <script>blocks</script>
 	var match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
 
@@ -799,8 +832,8 @@ if (showHeader) {
 
 			var htmlCommentInScriptBlock = scriptBlock.match(/<!--[\s\S]*?-->/g, "");
 			if (htmlCommentInScriptBlock !== null) {
-				if (verbose>0) console.log("FEATURE[htmlCommentInScriptBlock]");
-				updateResultMap(resultMap, "htmlCommentInScriptBlock", "in_file");
+				if (verbose>0) console.log("FEATURE[HtmlCommentInScriptBlock]");
+				updateResultMap(resultMap, "HtmlCommentInScriptBlock", "in_file", 50);
 			}
 
 			scriptCodes = scriptCodes + scriptBlock;
