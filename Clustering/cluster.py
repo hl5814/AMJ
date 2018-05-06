@@ -42,7 +42,7 @@ def fancy_dendrogram(*args, **kwargs):
     return ddata
 
 
-DATA_FILES = ["test.csv", "FeaturesArray.csv" , "ScopeArray.csv", "FeatureScopeArray.csv", "Feature_Scope_Keyword_Punctuator.csv"]
+DATA_FILES = ["FeatureData.csv"]
 DATA_FILE_INDEX = 0;
 
 file_path = os.path.abspath(os.path.dirname(__file__))
