@@ -64,19 +64,19 @@ HEADER = df.columns.values
 Z = linkage(X, 'ward')
 
 
-# # set cut-off to 50
-# max_d = 50  # max_d as in max_distance
-# fancy_dendrogram(
-#     Z,
-#     truncate_mode='lastp',
-#     p=12,
-#     leaf_rotation=90.,
-#     leaf_font_size=12.,
-#     show_contracted=True,
-#     annotate_above=10,
-#     max_d=max_d,  # plot a horizontal cut-off line
-# )
-# plt.show()
+# set cut-off to 50
+max_d = 5  # max_d as in max_distance
+fancy_dendrogram(
+    Z,
+    truncate_mode='lastp',
+    p=12,
+    leaf_rotation=90.,
+    leaf_font_size=12.,
+    show_contracted=True,
+    annotate_above=10,
+    max_d=max_d,  # plot a horizontal cut-off line
+)
+plt.show()
 
 
 # Print out file index within each cluster
