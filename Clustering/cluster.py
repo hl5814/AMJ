@@ -17,6 +17,26 @@ args = parser.parse_args()
 LEVEL = args.level
 VERBOSE = args.verbose
 
+# read input data csv file
+DATA_FILES = ["FeatureData.csv"]
+DATA_FILE_INDEX = 0;
+
+file_path = os.path.abspath(os.path.dirname(__file__))
+dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
+
+if (VERBOSE >= 0) : print("Reading data from: " + str(dataCSV))
+if (VERBOSE >= 0) : print("Clustering into " + str(LEVEL) + " clusters . . .\n")
+
+df = pd.read_csv(dataCSV)
+fileIndex = df.ix[:,0] # get first column as File Indices
+df=df.drop(['header'], axis=1) # drop first column and use the rest as weightArray
+X =df.as_matrix()
+HEADER = df.columns.values
+
+# # generate the linkage matrix ['complete', 'single', etc.]
+Z = linkage(X, 'ward')
+
+
 def fancy_dendrogram(*args, **kwargs):
     max_d = kwargs.pop('max_d', None)
     if max_d and 'color_threshold' not in kwargs:
@@ -41,42 +61,18 @@ def fancy_dendrogram(*args, **kwargs):
             plt.axhline(y=max_d, c='k')
     return ddata
 
-
-DATA_FILES = ["FeatureData.csv"]
-DATA_FILE_INDEX = 0;
-
-file_path = os.path.abspath(os.path.dirname(__file__))
-dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
-
-if (VERBOSE >= 0) : print("Reading data from: " + str(dataCSV))
-if (VERBOSE >= 0) : print("Clustering into " + str(LEVEL) + " clusters . . .\n")
-
-
-df = pd.read_csv(dataCSV)
-# get first column as File Indices
-fileIndex = df.ix[:,0]
-# drop first column and use the rest as weightArray
-df=df.drop(['header'], axis=1)
-X =df.as_matrix()
-HEADER = df.columns.values
-
-# # generate the linkage matrix ['complete', 'single', etc.]
-Z = linkage(X, 'ward')
-
-
-# set cut-off to 50
-max_d = 5  # max_d as in max_distance
-fancy_dendrogram(
-    Z,
-    truncate_mode='lastp',
-    p=12,
-    leaf_rotation=90.,
-    leaf_font_size=12.,
-    show_contracted=True,
-    annotate_above=10,
-    max_d=max_d,  # plot a horizontal cut-off line
-)
-plt.show()
+# max_d = 5  # max_d as in max_distance
+# fancy_dendrogram(
+#     Z,
+#     truncate_mode='lastp',
+#     p=12,
+#     leaf_rotation=90.,
+#     leaf_font_size=12.,
+#     show_contracted=True,
+#     annotate_above=10,
+#     max_d=max_d,  # plot a horizontal cut-off line
+# )
+# plt.show()
 
 
 # Print out file index within each cluster
@@ -91,7 +87,7 @@ for i in range(len(linkage)-clusternum+1):
 
 
 # create result directories for different clusters
-RESULT_DIR = os.path.join(file_path, "cluster_result")
+RESULT_DIR = os.path.join(file_path, "clusters")
 
 if not os.path.exists(RESULT_DIR):
     os.makedirs(RESULT_DIR)
@@ -100,8 +96,12 @@ else:
     os.makedirs(RESULT_DIR)
 
 CLUSTER_FEATURE = {}
+df['cluster'] = -1
+
+cluster_size = []
 for key, value in clustdict.items():
-    CLUSTER_DIR = os.path.join(file_path, "cluster_result", str(key))
+    cluster_size.append(len(value))
+    CLUSTER_DIR = os.path.join(RESULT_DIR, str(key))
     if not os.path.exists(CLUSTER_DIR):
         os.makedirs(CLUSTER_DIR)
 
@@ -114,6 +114,7 @@ for key, value in clustdict.items():
         copyfile(fileIndex[v], FILE_PATH)
         c_df.loc[v] = X[v]
         index += 1
+        df.at[v, 'cluster'] = str(key) # update cluster number for the input dataFrame
 
     # Cluster Report DataFrames Processing
     file_df = c_df[["TokenPerFile"]]
@@ -126,7 +127,7 @@ for key, value in clustdict.items():
     scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
     scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
 
-    keyword_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "void", "while", "with", "document"]]
+    keyword_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "const", "void", "while", "with", "document"]]
     keyword_df = keyword_df.loc[:, (keyword_df != 0).any(axis=0)]
     keyword_df = keyword_df.reindex(keyword_df.sum().sort_values(ascending=False).index, axis=1)
 
@@ -169,11 +170,11 @@ for key, value in clustdict.items():
     f.close()
 
     if (VERBOSE >= 1): print(CLUSTER_FEATURE[str(key)])
-    if (VERBOSE >= 0): print(key, value, "\n")
+    if (VERBOSE >= 0): print(key, value)
     
 
 
-# calculate full dendrogram
+# draw full dendrogram
 plt.figure(figsize=(25, 10))
 plt.title('Hierarchical Clustering Dendrogram')
 plt.xlabel('sample index')
@@ -184,10 +185,18 @@ dendrogram(
     leaf_font_size=8.,  # font size for the x axis labels
 )
 
-# for key, value in CLUSTER_FEATURE.items():
-#     print(key + "" + value)
+
 if (args.dendrogram):
         plt.show();
+
+CLUSTER_RESULT = os.path.join(file_path, "cluster_result.csv")
+df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)
+
+if (VERBOSE >=0) :print("\n--------------------------------------------------\nAverage Cluster Size:  ", sum(cluster_size)/len(cluster_size))
+
+
+
+
 
 
 

@@ -503,7 +503,7 @@ AST.prototype.updateFunctionParams= function(index, varMap, verbose=false) {
 						varMap.setVariable(params[p].name, var_values)
 					}
 				} else {
-					console.err("Function Declaration's Parameter not Identifier!!!!!!!!!!");
+					console.log("Function Declaration's Parameter not Identifier!!!!!!!!!!");
 				}
 				
 			}
