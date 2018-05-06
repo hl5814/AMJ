@@ -192,8 +192,8 @@ if (args.dendrogram):
 CLUSTER_RESULT = os.path.join(file_path, "cluster_result.csv")
 df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)
 
-if (VERBOSE >=0) :print("\n--------------------------------------------------\nAverage Cluster Size:  ", sum(cluster_size)/len(cluster_size))
-
+# if (VERBOSE >=0) :print("\n--------------------------------------------------\nAverage Cluster Size:  ", sum(cluster_size)/len(cluster_size))
+print(sum(cluster_size)/len(cluster_size))
 
 
 

@@ -170,7 +170,7 @@ function showResult(resultMap, codeLength) {
 			// console.log("SCOPES:", key," value: ",value/FEATURE_SCOPE_TOTAL);
 			var val = (value > 0) ? value/FEATURE_SCOPE_TOTAL : 0;
 		} else {
-			console.log(">>", key)
+			// console.log(">>", key)
 			var val = value;
 		}
 		resultArray.push(val);
@@ -194,8 +194,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 	// parse main program tokens
 	if (scope == "User_Program") {
-		console.log(ast.tokens.length)
-		console.log(FILE_LENGTH)
 		resultMap.set("TokenPerFile", ast.tokens.length/FILE_LENGTH);
 		for (const pt of ast.tokens) {
 			if (pt.type == "Keyword") {
