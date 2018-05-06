@@ -35,6 +35,8 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 
 # check if the given source path is directory/file
 if [ -d $SOURCE ]; then
+    node main.js -h  2>/dev/null | grep -E "header"
+
     # echo "$SOURCE is a directory"
     for filename in $SOURCE/*; do
     	# echo $filename

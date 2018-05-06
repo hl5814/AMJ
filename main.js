@@ -8,14 +8,16 @@ const fs = require('fs');
 
 //===================parse command line arguments============================
 const optionDefinitions = [
-  { name: 'verbose',      alias: 'v', type: Number },
-  { name: 'weight',	 	  alias: 'w', type: Boolean},
-  { name: 'src', 		  alias: 's', type: String }
+  { name: 'verbose',      	alias: 'v', type: Number },
+  { name: 'weight',	 	  	alias: 'w', type: Boolean},
+  { name: 'src', 		  	alias: 's', type: String },
+  { name: 'header',		   	alias: 'h', type: Boolean}
 ]
 
 const options = commandLineArgs(optionDefinitions)
 const calcualteWeight = options.weight; 
 const verbose = (options.verbose === undefined) ? 0 : (options.verbose === null)? 1 : 2;
+const showHeader = options.header;
 const filePath = options.src;
 
 //===============================MainProgram=================================
@@ -82,9 +84,7 @@ Set.prototype.my_add=function(values){
 	}
 }
 
-// {key: featureType, value: [occurances, weight]}
 var resultMap = new HashMap();
-var featureMap = new HashMap();
 
 const features = [	"InitVariable",
 					"AssignWithFuncCall",
@@ -99,15 +99,32 @@ const features = [	"InitVariable",
 					"NonLocalArrayAccess",
 					"htmlCommentInScriptBlock"]
 
-const scopes = [	"test",
-					"main",
-					"if",
-					"loop",
-					"function",
-					"try",
-					"switch",
-					"return",
-					"file"];
+const scopes = [	"in_test",
+					"in_main",
+					"in_if",
+					"in_loop",
+					"in_function",
+					"in_try",
+					"in_switch",
+					"in_return",
+					"in_file"];
+
+const KEYWORDS = [	"break", "case", "catch", "continue", "debugger", "default", 
+					"delete", "do", "else", "finally", "for", "function", "if", 
+					"in", "instanceof", "new", "return", "switch", "this", "throw",
+					"try", "typeof", "var", "void", "while", "with"];
+
+const PUNCTUATORS = [	"!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+",
+						"++","+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=",
+						"<=","=","==","===",">",">=",">>",">>=",">>>",">>>","?","[","]",
+						"^","^=","{","|","|=","||","}","~"];
+
+for (var k of KEYWORDS) {
+	resultMap.set(k, 0);
+}
+for (var p of PUNCTUATORS) {
+	resultMap.set(p, 0);
+}
 
 for (var f of features) {
 	resultMap.set(f, 0);
@@ -124,38 +141,26 @@ function updateResultMap(resultMap, featureType, scope) {
 
 	prevValue = resultMap.get(scope);
 	resultMap.set(scope, prevValue+1);
-	// var prevValue = resultMap.get(featureType+scope);
-	// if (prevValue === undefined) console.log("--", featureType+scope)
-	// resultMap.set(featureType+scope, prevValue+1);
 }
 
 function showResult(resultMap, codeLength) {
 	var resultArray = [];
 	resultMap.forEach(function(value, key){
-		resultArray.push(value)
+		resultArray.push(value);
 	});
-	console.log(`"`+filePath+`":`+resultArray)
+	console.log(`"`+filePath+`",`+resultArray)
+}
+
+function printHeader(resultMap) {
+	var header = [];
+	resultMap.forEach(function(value, key){
+		header.push(`"`+key+`"`);
+	});
+	console.log("header,"+header);
 }
 
 // static analysis fields
 var numberOfTokens = 0;
-
-const KEYWORDS = [	"break", "case", "catch", "continue", "debugger", "default", 
-					"delete", "do", "else", "finally", "for", "function", "if", 
-					"in", "instanceof", "new", "return", "switch", "this", "throw",
-					"try", "typeof", "var", "void", "while", "with"];
-const PUNCTUATORS = [	"!","!=",	"!==","%","%=","&","&&","&=","(",")","*","*=","+",
-						"++","+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=",
-						"<=","=","==","===",">",">=",">>",">>=",">>>",">>>","?","[","]",
-						"^","^=","{","|","|=","||","}","~"];
-
-for (var k of KEYWORDS) {
-	resultMap.set(k, 0);
-}
-for (var p of PUNCTUATORS) {
-	resultMap.set(p, 0);
-}
-
 
 function parseProgram(program, scope, coefficient, varMap, verbose){
 	// TODO: check program === null, program == undefined
@@ -220,10 +225,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									var returnStatement = astNode.getReturnInstructions(i, ast);
 									astNode.removeJumpInstructions(i, ast);
 									// parse function body
-									parseProgram(ASTUtils.getCode(node.body).slice(1,-1), variableName_Types[v].value, "function", emptyVarMap, verbose);
+									parseProgram(ASTUtils.getCode(node.body).slice(1,-1), variableName_Types[v].value, "in_function", emptyVarMap, verbose);
 									for (var returnS of returnStatement) {
 										// parse return statement
-										parseProgram(returnS, "ReturnStatement in " + variableName_Types[v].value, "return", emptyVarMap, verbose);
+										parseProgram(returnS, "ReturnStatement in " + variableName_Types[v].value, "in_return", emptyVarMap, verbose);
 									}
 
 									updateResultMap(resultMap, "InitVariable", coefficient);
@@ -285,10 +290,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								astNode.removeJumpInstructions(i, ast);
 
 								// parse function body
-								parseProgram(ASTUtils.getCode(node.body).slice(1,-1), var_values[1][v].value, "function", emptyVarMap, verbose);
+								parseProgram(ASTUtils.getCode(node.body).slice(1,-1), var_values[1][v].value, "in_function", emptyVarMap, verbose);
 								for (var returnS of returnStatement) {
 									// parse return statement
-									parseProgram(returnS, "ReturnStatement in " + var_values[1][v].value, "return", emptyVarMap, verbose);
+									parseProgram(returnS, "ReturnStatement in " + var_values[1][v].value, "in_return", emptyVarMap, verbose);
 								}
 							} 
 						});
@@ -305,7 +310,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								// TODO: parse body?
 								// x += String.fromCharCode(0);
 								// console.log(">>", ASTUtils.getCode(node))
-								parseProgram(ASTUtils.getCode(node), "CallExpression", "function", varMap, verbose);
+								parseProgram(ASTUtils.getCode(node), "CallExpression", "in_function", varMap, verbose);
 
 								if (node.type == "CallExpression"){
 									if (node.callee.type == "MemberExpression") {
@@ -509,10 +514,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			var returnStatement = astNode.getReturnInstructions(i, ast);
 			astNode.removeJumpInstructions(i, ast);
 			// parse function body
-			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, "function", emptyVarMap, verbose);
+			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, "in_function", emptyVarMap, verbose);
 			for (var returnS of returnStatement) {
 				// parse return statement
-				parseProgram(returnS, "ReturnStatement in " + funcName, "return", emptyVarMap, verbose);
+				parseProgram(returnS, "ReturnStatement in " + funcName, "in_return", emptyVarMap, verbose);
 			}
 		} else if (astNode.isIfElseStatement(i)) {
 			astNode.removeJumpInstructions(i, ast);
@@ -522,7 +527,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			// varMap.printMap();
 			for (var b in branchExprs){
 				var eVarMap = new Functions.VariableMap(varMap._varMap);
-				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", "if", eVarMap, verbose);
+				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", "in_if", eVarMap, verbose);
 
 				ifbranchVarMapList.forEach(function(val1) {
 					// variable in @varMap
@@ -559,7 +564,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 			for (var b in branchExprs){
 				var eVarMap = new Functions.VariableMap(varMap._varMap);
-				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", "if", eVarMap, verbose);
+				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", "in_if", eVarMap, verbose);
 
 				ifbranchVarMapList.forEach(function(val1) {
 					var prevBranch = diffMap.get(val1.key);
@@ -589,7 +594,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			var diffMap = new Functions.VariableMap(new HashMap());
 
 			// parse for condition
-			const subVarMapList1 = parseProgram(bodyExprs[0], "for_statements", "loop", varMap, verbose);
+			const subVarMapList1 = parseProgram(bodyExprs[0], "for_statements", "in_loop", varMap, verbose);
 			subVarMapList1.forEach(function(val1) {
 				var typeSet = new Set();
 				if (astNode.isForInStatement(i)) {
@@ -608,7 +613,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			// parse for body with current varMap
 			var eVarMap = new Functions.VariableMap(varMap._varMap);
 
-			const subVarMapList2 = parseProgram(bodyExprs[1], "for_statements", "loop", eVarMap, verbose);
+			const subVarMapList2 = parseProgram(bodyExprs[1], "for_statements", "in_loop", eVarMap, verbose);
 			subVarMapList2.forEach(function(val1) {
 				var prevValues = varMap.get(val1.key);
 				var typeSet = new Set();
@@ -628,7 +633,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			var diffMap = new Functions.VariableMap(new HashMap());
 			var eVarMap = new Functions.VariableMap(varMap._varMap);
 
-			const subVarMapList = parseProgram(bodyExprs[0], "while_statements", "loop", eVarMap, verbose);
+			const subVarMapList = parseProgram(bodyExprs[0], "while_statements", "in_loop", eVarMap, verbose);
 			subVarMapList.forEach(function(val1) {
 				const prevValues = varMap.get(val1.key);
 				var typeSet = new Set();
@@ -646,7 +651,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 			const bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
 			// update varMap directly since the body code will always be executed at least once in do-while
-			parseProgram(bodyExprs[0], "while_statements", "loop", varMap, verbose);
+			parseProgram(bodyExprs[0], "while_statements", "in_loop", varMap, verbose);
 		} else if (astNode.isTryStatement(i)) {
 			astNode.removeJumpInstructions(i, ast);
 
@@ -655,8 +660,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			var eVarMap1 = new Functions.VariableMap(varMap._varMap);
 			var eVarMap2 = new Functions.VariableMap(varMap._varMap);
 
-			const tryVarMapList   = parseProgram(bodyExprs[0], "Try_statements",   "try", eVarMap1, verbose);
-			const catchVarMapList = parseProgram(bodyExprs[1], "Catch_statements", "try", eVarMap2, verbose);
+			const tryVarMapList   = parseProgram(bodyExprs[0], "Try_statements",   "in_try", eVarMap1, verbose);
+			const catchVarMapList = parseProgram(bodyExprs[1], "Catch_statements", "in_try", eVarMap2, verbose);
 			
 			var diffMap = new Functions.VariableMap(new HashMap());
 
@@ -710,11 +715,11 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				
 				// use empty varMap to parse finally block
 				// @finallyVarMapList : contains all new declaried variable in finally block
-				const finallyVarMapList = parseProgram(bodyExprs[2], "test", "test", eVarMap3, false);
+				const finallyVarMapList = parseProgram(bodyExprs[2], "test", "in_test", eVarMap3, false);
 				
 				// copy variables from @diffMap, parse finally block for detecting malicious patterns
 				diffMap.multipleUpdate(eVarMap3);
-				parseProgram(bodyExprs[2], "Finally_statements", "try", eVarMap3, verbose);
+				parseProgram(bodyExprs[2], "Finally_statements", "in_try", eVarMap3, verbose);
 
 				// for all @val in @finallyVarMapList, added to @diffMap regradless their previous value
 				finallyVarMapList.forEach(function(val1){
@@ -741,7 +746,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			if (default_case != -1) {
 				// parse default case first, this case will be executed if non-of the cases matched,
 				// i.e. will override main scope values anyway
-				parseProgram(bodyExprs[default_case], "switch_statements", "switch", varMap, false);
+				parseProgram(bodyExprs[default_case], "switch_statements", "in_switch", varMap, false);
 			}
 
 			for (var b = 0; b < bodyExprs.length; b++){
@@ -749,7 +754,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				if (b == default_case) continue;
 
 				var eVarMap = new Functions.VariableMap(varMap._varMap);
-				const switchBranchVarMapList = parseProgram(bodyExprs[b], "switch_statements", "switch", eVarMap, verbose);
+				const switchBranchVarMapList = parseProgram(bodyExprs[b], "switch_statements", "in_switch", eVarMap, verbose);
 
 				switchBranchVarMapList.forEach(function(val1) {
 					var prevBranch = diffMap.get(val1.key);
@@ -778,8 +783,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 }
 
 //===================check input source============================
-
-if (filePath !== undefined && filePath !== null) {
+if (showHeader) {
+	printHeader(resultMap)
+} else if (filePath !== undefined && filePath !== null) {
 	var sourcefile = fs.readFileSync(filePath, "utf8");
 
 	// extract all scattered <script>blocks</script>
@@ -794,7 +800,7 @@ if (filePath !== undefined && filePath !== null) {
 			var htmlCommentInScriptBlock = scriptBlock.match(/<!--[\s\S]*?-->/g, "");
 			if (htmlCommentInScriptBlock !== null) {
 				if (verbose>0) console.log("FEATURE[htmlCommentInScriptBlock]");
-				updateResultMap(resultMap, "htmlCommentInScriptBlock", "file");
+				updateResultMap(resultMap, "htmlCommentInScriptBlock", "in_file");
 			}
 
 			scriptCodes = scriptCodes + scriptBlock;
@@ -804,7 +810,8 @@ if (filePath !== undefined && filePath !== null) {
 	} else {
 		scriptCodes = sourcefile;
 	}
-	parseProgram(scriptCodes, "User_Program", "main", init_varMap, verbose);
+	parseProgram(scriptCodes, "User_Program", "in_main", init_varMap, verbose);
 	// if (calcualteWeight && resultMap.size > 0) showResult(resultMap, scriptCodes.length);
 	if (calcualteWeight && resultMap.size > 0) showResult(resultMap, scriptCodes.length);
 } 
+

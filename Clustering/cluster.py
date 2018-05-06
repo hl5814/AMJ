@@ -1,6 +1,7 @@
 from matplotlib import pyplot as plt
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 import numpy as np
+import pandas as pd
 import csv, os, shutil
 from io import StringIO
 from shutil import copyfile
@@ -42,24 +43,22 @@ def fancy_dendrogram(*args, **kwargs):
     return ddata
 
 
-DATA_FILES = ["FeaturesArray.csv" , "ScopeArray.csv", "FeatureScopeArray.csv", "Feature_Scope_Keyword_Punctuator.csv"]
-DATA_FILE_INDEX = 1;    #Feature_Scope_Keyword_Punctuator.csv
+DATA_FILES = ["test.csv", "FeaturesArray.csv" , "ScopeArray.csv", "FeatureScopeArray.csv", "Feature_Scope_Keyword_Punctuator.csv"]
+DATA_FILE_INDEX = 0;    #Feature_Scope_Keyword_Punctuator.csv
 
 file_path = os.path.abspath(os.path.dirname(__file__))
 dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
-with open(dataCSV, 'r+') as csvfile:
-    spamreader = csv.reader(csvfile, delimiter=':', quotechar='|')
-    fileData = ""
-    fileIndex = []
-    for row in spamreader:
-        fileIndex.append(row[0])
-        fileData = fileData + row[1] + "\n"
-        
 
-dataArray = np.loadtxt(StringIO(fileData), delimiter=',')
-X = np.array(dataArray)
 
-# generate the linkage matrix ['complete', 'single', etc.]
+df = pd.read_csv(dataCSV)
+# get first column as File Indices
+fileIndex = df.ix[:,0]
+# drop first column and use the rest as weightArray
+df=df.drop(['header'], axis=1)
+X =df.as_matrix()
+HEADER = df.columns.values
+
+# # generate the linkage matrix ['complete', 'single', etc.]
 Z = linkage(X, 'ward')
 
 
@@ -102,9 +101,54 @@ for key, value in clustdict.items():
     CLUSTER_DIR = os.path.join(file_path, "cluster_result", str(key))
     if not os.path.exists(CLUSTER_DIR):
         os.makedirs(CLUSTER_DIR)
+
+    CLUSTER_REPORT = os.path.join(CLUSTER_DIR, "cluster_report.txt")
+
+    c_df = pd.DataFrame(columns=HEADER)
+    index = 1;
     for v in value:
         FILE_PATH = os.path.join(CLUSTER_DIR, str(v)+".js")
-        copyfile(fileIndex[v][1:-1], FILE_PATH)
+        copyfile(fileIndex[v], FILE_PATH)
+        c_df.loc[v] = X[v]
+        index += 1
+
+
+    # Cluster Report DataFrames Processing
+    feature_df = c_df[["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","htmlCommentInScriptBlock"]]
+    feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
+    feature_df = feature_df.reindex(feature_df.sum().sort_values(ascending=False).index, axis=1)
+
+    scope_df = c_df[["in_test","in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]]
+    scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
+    scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
+
+    keywords_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "void", "while", "with"]]
+    keywords_df = keywords_df.loc[:, (keywords_df != 0).any(axis=0)]
+    keywords_df = keywords_df.reindex(keywords_df.sum().sort_values(ascending=False).index, axis=1)
+
+
+    f = open(CLUSTER_REPORT, 'a')
+    f.write('\n# Features\n\n')
+    f.write('FileIndex')
+    feature_df.to_csv(f, encoding='utf-8', index=True)
+    f.write('\nTop 3: ' + str(feature_df.columns.values[:3]))
+    f.write('\n--------------------------------------------------\n')
+
+    f.write('\n# Scopes\n\n')
+    f.write('FileIndex')
+    scope_df.to_csv(f, encoding='utf-8', index=True)
+    f.write('\nTop 3: ' + str(scope_df.columns.values[:3]))
+    f.write('\n--------------------------------------------------\n')
+
+    f.write('\n# Keywords\n\n')
+    f.write('FileIndex')
+    keywords_df.to_csv(f, encoding='utf-8', index=True)
+    f.write('\nTop 3: ' + str(keywords_df.columns.values[:3]))
+    f.write('\n--------------------------------------------------\n')
+    f.close()
+    # f = open(CLUSTER_REPORT,'w')
+    # f.write(REPORT_STR)
+    # f.close()
     print(key, "\n", value, "\n")
 
 
@@ -119,8 +163,8 @@ dendrogram(
     leaf_font_size=8.,  # font size for the x axis labels
 )
 
-if (args.dendrogram):
-        plt.show();
+# if (args.dendrogram):
+#         plt.show();
 
 
 
