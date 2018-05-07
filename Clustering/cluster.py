@@ -18,8 +18,8 @@ LEVEL = args.level
 VERBOSE = args.verbose
 
 # read input data csv file
-DATA_FILES = ["FeatureData.csv"]
-DATA_FILE_INDEX = 0;
+DATA_FILES = ["FeatureData.csv", "javascript-malware-collection.csv"]
+DATA_FILE_INDEX = 1;
 
 file_path = os.path.abspath(os.path.dirname(__file__))
 dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
