@@ -76,7 +76,15 @@ AST.prototype.getReturnInstructions=function(index, ast) {
 	var returnStatements = [];
 	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "ReturnStatement" && node.argument !== null){
-			returnStatements.push(ASTUtils.getCode(node.argument));
+			if (node.argument.type == "CallExpression" && node.argument.callee.type == "FunctionExpression"){
+				ASTUtils.traverse(node.argument.callee.body, function(node2){
+					if (node2.type == "ReturnStatement")
+						ASTUtils.replaceCodeRange(ast, node2.range, " ".repeat(node2.range[1]-node2.range[0]-1) + ";");
+				})
+				returnStatements.push(ASTUtils.getCode(node.argument.callee.body));
+			} else {
+				returnStatements.push(ASTUtils.getCode(node.argument));
+			}
 		}
 	});
 	return returnStatements;
@@ -672,7 +680,6 @@ Expr.prototype.getValueFromFunctionExpression=function(node, identifier, varMap,
 }
 Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	// console.log("NewExpression:\n", this._expr, "\n")
 	const callee = this._expr.callee;
 	
 	const elements = this._expr.arguments;
@@ -695,8 +702,8 @@ Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inne
 
 Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-
-	const elements = this._expr.elements;
+	// only track for first 100 elements in array, prevent program hangs due to large size array
+	const elements = this._expr.elements.slice(0, 100);
 	var elem_array = [];
 	for (var e in elements) {
 		var element = elements[e];

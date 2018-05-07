@@ -546,12 +546,15 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 			// assume all function parameters might be String type when parsing function body
 			astNode.updateFunctionParams(i, emptyVarMap);
+
 			var returnStatement = astNode.getReturnInstructions(i, ast);
 			astNode.removeJumpInstructions(i, ast);
+			
 			// parse function body
 			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, "in_function", emptyVarMap, verbose);
 			for (var returnS of returnStatement) {
 				// parse return statement
+				console.log(">>>", returnS)
 				parseProgram(returnS, "ReturnStatement in " + funcName, "in_return", emptyVarMap, verbose);
 			}
 		} else if (astNode.isIfElseStatement(i)) {

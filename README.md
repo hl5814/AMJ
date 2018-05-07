@@ -302,9 +302,7 @@ Switch cases statements might share code body between cases (no break instructio
           if (direction == "encrypt")
             b[i] = mult_GF256(state[i][j], 2) 
      ...
-## (4)Limited for one JS file, (want to check for undefined function calls, however, due to the one file limitation, this is 	pointless, since the checker will treat all library function calls as undefined functions)
-## (5)Other types of Script languages (e.g. VBScript) 
-	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//c6ac9d09a655f11a8643ddb869288649 user.js 
+## (4)Array concatation:  v_bin = v_bin0["concat"](v_bin1,v_bin2,...]
 ## (6)Implement nested Array/Field Objects
 	var a = new Array([{a:"a",b:"b"},"2"]);
 	eval(a[0].b)

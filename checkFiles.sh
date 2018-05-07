@@ -1,7 +1,7 @@
 #!/bin/bash
 
-
-
+# move all subdiretories files into current directory
+# find . -mindepth 2 -type f -print -exec mv {} . \;
 
 
 # print help and exit 1 if no argument is given
