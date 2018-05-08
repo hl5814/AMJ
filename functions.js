@@ -65,12 +65,29 @@ AST.prototype.isSwitchStatement= function(index) {
 	return  (this._node.body[index].type == "SwitchStatement");
 };
 
+AST.prototype.getRangeLengthOfExpression=function(index, ast) {
+	var range = ast.body[index].range;
+	var tokenLength = ASTUtils.getTokens(this._node,range[0],range[1]).length;
+	return tokenLength;
+}
+
 AST.prototype.removeJumpInstructions=function(index, ast) {
 	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "BreakStatement" ||  node.type == "ContinueStatement" || node.type == "ReturnStatement")
 			ASTUtils.replaceCodeRange(ast, node.range, " ".repeat(node.range[1]-node.range[0]-1) + ";");
 	})
 }
+
+// elements > 1000 elements
+AST.prototype.getNumberOfElementsInArrayExpression=function(index, ast) {
+	var numElements = -1;
+	ASTUtils.traverse(this._node.body[index], function(node){
+		if (node.type == "ArrayExpression")
+			numElements = node.elements.length;
+	});
+	return numElements;
+}
+
 
 AST.prototype.getReturnInstructions=function(index, ast) {
 	var returnStatements = [];
@@ -82,8 +99,13 @@ AST.prototype.getReturnInstructions=function(index, ast) {
 						ASTUtils.replaceCodeRange(ast, node2.range, " ".repeat(node2.range[1]-node2.range[0]-1) + ";");
 				})
 				returnStatements.push(ASTUtils.getCode(node.argument.callee.body));
+			} else if (node.argument.type == "ObjectExpression") {
+				var field_object = ASTUtils.getCode(node.argument);
+				if (field_object[0] == "{" && field_object[field_object.length-1] == "}") 
+					returnStatements.push("MY_MJSA_FIELD = " + ASTUtils.getCode(node.argument));
 			} else {
-				returnStatements.push(ASTUtils.getCode(node.argument));
+				// skip
+				// returnStatements.push(ASTUtils.getCode(node.argument));
 			}
 		}
 	});
@@ -282,7 +304,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 	var rhs = expression.right;
 	var identifier = (new Expr(lhs)).getIdentifier(varMap);
 
-	// pre-process if left hand side is MemberExpression
+	// pre-process if left hand side is ArrayMemberExpression
 	if (expression.left.type == "MemberExpression") {
 		if (lhs.computed) {
 			//ComputedMemberExpression
@@ -305,7 +327,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 						var index = lhs_index[inx].value;
 						for (var v in var_values) {
 							if (var_values[v].type != "ArrayExpression" && var_values[v].type != "NewExpression") continue;
-							if (var_values[v].value.length > 0) var_values[v].value[index][1] = [{ type: token.type, value: token.value}];
+							if (var_values[v].value.length > 0 && var_values[v].value[index] !== undefined) var_values[v].value[index][1] = [{ type: token.type, value: token.value}];
 							vals.push(var_values[v]);
 						}
 						var_values = varMap.get(lhs_object);
@@ -661,7 +683,10 @@ Expr.prototype.getValueFromObjectExpression=function(node, identifier, varMap, i
 	for (var p in properties) { 
 		var key = (new Expr(properties[p].key)).getArg(node, identifier, varMap, false, verbose);
 		var token = (new Expr(properties[p].value)).getToken(node);
-		results.push([key.replace(/"/g,''), [{ type: token.type, value: token.value }]])
+		if (typeof key == "string") {
+			key = key.replace(/"/g,'');
+		}
+		results.push([key, [{ type: token.type, value: token.value }]])
 	}
 
 	var object = {};
@@ -915,10 +940,11 @@ Expr.prototype.parseIfBranches=function(node, varMap, blockRanges, verbose=false
 
 Expr.prototype.getValueFromBinaryExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	if (verbose>1) console.log("BinaryExpression:\n", this._expr, "\n");
+	
 
 	const fstExpr = new Expr(this._expr.left);
 	const sndExpr = new Expr(this._expr.right);
+
 	const fstArg = fstExpr.getArg(node, identifier, varMap, true, verbose);
 	const sndArg = sndExpr.getArg(node, identifier, varMap, true, verbose);
 

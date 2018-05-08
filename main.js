@@ -25,7 +25,7 @@ var init_varMap = new Functions.VariableMap(new HashMap());
 
 var funcNames = ["eval", "unescape", "replace", "write", "document.write", "document.writeln", "document.createElement",
 				 "atob", "btoa", "setTimeout", "setInterval", "toString", "String.fromCharCode", "fromCharCode",
-				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring"];
+				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring", "concat"];
 for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
@@ -94,13 +94,19 @@ const FEATURES = [	"InitVariable",
 					"AssignWithBitOperation",
 					"PreFunctionObfuscation",
 					"StringConcatation",
+					"ArrayConcatation",
 					"MaliciousFunctionCall",
 					"FuncCallOnBinaryExpr",
 					"FuncCallOnUnaryExpr",
 					"FuncCallOnStringVariable",
 					"FuncCallOnCallExpr",
 					"NonLocalArrayAccess",
-					"HtmlCommentInScriptBlock"]
+					"HtmlCommentInScriptBlock",
+					"UsingKeywordThis",
+					"ConditionalCompilationCode",
+					"DotNotationInFunctionName",
+					"LongArray",
+					"LongExpression"]
 
 const SCOPES = [	"in_test",
 					"in_main",
@@ -115,7 +121,7 @@ const SCOPES = [	"in_test",
 const KEYWORDS = [	"break", "case", "catch", "continue", "debugger", "default", 
 					"delete", "do", "else", "finally", "for", "function", "if", 
 					"in", "instanceof", "new", "return", "switch", "this", "throw",
-					"try", "typeof", "var", "const", "void", "while", "with","document"];
+					"try", "typeof", "var", "const", "void", "while", "with","document","MY_MJSA_THIS"];
 
 const PUNCTUATORS = [	"!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+",
 						"++","+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=",
@@ -154,7 +160,7 @@ function updateResultMap(resultMap, featureType, scope, point=1) {
 	FEATURE_SCOPE_TOTAL++;
 }
 
-function showResult(resultMap, codeLength) {
+function showResult(resultMap) {
 	var resultArray = [];
 	resultMap.forEach(function(value, key){
 		if (KEYWORDS.indexOf(key) > -1) {
@@ -191,7 +197,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 	// TODO: check program === null, program == undefined
 	if (program === null || program === undefined || program.replace(/\s+/g, "") == "") return varMap.toList();
 	var ast = ASTUtils.parse(program);
-
 	// parse main program tokens
 	if (scope == "User_Program") {
 		resultMap.set("TokenPerFile", ast.tokens.length/FILE_LENGTH);
@@ -207,7 +212,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				resultMap.set(pt.value, prevValue+1);
 				PUNCTUATOR_TOTAL++;
 			} else if (pt.type == "Identifier") {
-				if (pt.value == "document") {
+				if (pt.value == "document" || pt.value == "MY_MJSA_THIS") {
 					var prevValue = resultMap.get(pt.value);
 					if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
 					resultMap.set(pt.value, prevValue+1);
@@ -230,6 +235,13 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			updateResultMap(resultMap, "StringConcatation", coefficient);
 		}
 
+		var tokenLength = astNode.getRangeLengthOfExpression(i, ast);
+		if (tokenLength > 5000) {
+			if (verbose>0) console.log("FEATURE[LongExpression] : Expression with " + tokenLength + " tokens.");
+			updateResultMap(resultMap, "LongExpression", coefficient);
+			continue;
+		}
+
 
 		/* Variable Declaration */
 		if (astNode.isVariableDeclaration(i)) {
@@ -240,6 +252,12 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				for (var v in variableName_Types) {
 					if (variableName_Types[v].type == "ArrayExpression" || 
 						variableName_Types[v].type == "NewExpression") {
+						
+						var numElements = astNode.getNumberOfElementsInArrayExpression(i, ast);
+						if (numElements > 1000){
+							if (verbose>0) console.log("FEATURE[HugeArray] : " + variableName_Type[0] + " contains " + numElements + " objects");
+							updateResultMap(resultMap, "HugeArray", coefficient);
+						}
 						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					} else if (variableName_Types[v].type == "pre_Function"){
 						// e.g. var myVariable = eval;	
@@ -258,6 +276,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									astNode.updateFunctionParams(i, emptyVarMap);
 									
 									var returnStatement = astNode.getReturnInstructions(i, ast);
+
 									astNode.removeJumpInstructions(i, ast);
 									// parse function body
 									parseProgram(ASTUtils.getCode(node.body).slice(1,-1), variableName_Types[v].value, "in_function", emptyVarMap, verbose);
@@ -271,9 +290,33 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 							});
 							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 						} else if (variableName_Types[v].type == "Expression") {
+							ASTUtils.traverse(ast.body[i], function(node){
+								if (node.type == "CallExpression" && node.callee.type == "MemberExpression" && node.callee.object.type == "Identifier") {
+									var object = node.callee.object.name;
+									var obj_type = varMap.get(object);
+									var property = node.callee.property.name;
+									var funcNames = varMap.get(property);
+									if (funcNames !== undefined && obj_type !== undefined) {
+										for (const f of funcNames){
+											if (f.type == "pre_Function" && f.value == "concat") {
+												for (var ot of obj_type) {
+													if (ot.type == "ArrayExpression") {
+														if (verbose>0) console.log("FEATURE[ArrayConcatation] in :" + scope + " :" + variableName_Type[0] + "=" +variableName_Types[v].value);
+														updateResultMap(resultMap, "ArrayConcatation", coefficient);
+													} else if (ot.type == "String") {
+														if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + " :" + variableName_Type[0] + "=" +variableName_Types[v].value);
+														updateResultMap(resultMap, "StringConcatation", coefficient);
+													}
+												}
+											}
+										}
+									}
+								}
+							});
 							if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
 							updateResultMap(resultMap, "InitVariable", coefficient);
 							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
+								
 						} else {
 							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 						}
@@ -304,10 +347,28 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								}
 								if (callee !== undefined ) {
 									var types = varMap.get(callee);
-									for (var t in types) {
-										if (types[t].type == "pre_Function") {
-											if (verbose>0) console.log("FEATURE[MaliciousFunctionCall] :", ASTUtils.getCode(node));
-											updateResultMap(resultMap, "MaliciousFunctionCall", coefficient);
+									if (types !== undefined) {
+										for (var t in types) {
+											if (types[t].type == "pre_Function") {
+												if (types[t].value == "concat") {
+													var object = node.callee.object.name;
+													var obj_type = varMap.get(object);
+													if (obj_type !== undefined) {
+														for (var ot of obj_type) {
+															if (ot.type == "ArrayExpression") {
+																if (verbose>0) console.log("FEATURE[ArrayConcatation] in :" + scope + " :" + var_values[0] + "=" +var_values[1][v].value);
+																updateResultMap(resultMap, "ArrayConcatation", coefficient);
+															} else if (ot.type == "String") {
+																if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + " :" + var_values[0] + "=" +var_values[1][v].value);
+																updateResultMap(resultMap, "StringConcatation", coefficient);
+															}
+														}
+													}
+												} else {
+													if (verbose>0) console.log("FEATURE[MaliciousFunctionCall] :", ASTUtils.getCode(node));
+													updateResultMap(resultMap, "MaliciousFunctionCall", coefficient);
+												}
+											}
 										}
 									}
 								}
@@ -333,7 +394,15 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 							} 
 						});
 					} else {
+
 						ASTUtils.traverse(ast.body[i], function(node){
+							if (node.type == "ArrayExpression"){
+								if (node.elements.length > 1000){
+									if (verbose>0) console.log("FEATURE[HugeArray] : " + var_values[0] + " contains " + node.elements.length + " objects");
+									updateResultMap(resultMap, "HugeArray", coefficient);
+								}
+							}
+							
 							if (node.type == "AssignmentExpression") {
 								var var_value = astNode.checkStaticMemberFunctionCall(node, varMap);
 								if (var_value !== undefined) {
@@ -342,27 +411,28 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								}
 							}
 							if (node.type == "CallExpression"){
-								// TODO: parse body?
-								// x += String.fromCharCode(0);
-								// console.log(">>", ASTUtils.getCode(node))
-								parseProgram(ASTUtils.getCode(node), "CallExpression", "in_function", varMap, verbose);
-
-								if (node.type == "CallExpression"){
-									if (node.callee.type == "MemberExpression") {
-										var callee = node.callee.property.name;
-									} else {
-										var callee = node.callee.name;
-									}
-									if (callee !== undefined ) {
-										var types = varMap.get(callee);
-										for (var t in types) {
-											if (types[t].type == "pre_Function") {
-												if (verbose>0) console.log("FEATURE[MaliciousFunctionCall] :", ASTUtils.getCode(node));
-												updateResultMap(resultMap, "MaliciousFunctionCall", coefficient);
-											}
+								var callee;
+								if (node.callee.type == "MemberExpression") {
+									callee = node.callee.property.name;
+								} else if (node.callee.type == "FunctionExpression") {
+									// e.g. x = a[...] + (function foo(){...}());
+									// remove the call bracket at the end of function expression
+									// i.e. function a(){...}()
+									parseProgram(ASTUtils.getCode(node).slice(0, -2), "CallExpression", "in_function", varMap, verbose);
+									callee = node.callee.name;
+								} else {
+									callee = node.callee.name;
+								}
+								if (callee !== undefined ) {
+									var types = varMap.get(callee);
+									for (var t in types) {
+										if (types[t].type == "pre_Function") {
+											if (verbose>0) console.log("FEATURE[MaliciousFunctionCall] :", ASTUtils.getCode(node));
+											updateResultMap(resultMap, "MaliciousFunctionCall", coefficient);
 										}
 									}
 								}
+								
 							}
 						});
 					}
@@ -549,12 +619,11 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 			var returnStatement = astNode.getReturnInstructions(i, ast);
 			astNode.removeJumpInstructions(i, ast);
-			
+
 			// parse function body
 			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, "in_function", emptyVarMap, verbose);
 			for (var returnS of returnStatement) {
 				// parse return statement
-				console.log(">>>", returnS)
 				parseProgram(returnS, "ReturnStatement in " + funcName, "in_return", emptyVarMap, verbose);
 			}
 		} else if (astNode.isIfElseStatement(i)) {
@@ -848,8 +917,47 @@ if (showHeader) {
 	} else {
 		scriptCodes = sourcefile;
 	}
-	parseProgram(scriptCodes, "User_Program", "in_main", init_varMap, verbose);
-	// if (calcualteWeight && resultMap.size > 0) showResult(resultMap, scriptCodes.length);
-	if (calcualteWeight && resultMap.size > 0) showResult(resultMap, scriptCodes.length);
+	
+	// ========================
+	try {
+	    parseProgram(scriptCodes, "User_Program", "in_main", init_varMap, verbose);
+	}
+	catch(err) {
+		// try to fix some errors for compliation
+		// CASE 1: using "this" in code snippet
+	    var hasThis = scriptCodes.match(/this/);
+		if (hasThis !== null){
+			// replace this => MY_MJSA_THIS
+			// precent parsing error for some code snippet
+			scriptCodes=scriptCodes.replace(/this/g, "MY_MJSA_THIS")
+
+		}
+		// CASE 2: using conditional compilation targeting IE browser
+	    var hasAt = scriptCodes.match(/@cc_on|@if|@end|@_win32|@_win64/);
+		if (hasAt !== null) {
+			scriptCodes=""
+			if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
+			updateResultMap(resultMap, "ConditionalCompilationCode", "in_file");
+		}
+		// CASE 3: dot notation used in function name
+		var dotFuncName = scriptCodes.match(/function (.*?)\(/);
+		if (dotFuncName !== null && dotFuncName[1].indexOf('.') > -1){
+			var nCodes = ""
+		    while (dotFuncName !== null && dotFuncName[1].indexOf('.') > -1){
+		    	var start = dotFuncName.index;
+		    	var matchString = dotFuncName[0];
+		    	nCodes += scriptCodes.replace(matchString, matchString.replace(/\./g, "")).slice(0, start+matchString.length);
+		    	scriptCodes = scriptCodes.slice(start+matchString.length+1, scriptCodes.length);
+		    	dotFuncName = scriptCodes.match(/function(.*)\(/);
+		    }
+		    nCodes += scriptCodes;
+		    scriptCodes = nCodes;
+		}
+		parseProgram(scriptCodes, "User_Program", "in_main", init_varMap, verbose);
+	}
+	// ========================
+
+	if (calcualteWeight && resultMap.size > 0) showResult(resultMap);
 } 
 
+process.exit(0)

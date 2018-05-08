@@ -12,22 +12,23 @@ from scipy.spatial.distance import pdist
 # Parse command line arguments
 parser = argparse.ArgumentParser(description="Cluster Malicious JS files based on features")
 parser.add_argument("-d", "--dendrogram", action="store_true", help="draw dendrogram")
+parser.add_argument("-f", "--file", action="store_true", help="copy files into corresponding cluster")
 parser.add_argument("level", type=int, help="number of clusters")
 parser.add_argument('--verbose', '-v', action='count', default=-1,help="-v print file index for each cluster,-vv print top 3 features of each cluster")
 
 args = parser.parse_args()
 LEVEL = args.level
 VERBOSE = args.verbose
+FILE = args.file
 
 # read input data csv file
-DATA_FILES = ["malwareforum.csv", "javascript-malware-collection.csv", "malware-jail.csv"]
-DATA_FILE_INDEX = 1;
+DATA_FILES = ["malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv", "malware-jail.csv"]
+DATA_FILE_INDEX = 2;
 
 file_path = os.path.abspath(os.path.dirname(__file__))
 dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
 
 if (VERBOSE >= 0) : print("Reading data from: " + str(dataCSV))
-if (VERBOSE >= 0) : print("Clustering into " + str(LEVEL) + " clusters . . .\n")
 
 df = pd.read_csv(dataCSV)
 fileIndex = df.ix[:,0] # get first column as File Indices
@@ -46,7 +47,7 @@ L_MATRIX = "ward"
 #         TOP_COPHENET = c
 #         L_MATRIX = L
 # Z = linkage(X, L_MATRIX)
-
+if (VERBOSE >= 0) : print("Clustering into " + str(LEVEL) + " clusters . . .\n")
 Z = linkage(X, 'ward')
 c, coph_dists = cophenet(Z, pdist(X))
 if (VERBOSE >= 0) : print("Using :[", L_MATRIX, "] as linkage matrix\nwith cophenet value: ", c, "\n")
@@ -130,73 +131,76 @@ for key, value in clustdict.items():
         iteration = iteration + 1
 
     cluster_size.append(len(value))
-    CLUSTER_DIR = os.path.join(RESULT_DIR, str(key))
-    if not os.path.exists(CLUSTER_DIR):
-        os.makedirs(CLUSTER_DIR)
+    if FILE:
+        CLUSTER_DIR = os.path.join(RESULT_DIR, str(key))
+        if not os.path.exists(CLUSTER_DIR):
+            os.makedirs(CLUSTER_DIR)
 
-    CLUSTER_REPORT = os.path.join(CLUSTER_DIR, "cluster_report.txt")
+        CLUSTER_REPORT = os.path.join(CLUSTER_DIR, "cluster_report.txt")
 
-    c_df = pd.DataFrame(columns=HEADER)
-    index = 1;
-    for v in value:
-        FILE_PATH = os.path.join(CLUSTER_DIR, str(v)+".js")
-        copyfile(fileIndex[v], FILE_PATH)
-        c_df.loc[v] = X[v]
-        index += 1
-        df.at[v, 'cluster'] = str(key) # update cluster number for the input dataFrame
-
-    # Cluster Report DataFrames Processing
-    file_df = c_df[["TokenPerFile"]]
-
-    feature_df = c_df[["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock"]]
-    feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
-    feature_df = feature_df.reindex(feature_df.sum().sort_values(ascending=False).index, axis=1)
-
-    scope_df = c_df[["in_test","in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]]
-    scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
-    scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
-
-    keyword_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "const", "void", "while", "with", "document"]]
-    keyword_df = keyword_df.loc[:, (keyword_df != 0).any(axis=0)]
-    keyword_df = keyword_df.reindex(keyword_df.sum().sort_values(ascending=False).index, axis=1)
-
-    punctuator_df = c_df[["!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+","++",
-                        "+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=","<=",
-                        "=","==","===",">",">=",">>",">>=",">>>","?","[","]","^",
-                        "^=","{","|","|=","||","}","~"]]
-    punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
-    punctuator_df = punctuator_df.reindex(punctuator_df.sum().sort_values(ascending=False).index, axis=1)
+        c_df = pd.DataFrame(columns=HEADER)
+        index = 1;
+        for v in value:
+            FILE_PATH = os.path.join(CLUSTER_DIR, str(v)+".js")
+            copyfile(fileIndex[v], FILE_PATH)
+            c_df.loc[v] = X[v]
+            index += 1
+            df.at[v, 'cluster'] = str(key) # update cluster number for the input dataFrame
 
 
-    f = open(CLUSTER_REPORT, 'a')
-    file_df.to_csv(f, encoding='utf-8', index=True)
 
-    f.write('\n# Features:\n\n')
-    f.write('FileIndex')
-    feature_df.to_csv(f, encoding='utf-8', index=True)
-    f.write('\nTop 3: ' + str(feature_df.columns.values[:3]))
-    f.write('\n--------------------------------------------------\n')
-    CLUSTER_FEATURE[str(key)] = str(feature_df.columns.values[:3])
+        # Cluster Report DataFrames Processing
+        file_df = c_df[["TokenPerFile"]]
 
-    f.write('\n# Scopes:\n\n')
-    f.write('FileIndex')
-    scope_df.to_csv(f, encoding='utf-8', index=True)
-    f.write('\nTop 3: ' + str(scope_df.columns.values[:3]))
-    f.write('\n--------------------------------------------------\n')
+        feature_df = c_df[["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","ArrayConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock","UsingKeywordThis","ConditionalCompilationCode","DotNotationInFunctionName","LongArray", "LongExpression"]]
+        feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
+        feature_df = feature_df.reindex(feature_df.sum().sort_values(ascending=False).index, axis=1)
 
-    f.write('\n# Keywords:\n\n')
-    f.write('FileIndex')
-    keyword_df.to_csv(f, encoding='utf-8', index=True)
-    f.write('\nTop 3: ' + str(keyword_df.columns.values[:3]))
-    f.write('\n--------------------------------------------------\n')
+        scope_df = c_df[["in_test","in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]]
+        scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
+        scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
 
-    f.write('\n# Punctuators:\n\n')
-    f.write('FileIndex')
-    punctuator_df.to_csv(f, encoding='utf-8', index=True)
-    f.write('\nTop 3: ' + str(punctuator_df.columns.values[:3]))
-    f.write('\n--------------------------------------------------\n')
+        keyword_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "const", "void", "while", "with", "document","MY_MJSA_THIS"]]
+        keyword_df = keyword_df.loc[:, (keyword_df != 0).any(axis=0)]
+        keyword_df = keyword_df.reindex(keyword_df.sum().sort_values(ascending=False).index, axis=1)
 
-    f.close()
+        punctuator_df = c_df[["!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+","++",
+                            "+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=","<=",
+                            "=","==","===",">",">=",">>",">>=",">>>","?","[","]","^",
+                            "^=","{","|","|=","||","}","~"]]
+        punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
+        punctuator_df = punctuator_df.reindex(punctuator_df.sum().sort_values(ascending=False).index, axis=1)
+
+
+        f = open(CLUSTER_REPORT, 'a')
+        file_df.to_csv(f, encoding='utf-8', index=True)
+
+        f.write('\n# Features:\n\n')
+        f.write('FileIndex')
+        feature_df.to_csv(f, encoding='utf-8', index=True)
+        f.write('\nTop 3: ' + str(feature_df.columns.values[:3]))
+        f.write('\n--------------------------------------------------\n')
+        CLUSTER_FEATURE[str(key)] = str(feature_df.columns.values[:3])
+
+        f.write('\n# Scopes:\n\n')
+        f.write('FileIndex')
+        scope_df.to_csv(f, encoding='utf-8', index=True)
+        f.write('\nTop 3: ' + str(scope_df.columns.values[:3]))
+        f.write('\n--------------------------------------------------\n')
+
+        f.write('\n# Keywords:\n\n')
+        f.write('FileIndex')
+        keyword_df.to_csv(f, encoding='utf-8', index=True)
+        f.write('\nTop 3: ' + str(keyword_df.columns.values[:3]))
+        f.write('\n--------------------------------------------------\n')
+
+        f.write('\n# Punctuators:\n\n')
+        f.write('FileIndex')
+        punctuator_df.to_csv(f, encoding='utf-8', index=True)
+        f.write('\nTop 3: ' + str(punctuator_df.columns.values[:3]))
+        f.write('\n--------------------------------------------------\n')
+
+        f.close()
 
     if (VERBOSE >= 1): print(CLUSTER_FEATURE[str(key)])
     if (VERBOSE >= 0): print(key, value)
