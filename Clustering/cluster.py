@@ -23,7 +23,7 @@ FILE = args.file
 
 # read input data csv file
 DATA_FILES = ["malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv", "malware-jail.csv"]
-DATA_FILE_INDEX = 2;
+DATA_FILE_INDEX = 0;
 
 file_path = os.path.abspath(os.path.dirname(__file__))
 dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
@@ -33,6 +33,7 @@ if (VERBOSE >= 0) : print("Reading data from: " + str(dataCSV))
 df = pd.read_csv(dataCSV)
 fileIndex = df.ix[:,0] # get first column as File Indices
 df=df.drop(['header'], axis=1) # drop first column and use the rest as weightArray
+df_percent = df.sample(frac=0.3) # randomly taking 30% of input samples
 X =df.as_matrix()
 HEADER = df.columns.values
 
@@ -78,19 +79,6 @@ def fancy_dendrogram(*args, **kwargs):
             plt.axhline(y=max_d, c='k')
     return ddata
 
-# max_d = 5  # max_d as in max_distance
-# fancy_dendrogram(
-#     Z,
-#     truncate_mode='lastp',
-#     p=12,
-#     leaf_rotation=90.,
-#     leaf_font_size=12.,
-#     show_contracted=True,
-#     annotate_above=10,
-#     max_d=max_d,  # plot a horizontal cut-off line
-# )
-# plt.show()
-
 
 # Print out file index within each cluster
 linkage = Z
@@ -112,7 +100,6 @@ else:
     shutil.rmtree(RESULT_DIR)
     os.makedirs(RESULT_DIR)
 
-CLUSTER_FEATURE = {}
 df['cluster'] = -1
 
 cluster_size = []
@@ -124,7 +111,13 @@ def printProgress(id, iteration, total,prefix='', suffix='', decimals=2, barLeng
         bar = '█' * filledLength + '▒' * (barLength - filledLength)
         return ('%s |%s| %s%s\t%s' % (prefix, bar, str(percents).rjust(7), "%", suffix))
 
-iteration = 1;
+iteration = 1
+FINAL_REPORT = {    "topFeatures":    "",
+                    "topScopes":      "",
+                    "topKeywords":    "",
+                    "topPunctuators": ""    
+                }
+
 for key, value in clustdict.items():
     if (VERBOSE == -1):
         print(printProgress("1",iteration,clusternum,"","Cluster:["+str(key)+"]"), end="\r", flush=True, file=sys.stderr)
@@ -146,7 +139,6 @@ for key, value in clustdict.items():
             c_df.loc[v] = X[v]
             index += 1
             df.at[v, 'cluster'] = str(key) # update cluster number for the input dataFrame
-
 
 
         # Cluster Report DataFrames Processing
@@ -180,7 +172,6 @@ for key, value in clustdict.items():
         feature_df.to_csv(f, encoding='utf-8', index=True)
         f.write('\nTop 3: ' + str(feature_df.columns.values[:3]))
         f.write('\n--------------------------------------------------\n')
-        CLUSTER_FEATURE[str(key)] = str(feature_df.columns.values[:3])
 
         f.write('\n# Scopes:\n\n')
         f.write('FileIndex')
@@ -202,25 +193,47 @@ for key, value in clustdict.items():
 
         f.close()
 
-    if (VERBOSE >= 1): print(CLUSTER_FEATURE[str(key)])
+        FINAL_REPORT["topFeatures"] += str(key) + ": " +str(feature_df.columns.values[:3]) + "\n"
+        FINAL_REPORT["topScopes"] += str(key) + ": " +str(scope_df.columns.values[:3]) + "\n"
+        FINAL_REPORT["topKeywords"] += str(key) + ": " +str(keyword_df.columns.values[:3]) + "\n"
+        FINAL_REPORT["topPunctuators"] += str(key) + ": " +str(punctuator_df.columns.values[:3]) + "\n"
+
+
     if (VERBOSE >= 0): print(key, value)
     
-
+if FILE:
+    FINAL_REPORT_PATH = os.path.join(file_path, "final_report.txt")
+    f = open(FINAL_REPORT_PATH, 'w+')
+    for key, value in FINAL_REPORT.items():
+        f.write(key + ":\n")
+        f.write(value + "\n")
+    f.close()
 
 # draw full dendrogram
-plt.figure(figsize=(25, 10))
-plt.title('Hierarchical Clustering Dendrogram')
-plt.xlabel('sample index')
-plt.ylabel('distance')
-dendrogram(
-    Z,
-    leaf_rotation=90.,  # rotates the x axis labels
-    leaf_font_size=8.,  # font size for the x axis labels
-)
+# plt.figure(figsize=(25, 10))
+# plt.title('Hierarchical Clustering Dendrogram')
+# plt.xlabel('sample index')
+# plt.ylabel('distance')
+# dendrogram(
+#     Z,
+#     leaf_rotation=90.,  # rotates the x axis labels
+#     leaf_font_size=8.,  # font size for the x axis labels
+# )
 
 
 if (args.dendrogram):
-        plt.show();
+    max_d = 30  # max_d as in max_distance
+    fancy_dendrogram(
+        Z,
+        truncate_mode='lastp',
+        p=LEVEL,
+        leaf_rotation=90.,
+        leaf_font_size=12.,
+        show_contracted=True,
+        annotate_above=10,
+        max_d=max_d,  # plot a horizontal cut-off line
+    )
+    plt.show()
 
 CLUSTER_RESULT = os.path.join(file_path, "cluster_result.csv")
 df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)

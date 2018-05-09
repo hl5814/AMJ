@@ -212,11 +212,18 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				resultMap.set(pt.value, prevValue+1);
 				PUNCTUATOR_TOTAL++;
 			} else if (pt.type == "Identifier") {
-				if (pt.value == "document" || pt.value == "MY_MJSA_THIS") {
+				if (pt.value == "document") {
 					var prevValue = resultMap.get(pt.value);
 					if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
 					resultMap.set(pt.value, prevValue+1);
 					KEYWORD_TOTAL++;
+				} else if (pt.value == "MY_MJSA_THIS") {
+					var prevValue = resultMap.get(pt.value);
+					if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
+					resultMap.set(pt.value, prevValue+1);
+					KEYWORD_TOTAL++;
+					if (verbose>0) console.log("FEATURE[UsingKeywordThis]");
+					updateResultMap(resultMap, "UsingKeywordThis", "in_file", 10);
 				}
 			}
 			
@@ -937,16 +944,19 @@ if (showHeader) {
 		if (hasAt !== null) {
 			scriptCodes=""
 			if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
-			updateResultMap(resultMap, "ConditionalCompilationCode", "in_file");
+			updateResultMap(resultMap, "ConditionalCompilationCode", "in_file", 10);
 		}
 		// CASE 3: dot notation used in function name
 		var dotFuncName = scriptCodes.match(/function (.*?)\(/);
 		if (dotFuncName !== null && dotFuncName[1].indexOf('.') > -1){
+			if (verbose>0) console.log("FEATURE[DotNotationInFunctionName]");
+			updateResultMap(resultMap, "DotNotationInFunctionName", "in_file", 10);
+		
 			var nCodes = ""
 		    while (dotFuncName !== null && dotFuncName[1].indexOf('.') > -1){
 		    	var start = dotFuncName.index;
 		    	var matchString = dotFuncName[0];
-		    	nCodes += scriptCodes.replace(matchString, matchString.replace(/\./g, "")).slice(0, start+matchString.length);
+		    	nCodes += scriptCodes.replace(matchString, matchString.replace(/\./g, "")).slice(0, start+matchString.length-1);
 		    	scriptCodes = scriptCodes.slice(start+matchString.length+1, scriptCodes.length);
 		    	dotFuncName = scriptCodes.match(/function(.*)\(/);
 		    }

@@ -745,7 +745,7 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, in
 }
 
 Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, inner, verbose=false) {
-	
+	// console.log(this._expr)
 	if (this._expr.object.type == "MemberExpression") {
 		var val = (new Expr(this._expr.object)).getValueFromMemberExpression(node, identifier, varMap, true, verbose);
 		// console.log("val", val)
@@ -757,17 +757,22 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 
 	if (this._expr.computed) {
 		var val = (new Expr(this._expr.property)).getArg(node, identifier, varMap, true, verbose);
-
 		if (this._expr.property.type == "Identifier") {
 			var index_val = varMap.get(val);
+
 			if (index_val !== undefined) {
-				val = index_val;
+				if (index_val.length == 0) {
+					val = [{type:"String",value:'UNKONWN'}];
+				} else {
+					val = index_val
+				}
 			} else {
 				val = [ {type : "keyword", value: val}];
 			}
 		} else if (this._expr.property.type == "Literal") {
 			val = [ {type : "Numeric", value: this._expr.property.value}]
 		}
+
 		return [identifier, val];
 	} else {
 		if (identifier) {
