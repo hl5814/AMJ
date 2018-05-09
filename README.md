@@ -326,7 +326,7 @@ Week 6 	(4	5	6	7	8 ) <- finish Draft Report & extensions
 	9696:	python file
 	12301:	function declaration without identifier function(xxx){...}
 	17092:	missing ending back tick at EOF (human error)
-	22433:
+	
 
 # Other:
 // https://github.com/facebook/flow

@@ -162,7 +162,9 @@ function updateResultMap(resultMap, featureType, scope, point=1) {
 
 function showResult(resultMap) {
 	var resultArray = [];
+	var h = "";
 	resultMap.forEach(function(value, key){
+		h +=  "," + '"' + key + '"';
 		if (KEYWORDS.indexOf(key) > -1) {
 			// console.log("KEYWORDS:", key," value: ",value/KEYWORD_TOTAL);
 			var val = (value > 0) ? value/KEYWORD_TOTAL : 0;
@@ -181,6 +183,7 @@ function showResult(resultMap) {
 		}
 		resultArray.push(val);
 	});
+	console.log(">>>", h)
 	console.log(`"`+filePath+`",`+resultArray)
 }
 
@@ -223,7 +226,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					resultMap.set(pt.value, prevValue+1);
 					KEYWORD_TOTAL++;
 					if (verbose>0) console.log("FEATURE[UsingKeywordThis]");
-					updateResultMap(resultMap, "UsingKeywordThis", "in_file", 10);
+					updateResultMap(resultMap, "UsingKeywordThis", "in_file");
 				}
 			}
 			
@@ -236,7 +239,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 		if (verbose>1 && (ast.body[i].type != "Line")) console.log("======================\n", ast.body[i],"\n======================\n");
 		
-		var stringConcat = astNode.checkStringConcatnation(i);
+		var stringConcat = astNode.checkStringConcatnation(i,varMap);
 		if (stringConcat != "") {
 			if (verbose>0) console.log("FEATURE[StringConcatation] :" + stringConcat);
 			updateResultMap(resultMap, "StringConcatation", coefficient);
@@ -944,13 +947,13 @@ if (showHeader) {
 		if (hasAt !== null) {
 			scriptCodes=""
 			if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
-			updateResultMap(resultMap, "ConditionalCompilationCode", "in_file", 10);
+			updateResultMap(resultMap, "ConditionalCompilationCode", "in_file");
 		}
 		// CASE 3: dot notation used in function name
 		var dotFuncName = scriptCodes.match(/function (.*?)\(/);
 		if (dotFuncName !== null && dotFuncName[1].indexOf('.') > -1){
 			if (verbose>0) console.log("FEATURE[DotNotationInFunctionName]");
-			updateResultMap(resultMap, "DotNotationInFunctionName", "in_file", 10);
+			updateResultMap(resultMap, "DotNotationInFunctionName", "in_file");
 		
 			var nCodes = ""
 		    while (dotFuncName !== null && dotFuncName[1].indexOf('.') > -1){

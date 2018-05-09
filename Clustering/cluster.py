@@ -22,8 +22,8 @@ VERBOSE = args.verbose
 FILE = args.file
 
 # read input data csv file
-DATA_FILES = ["malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv", "malware-jail.csv"]
-DATA_FILE_INDEX = 0;
+DATA_FILES = ["malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv", "test.csv"]
+DATA_FILE_INDEX = 1;
 
 file_path = os.path.abspath(os.path.dirname(__file__))
 dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
@@ -31,13 +31,15 @@ dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
 if (VERBOSE >= 0) : print("Reading data from: " + str(dataCSV))
 
 df = pd.read_csv(dataCSV)
+# df = df.sample(frac=1) # randomly taking 10% of input samples
 fileIndex = df.ix[:,0] # get first column as File Indices
 df=df.drop(['header'], axis=1) # drop first column and use the rest as weightArray
-df_percent = df.sample(frac=0.3) # randomly taking 30% of input samples
+# df = df.reset_index(drop=True)
+# fileIndex = fileIndex.reset_index(drop=True)
 X =df.as_matrix()
 HEADER = df.columns.values
 
-# # generate the linkage matrix 
+# generate the linkage matrix 
 LINKAGE_MATRIX = ['single', 'complete', 'average', 'ward', 'weighted', 'centroid', 'median']
 # TOP_COPHENET = 0
 L_MATRIX = "ward"
@@ -112,16 +114,18 @@ def printProgress(id, iteration, total,prefix='', suffix='', decimals=2, barLeng
         return ('%s |%s| %s%s\t%s' % (prefix, bar, str(percents).rjust(7), "%", suffix))
 
 iteration = 1
-FINAL_REPORT = {    "topFeatures":    "",
+FINAL_REPORT = {    "numbers":        "",
+                    "topFeatures":    "",
                     "topScopes":      "",
                     "topKeywords":    "",
                     "topPunctuators": ""    
                 }
 
+
 for key, value in clustdict.items():
-    if (VERBOSE == -1):
-        print(printProgress("1",iteration,clusternum,"","Cluster:["+str(key)+"]"), end="\r", flush=True, file=sys.stderr)
-        iteration = iteration + 1
+    # if (VERBOSE == -1):
+    #     print(printProgress("1",iteration,clusternum,"","Cluster:["+str(key)+"]"), end="\r", flush=True, file=sys.stderr)
+    #     iteration = iteration + 1
 
     cluster_size.append(len(value))
     if FILE:
@@ -132,22 +136,25 @@ for key, value in clustdict.items():
         CLUSTER_REPORT = os.path.join(CLUSTER_DIR, "cluster_report.txt")
 
         c_df = pd.DataFrame(columns=HEADER)
-        index = 1;
+        # index = 0;
+
         for v in value:
             FILE_PATH = os.path.join(CLUSTER_DIR, str(v)+".js")
             copyfile(fileIndex[v], FILE_PATH)
-            c_df.loc[v] = X[v]
-            index += 1
+            c_df.loc[len(c_df)] = X[v]
+            # c_df.append()
+            # c_df.loc[v] = X[v]
+            # print(c_df.loc[v])
+            # index += 1
             df.at[v, 'cluster'] = str(key) # update cluster number for the input dataFrame
-
-
+       
         # Cluster Report DataFrames Processing
         file_df = c_df[["TokenPerFile"]]
 
         feature_df = c_df[["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","ArrayConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock","UsingKeywordThis","ConditionalCompilationCode","DotNotationInFunctionName","LongArray", "LongExpression"]]
         feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
         feature_df = feature_df.reindex(feature_df.sum().sort_values(ascending=False).index, axis=1)
-
+        
         scope_df = c_df[["in_test","in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]]
         scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
         scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
@@ -193,10 +200,12 @@ for key, value in clustdict.items():
 
         f.close()
 
+        FINAL_REPORT["numbers"] += str(key) + ": " +str(len(value)) + "\n"
         FINAL_REPORT["topFeatures"] += str(key) + ": " +str(feature_df.columns.values[:3]) + "\n"
         FINAL_REPORT["topScopes"] += str(key) + ": " +str(scope_df.columns.values[:3]) + "\n"
         FINAL_REPORT["topKeywords"] += str(key) + ": " +str(keyword_df.columns.values[:3]) + "\n"
         FINAL_REPORT["topPunctuators"] += str(key) + ": " +str(punctuator_df.columns.values[:3]) + "\n"
+
 
 
     if (VERBOSE >= 0): print(key, value)
@@ -210,7 +219,7 @@ if FILE:
     f.close()
 
 # draw full dendrogram
-# plt.figure(figsize=(25, 10))
+plt.figure(figsize=(25, 10))
 # plt.title('Hierarchical Clustering Dendrogram')
 # plt.xlabel('sample index')
 # plt.ylabel('distance')
@@ -227,6 +236,8 @@ if (args.dendrogram):
         Z,
         truncate_mode='lastp',
         p=LEVEL,
+        # truncate_mode='level',
+        # p=10,
         leaf_rotation=90.,
         leaf_font_size=12.,
         show_contracted=True,

@@ -147,10 +147,76 @@ AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 		if (node.type == "BinaryExpression" && node.operator == "+" && longString == ""){
 			var lhs = new Expr(node.left);
 			var token = lhs.getToken(parentNode);
-			if (token.type == "String") {
+			if (node.left.type == "BinaryExpression") {
 				longString = ASTUtils.getCode(node);
 			}
-			
+			else if (token.type == "String") {
+				longString = ASTUtils.getCode(node);
+			} else if (token.type == "Identifier") {
+				var types = varMap.get(token.value);
+				if (types !== undefined) {
+					for (var t of types) {
+						if (t.type == "String") {
+							var rhs = new Expr(node.right);
+							var rhs_token = rhs.getToken(parentNode);
+							var rhs_str = "";
+							if (token.type == "Identifier") {
+								var ts = varMap.get(rhs_token.value);
+								if (ts !== undefined) {
+									for (var tt of ts) {
+										if (tt.type == "String") {
+											rhs_str = tt.value;
+											longString = token.value + "+" + rhs_token.value +  " ==> " + token.value + "+" + rhs_str;
+											break;
+										}
+									}
+								} else {
+									longString = ASTUtils.getCode(node);
+								}
+							} else {
+								longString = ASTUtils.getCode(node);
+							}
+						}
+					}
+				} else {
+					longString = ASTUtils.getCode(node);
+				}
+			}
+		} else if (node.type == "AssignmentExpression" && node.operator == "+=" && longString == ""){
+			var lhs = new Expr(node.left)
+			var token = lhs.getToken(parentNode);
+			if (token.type == "String") {
+				longString = ASTUtils.getCode(node);
+			} else if (token.type == "Identifier") {
+				var types = varMap.get(token.value);
+				if (types !== undefined) {
+					for (var t of types) {
+						if (t.type == "String") {
+							var rhs = new Expr(node.right);
+							var rhs_token = rhs.getToken(parentNode);
+							var rhs_str = "";
+							if (token.type == "Identifier") {
+								var ts = varMap.get(rhs_token.value);
+								if (ts !== undefined) {
+									for (var tt of ts) {
+										if (tt.type == "String") {
+											rhs_str = tt.value;
+											longString = token.value + "+=" + rhs_token.value +  " ==> " + token.value + "+=" + rhs_str;
+											break;
+										}
+									}
+								} else {
+									longString = ASTUtils.getCode(node);
+								}
+							} else {
+								longString = ASTUtils.getCode(node);
+							}
+						}
+					}
+				} else {
+					longString = ASTUtils.getCode(node);
+				}
+			}
 		}
 	});
 	return longString;
@@ -375,13 +441,14 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			var ref_values = varMap.get(rhs_left.name, verbose);
 			if (ref_values) {
 				for (var i in ref_values) {
+
 					if (ref_values[i].type == "String") {
 						if (val.length > 30) {
 							val = val.substring(1, 30) + "...";
 						}
-						result_types.push([{ type: "String", value: val}]);
+						result_types.push({ type: "String", value: val});
 					} else if (bitOperators.indexOf(rhs.operator) != -1) {
-						result_types.push([{ type: "BitwiseOperationExpression", value: val}]);
+						result_types.push({ type: "BitwiseOperationExpression", value: val});
 					} 
 				}
 				if (result_types.length >0) return [identifier, result_types];
