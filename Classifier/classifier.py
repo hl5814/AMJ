@@ -27,7 +27,7 @@ DATA_FILE_INDEX = 0
 # if cluster_result.csv not exists, run the clustering script first
 if not os.path.exists(DATA_FILES[DATA_FILE_INDEX]) or NEIGHBORS == -1:
 	if (VERBOSE >= 0) : print("Clustering Sample Data ... ")
-	r = subprocess.run(['python3', 'Clustering/cluster.py','30'], stdout=subprocess.PIPE).stdout.decode('utf-8')[:-1]
+	r = subprocess.run(['python3', 'Clustering/cluster.py','-f','-s','2016.csv','-l','30','-p','0.1'], stdout=subprocess.PIPE).stdout.decode('utf-8')[:-1]
 	NEIGHBORS = math.ceil(float(r))
 
 file_path = os.path.abspath(os.path.dirname(__file__))

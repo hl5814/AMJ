@@ -284,32 +284,37 @@ Switch cases statements might share code body between cases (no break instructio
 
 # TODO & ISSUES:
 ## (1)Clustering
-	DataArray:
-	Fi: #Feature i
-	Sj: #Scope j
-	[F1, F2, ..., Fi]
-	[S1, S2, ..., Sj]
-	[F1, F2, ..., Fi, S1, S2, ..., Sj]
-	[F1-S1, F1-S2, ..., F1-Sj, ..., Fi_Sj]
+```
+[	"in_main",
+	"in_if",
+	"in_loop",
+	"in_function",
+	"in_try",
+	"in_switch",
+	"in_return",
+	"in_file" 		]
+```
 
-## (2)issues with error html links, e.g. "var x = http:...." 
-	cp ../IndividualProject/jsob/samples/badstuff/malwareforum//9117d956a6d8559154c86a081ebfc489 user.js 
-## (3)function parameter as Array/Field Object
-	function mixColumn(state, direction) {
-      var b = [];                            // Result of matrix multiplications
-      for (var j = 0; j < Nb; j++) {         // Go through each column...
-        for (var i = 0; i < 4; i++) {        // and for each row in the column...
-          if (direction == "encrypt")
-            b[i] = mult_GF256(state[i][j], 2) 
-     ...
-## (4)Array concatation:  v_bin = v_bin0["concat"](v_bin1,v_bin2,...]
-## (6)Implement nested Array/Field Objects
+	if () {
+		if () {
+			feature here
+		}
+	}
+	FEATURE A: [in_if, in_if]
+
+	function () {
+		for () {
+			feature here
+		}
+	}
+	FEATURE B: [in_function, in_loop]
+
+## (2)Implement nested Array/Field Objects
 	var a = new Array([{a:"a",b:"b"},"2"]);
 	eval(a[0].b)
 
 # PLAN
 ```
-Week 2 	(7	8	9	10	11) <- finish static part & darft version of clustering
 Week 3 	(14	15	16	17	18) 
 Week 4 	(21	22	23	24	25) <- evaluation & start writing report
 Week 5	(28	29	30	31	1 )

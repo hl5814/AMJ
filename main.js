@@ -147,17 +147,21 @@ for (const s of SCOPES) {
 resultMap.set("TokenPerFile", 0);
 
 var FILE_LENGTH = 0;
-var FEATURE_SCOPE_TOTAL = 0;
+var FEATURE_TOTAL = 0;
+var SCOPE_TOTAL = 0;
 var KEYWORD_TOTAL = 0;
 var PUNCTUATOR_TOTAL = 0;
 
 function updateResultMap(resultMap, featureType, scope, point=1) {
 	var prevValue = resultMap.get(featureType);
 	resultMap.set(featureType, prevValue+point);
+	FEATURE_TOTAL++;
 
-	prevValue = resultMap.get(scope);
-	resultMap.set(scope, prevValue+point);
-	FEATURE_SCOPE_TOTAL++;
+	for (var s of scope) {
+		prevValue = resultMap.get(scope);
+		resultMap.set(scope, prevValue+point);
+		SCOPE_TOTAL++;
+	}
 }
 
 function showResult(resultMap) {
@@ -173,17 +177,16 @@ function showResult(resultMap) {
 			var val = (value > 0) ? value/PUNCTUATOR_TOTAL : 0;
 		} else if (FEATURES.indexOf(key) > -1) {
 			// console.log("FEATURES:", key," value: ",value/FEATURE_SCOPE_TOTAL);
-			var val = (value > 0) ? value/FEATURE_SCOPE_TOTAL : 0;
+			var val = (value > 0) ? value/FEATURE_TOTAL : 0;
 		} else if (SCOPES.indexOf(key) > -1) {
 			// console.log("SCOPES:", key," value: ",value/FEATURE_SCOPE_TOTAL);
-			var val = (value > 0) ? value/FEATURE_SCOPE_TOTAL : 0;
+			var val = (value > 0) ? value/SCOPE_TOTAL : 0;
 		} else {
 			// console.log(">>", key)
 			var val = value;
 		}
 		resultArray.push(val);
 	});
-	console.log(">>>", h)
 	console.log(`"`+filePath+`",`+resultArray)
 }
 
@@ -285,14 +288,17 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									// assume all function parameters might be String type when parsing function body
 									astNode.updateFunctionParams(i, emptyVarMap);
 									
-									var returnStatement = astNode.getReturnInstructions(i, ast);
+									var returnStatement = astNode.getReturnInstructions(i, emptyVarMap, ast);
 
 									astNode.removeJumpInstructions(i, ast);
 									// parse function body
-									parseProgram(ASTUtils.getCode(node.body).slice(1,-1), variableName_Types[v].value, "in_function", emptyVarMap, verbose);
+									var coef = coefficient.slice();
+									coef.push("in_function");
+									parseProgram(ASTUtils.getCode(node.body).slice(1,-1), variableName_Types[v].value, coef, emptyVarMap, verbose);
+									coef.push("in_return")
 									for (var returnS of returnStatement) {
 										// parse return statement
-										parseProgram(returnS, "ReturnStatement in " + variableName_Types[v].value, "in_return", emptyVarMap, verbose);
+										parseProgram(returnS, "ReturnStatement in " + variableName_Types[v].value, coef, emptyVarMap, verbose);
 									}
 
 									updateResultMap(resultMap, "InitVariable", coefficient);
@@ -392,14 +398,17 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								// assume all function parameters might be String type when parsing function body
 								astNode.updateFunctionParams(i, emptyVarMap);
 								
-								var returnStatement = astNode.getReturnInstructions(i, ast);
+								var returnStatement = astNode.getReturnInstructions(i, emptyVarMap, ast);
 								astNode.removeJumpInstructions(i, ast);
 
 								// parse function body
-								parseProgram(ASTUtils.getCode(node.body).slice(1,-1), var_values[1][v].value, "in_function", emptyVarMap, verbose);
+								var coef = coefficient.slice();
+								coef.push("in_function");
+								parseProgram(ASTUtils.getCode(node.body).slice(1,-1), var_values[1][v].value, coef, emptyVarMap, verbose);
+								coef.push("in_return");
 								for (var returnS of returnStatement) {
 									// parse return statement
-									parseProgram(returnS, "ReturnStatement in " + var_values[1][v].value, "in_return", emptyVarMap, verbose);
+									parseProgram(returnS, "ReturnStatement in " + var_values[1][v].value, coef, emptyVarMap, verbose);
 								}
 							} 
 						});
@@ -428,7 +437,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									// e.g. x = a[...] + (function foo(){...}());
 									// remove the call bracket at the end of function expression
 									// i.e. function a(){...}()
-									parseProgram(ASTUtils.getCode(node).slice(0, -2), "CallExpression", "in_function", varMap, verbose);
+									var coef = coefficient.slice();
+									coef.push("in_function")
+									parseProgram(ASTUtils.getCode(node).slice(0, -2), "CallExpression", coef, varMap, verbose);
 									callee = node.callee.name;
 								} else {
 									callee = node.callee.name;
@@ -627,14 +638,17 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			// assume all function parameters might be String type when parsing function body
 			astNode.updateFunctionParams(i, emptyVarMap);
 
-			var returnStatement = astNode.getReturnInstructions(i, ast);
+			var returnStatement = astNode.getReturnInstructions(i, emptyVarMap, ast);
 			astNode.removeJumpInstructions(i, ast);
 
 			// parse function body
-			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, "in_function", emptyVarMap, verbose);
+			var coef = coefficient.slice();
+			coef.push("in_function")
+			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, coef, emptyVarMap, verbose);
+			coef.push("in_return")
 			for (var returnS of returnStatement) {
 				// parse return statement
-				parseProgram(returnS, "ReturnStatement in " + funcName, "in_return", emptyVarMap, verbose);
+				parseProgram(returnS, "ReturnStatement in " + funcName, coef, emptyVarMap, verbose);
 			}
 		} else if (astNode.isIfElseStatement(i)) {
 			astNode.removeJumpInstructions(i, ast);
@@ -644,7 +658,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			// varMap.printMap();
 			for (var b in branchExprs){
 				var eVarMap = new Functions.VariableMap(varMap._varMap);
-				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", "in_if", eVarMap, verbose);
+				var coef = coefficient.slice();
+				coef.push("in_if")
+				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", coef, eVarMap, verbose);
 
 				ifbranchVarMapList.forEach(function(val1) {
 					// variable in @varMap
@@ -681,7 +697,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 			for (var b in branchExprs){
 				var eVarMap = new Functions.VariableMap(varMap._varMap);
-				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", "in_if", eVarMap, verbose);
+				var coef = coefficient.slice();
+				coef.push("in_if")
+				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", coef, eVarMap, verbose);
 
 				ifbranchVarMapList.forEach(function(val1) {
 					var prevBranch = diffMap.get(val1.key);
@@ -711,7 +729,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			var diffMap = new Functions.VariableMap(new HashMap());
 
 			// parse for condition
-			const subVarMapList1 = parseProgram(bodyExprs[0], "for_statements", "in_loop", varMap, verbose);
+			var coef = coefficient.slice();
+			coef.push("in_loop")
+			const subVarMapList1 = parseProgram(bodyExprs[0], "for_statements", coef, varMap, verbose);
 			subVarMapList1.forEach(function(val1) {
 				var typeSet = new Set();
 				if (astNode.isForInStatement(i)) {
@@ -730,7 +750,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			// parse for body with current varMap
 			var eVarMap = new Functions.VariableMap(varMap._varMap);
 
-			const subVarMapList2 = parseProgram(bodyExprs[1], "for_statements", "in_loop", eVarMap, verbose);
+			var coef = coefficient.slice();
+			coef.push("in_loop")
+			const subVarMapList2 = parseProgram(bodyExprs[1], "for_statements", coef, eVarMap, verbose);
 			subVarMapList2.forEach(function(val1) {
 				var prevValues = varMap.get(val1.key);
 				var typeSet = new Set();
@@ -750,7 +772,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			var diffMap = new Functions.VariableMap(new HashMap());
 			var eVarMap = new Functions.VariableMap(varMap._varMap);
 
-			const subVarMapList = parseProgram(bodyExprs[0], "while_statements", "in_loop", eVarMap, verbose);
+			var coef = coefficient.slice();
+			coef.push("in_loop")
+			const subVarMapList = parseProgram(bodyExprs[0], "while_statements", coef, eVarMap, verbose);
 			subVarMapList.forEach(function(val1) {
 				const prevValues = varMap.get(val1.key);
 				var typeSet = new Set();
@@ -768,7 +792,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 			const bodyExprs = astNode.parseWhileStatement(i, varMap, verbose);
 			// update varMap directly since the body code will always be executed at least once in do-while
-			parseProgram(bodyExprs[0], "while_statements", "in_loop", varMap, verbose);
+			var coef = coefficient.slice();
+			coef.push("in_loop")
+			parseProgram(bodyExprs[0], "while_statements", coef, varMap, verbose);
 		} else if (astNode.isTryStatement(i)) {
 			astNode.removeJumpInstructions(i, ast);
 
@@ -777,8 +803,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			var eVarMap1 = new Functions.VariableMap(varMap._varMap);
 			var eVarMap2 = new Functions.VariableMap(varMap._varMap);
 
-			const tryVarMapList   = parseProgram(bodyExprs[0], "Try_statements",   "in_try", eVarMap1, verbose);
-			const catchVarMapList = parseProgram(bodyExprs[1], "Catch_statements", "in_try", eVarMap2, verbose);
+			var coef = coefficient.slice();
+			coef.push("in_try")
+			const tryVarMapList   = parseProgram(bodyExprs[0], "Try_statements",   coef, eVarMap1, verbose);
+			const catchVarMapList = parseProgram(bodyExprs[1], "Catch_statements", coef, eVarMap2, verbose);
 			
 			var diffMap = new Functions.VariableMap(new HashMap());
 
@@ -832,11 +860,13 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				
 				// use empty varMap to parse finally block
 				// @finallyVarMapList : contains all new declaried variable in finally block
-				const finallyVarMapList = parseProgram(bodyExprs[2], "test", "in_test", eVarMap3, false);
+				const finallyVarMapList = parseProgram(bodyExprs[2], "test", ["in_test"], eVarMap3, false);
 				
 				// copy variables from @diffMap, parse finally block for detecting malicious patterns
 				diffMap.multipleUpdate(eVarMap3);
-				parseProgram(bodyExprs[2], "Finally_statements", "in_try", eVarMap3, verbose);
+				var coef = coefficient.slice();
+				coef.push("in_try")
+				parseProgram(bodyExprs[2], "Finally_statements", coef, eVarMap3, verbose);
 
 				// for all @val in @finallyVarMapList, added to @diffMap regradless their previous value
 				finallyVarMapList.forEach(function(val1){
@@ -859,11 +889,12 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 			var diffMap = new Functions.VariableMap(new HashMap());
 
-
+			var coef = coefficient.slice();
+			coef.push("in_switch")
 			if (default_case != -1) {
 				// parse default case first, this case will be executed if non-of the cases matched,
 				// i.e. will override main scope values anyway
-				parseProgram(bodyExprs[default_case], "switch_statements", "in_switch", varMap, false);
+				parseProgram(bodyExprs[default_case], "switch_statements", coef, varMap, false);
 			}
 
 			for (var b = 0; b < bodyExprs.length; b++){
@@ -871,7 +902,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				if (b == default_case) continue;
 
 				var eVarMap = new Functions.VariableMap(varMap._varMap);
-				const switchBranchVarMapList = parseProgram(bodyExprs[b], "switch_statements", "in_switch", eVarMap, verbose);
+				const switchBranchVarMapList = parseProgram(bodyExprs[b], "switch_statements", coef, eVarMap, verbose);
 
 				switchBranchVarMapList.forEach(function(val1) {
 					var prevBranch = diffMap.get(val1.key);
@@ -930,7 +961,7 @@ if (showHeader) {
 	
 	// ========================
 	try {
-	    parseProgram(scriptCodes, "User_Program", "in_main", init_varMap, verbose);
+	    parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
 	}
 	catch(err) {
 		// try to fix some errors for compliation
@@ -966,7 +997,7 @@ if (showHeader) {
 		    nCodes += scriptCodes;
 		    scriptCodes = nCodes;
 		}
-		parseProgram(scriptCodes, "User_Program", "in_main", init_varMap, verbose);
+		parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
 	}
 	// ========================
 

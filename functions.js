@@ -89,11 +89,18 @@ AST.prototype.getNumberOfElementsInArrayExpression=function(index, ast) {
 }
 
 
-AST.prototype.getReturnInstructions=function(index, ast) {
+AST.prototype.getReturnInstructions=function(index, varMap, ast) {
 	var returnStatements = [];
+	var parentNode = this._node;
 	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "ReturnStatement" && node.argument !== null){
-			if (node.argument.type == "CallExpression" && node.argument.callee.type == "FunctionExpression"){
+			if (node.argument.type == "Literal") {
+				var name = node.argument;
+				var token = (new Expr(name)).getToken(parentNode);
+				if (token.type == "String") {
+					returnStatements.push(name.value);
+				}
+			} else if (node.argument.type == "CallExpression" && node.argument.callee.type == "FunctionExpression"){
 				ASTUtils.traverse(node.argument.callee.body, function(node2){
 					if (node2.type == "ReturnStatement")
 						ASTUtils.replaceCodeRange(ast, node2.range, " ".repeat(node2.range[1]-node2.range[0]-1) + ";");
@@ -103,9 +110,11 @@ AST.prototype.getReturnInstructions=function(index, ast) {
 				var field_object = ASTUtils.getCode(node.argument);
 				if (field_object[0] == "{" && field_object[field_object.length-1] == "}") 
 					returnStatements.push("MY_MJSA_FIELD = " + ASTUtils.getCode(node.argument));
+			} else if (node.argument.type == "CallExpression" && node.argument.callee.type == "Identifier"){
+				returnStatements.push(ASTUtils.getCode(node.argument));
 			} else {
 				// skip
-				// returnStatements.push(ASTUtils.getCode(node.argument));
+				// console.log(node.argument.callee)
 			}
 		}
 	});

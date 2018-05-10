@@ -9,33 +9,41 @@ import argparse, sys
 from scipy.cluster.hierarchy import cophenet
 from scipy.spatial.distance import pdist
 
+# python3 Clustering/cluster.py  -f -s 2016.csv -l 10 -p 0.05 -d
+
 # Parse command line arguments
 parser = argparse.ArgumentParser(description="Cluster Malicious JS files based on features")
 parser.add_argument("-d", "--dendrogram", action="store_true", help="draw dendrogram")
 parser.add_argument("-f", "--file", action="store_true", help="copy files into corresponding cluster")
-parser.add_argument("level", type=int, help="number of clusters")
+parser.add_argument("-l", dest='level',default=1,action='store',type=int, help="number of clusters")
 parser.add_argument('--verbose', '-v', action='count', default=-1,help="-v print file index for each cluster,-vv print top 3 features of each cluster")
+parser.add_argument("-p", dest='percentage', action='store',type=float, default=1, nargs='?', help="randomly pick p%  from samples")
+parser.add_argument("-s", dest='source', required=True, action='store',type=str, help="input csv file path")
 
 args = parser.parse_args()
 LEVEL = args.level
 VERBOSE = args.verbose
 FILE = args.file
+PERCENT = args.percentage
+SOURCE = args.source
 
 # read input data csv file
-DATA_FILES = ["malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv", "test.csv"]
-DATA_FILE_INDEX = 1;
+# DATA_FILES = ["malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv", "test.csv"]
+# DATA_FILE_INDEX = 1;
+
 
 file_path = os.path.abspath(os.path.dirname(__file__))
-dataCSV = os.path.join(file_path, DATA_FILES[DATA_FILE_INDEX])
+dataCSV = os.path.join(file_path, SOURCE)
 
 if (VERBOSE >= 0) : print("Reading data from: " + str(dataCSV))
 
 df = pd.read_csv(dataCSV)
-# df = df.sample(frac=1) # randomly taking 10% of input samples
+if PERCENT >= 0 and PERCENT < 1:
+    df = df.sample(frac=PERCENT) # randomly taking 10% of input samples
 fileIndex = df.ix[:,0] # get first column as File Indices
 df=df.drop(['header'], axis=1) # drop first column and use the rest as weightArray
-# df = df.reset_index(drop=True)
-# fileIndex = fileIndex.reset_index(drop=True)
+df = df.reset_index(drop=True)
+fileIndex = fileIndex.reset_index(drop=True)
 X =df.as_matrix()
 HEADER = df.columns.values
 
@@ -154,7 +162,7 @@ for key, value in clustdict.items():
         feature_df = c_df[["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","ArrayConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock","UsingKeywordThis","ConditionalCompilationCode","DotNotationInFunctionName","LongArray", "LongExpression"]]
         feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
         feature_df = feature_df.reindex(feature_df.sum().sort_values(ascending=False).index, axis=1)
-        
+
         scope_df = c_df[["in_test","in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]]
         scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
         scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
@@ -231,7 +239,7 @@ plt.figure(figsize=(25, 10))
 
 
 if (args.dendrogram):
-    max_d = 30  # max_d as in max_distance
+    max_d = 50  # max_d as in max_distance
     fancy_dendrogram(
         Z,
         truncate_mode='lastp',

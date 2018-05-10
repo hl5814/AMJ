@@ -1,110 +1,110 @@
 numbers:
-114: 1
-1858: 3
-1872: 3
-1910: 10
-1913: 3
-1921: 127
-1922: 90
-1930: 6
-1949: 114
-1951: 108
-1952: 334
-1953: 10
-1955: 47
-1957: 13
-1970: 3
-1971: 8
-1972: 16
-1973: 81
-1974: 11
-1975: 10
+194: 5
+274: 4
+296: 3
+323: 4
+324: 9
+329: 4
+332: 9
+339: 4
+340: 10
+342: 15
+347: 13
+348: 25
+349: 4
+351: 14
+352: 16
+353: 14
+354: 4
+355: 10
+356: 12
+357: 10
 
 topFeatures:
-114: ['StringConcatation' 'FuncCallOnBinaryExpr']
-1858: ['FuncCallOnStringVariable' 'StringConcatation']
-1872: ['AssignWithFuncCall' 'MaliciousFunctionCall' 'FuncCallOnCallExpr']
-1910: []
-1913: ['MaliciousFunctionCall' 'StringConcatation' 'FuncCallOnStringVariable']
-1921: ['MaliciousFunctionCall' 'AssignWithFuncCall' 'FuncCallOnCallExpr']
-1922: ['MaliciousFunctionCall' 'AssignWithFuncCall' 'FuncCallOnCallExpr']
-1930: ['AssignWithFuncCall' 'PreFunctionObfuscation']
-1949: ['MaliciousFunctionCall' 'AssignWithFuncCall' 'FuncCallOnCallExpr']
-1951: ['MaliciousFunctionCall' 'AssignWithFuncCall' 'FuncCallOnCallExpr']
-1952: ['StringConcatation' 'MaliciousFunctionCall' 'AssignWithFuncCall']
-1953: ['FuncCallOnStringVariable' 'StringConcatation' 'FuncCallOnCallExpr']
-1955: ['StringConcatation']
-1957: ['StringConcatation']
-1970: ['StringConcatation' 'LongExpression' 'MaliciousFunctionCall']
-1971: ['InitVariable' 'StringConcatation' 'AssignWithFuncCall']
-1972: ['StringConcatation' 'PreFunctionObfuscation' 'FuncCallOnStringVariable']
-1973: ['StringConcatation' 'MaliciousFunctionCall' 'AssignWithFuncCall']
-1974: ['InitVariable' 'StringConcatation' 'AssignWithFuncCall']
-1975: ['StringConcatation']
+194: []
+274: ['InitVariable' 'StringConcatation']
+296: ['InitVariable' 'StringConcatation' 'AssignWithFuncCall']
+323: ['StringConcatation' 'AssignWithFuncCall' 'InitVariable']
+324: ['StringConcatation' 'AssignWithFuncCall' 'FuncCallOnCallExpr']
+329: ['StringConcatation' 'InitVariable']
+332: ['StringConcatation' 'InitVariable' 'FuncCallOnCallExpr']
+339: ['StringConcatation' 'InitVariable' 'AssignWithFuncCall']
+340: ['StringConcatation' 'LongExpression' 'InitVariable']
+342: ['InitVariable' 'StringConcatation' 'MaliciousFunctionCall']
+347: ['StringConcatation' 'InitVariable' 'LongExpression']
+348: ['StringConcatation' 'InitVariable' 'FuncCallOnStringVariable']
+349: ['StringConcatation' 'InitVariable' 'AssignWithFuncCall']
+351: ['InitVariable' 'StringConcatation' 'AssignWithFuncCall']
+352: ['StringConcatation' 'InitVariable']
+353: ['StringConcatation' 'InitVariable' 'FuncCallOnStringVariable']
+354: ['FuncCallOnCallExpr' 'StringConcatation']
+355: ['StringConcatation' 'AssignWithFuncCall' 'InitVariable']
+356: ['InitVariable' 'StringConcatation' 'MaliciousFunctionCall']
+357: ['StringConcatation' 'InitVariable' 'AssignWithFuncCall']
 
 topScopes:
-114: ['in_main']
-1858: ['in_main']
-1872: ['in_main' 'in_function']
-1910: []
-1913: ['in_function' 'in_main' 'in_loop']
-1921: ['in_function' 'in_main']
-1922: ['in_function' 'in_main']
-1930: ['in_main']
-1949: ['in_function' 'in_main']
-1951: ['in_function' 'in_main']
-1952: ['in_function' 'in_main' 'in_loop']
-1953: ['in_function' 'in_loop' 'in_main']
-1955: ['in_function' 'in_main']
-1957: ['in_loop' 'in_main']
-1970: ['in_main']
-1971: ['in_main' 'in_function' 'in_if']
-1972: ['in_main']
-1973: ['in_function' 'in_main' 'in_loop']
-1974: ['in_main' 'in_function' 'in_if']
-1975: ['in_main']
+194: []
+274: ['in_main' 'in_if']
+296: ['in_function' 'in_main' 'in_switch']
+323: ['in_main']
+324: ['in_try' 'in_function' 'in_main']
+329: ['in_if' 'in_switch' 'in_main']
+332: ['in_function' 'in_main' 'in_try']
+339: ['in_main' 'in_function' 'in_loop']
+340: ['in_main']
+342: ['in_if' 'in_main' 'in_loop']
+347: ['in_main' 'in_if']
+348: ['in_try' 'in_if' 'in_main']
+349: ['in_if' 'in_switch' 'in_main']
+351: ['in_if' 'in_switch' 'in_main']
+352: ['in_main' 'in_if']
+353: ['in_loop' 'in_main' 'in_if']
+354: ['in_main']
+355: ['in_main']
+356: ['in_main' 'in_if' 'in_loop']
+357: ['in_if' 'in_main' 'in_switch']
 
 topKeywords:
-114: ['return' 'function']
-1858: ['var' 'for']
-1872: ['function' 'return' 'new']
-1910: ['return' 'function' 'var']
-1913: ['function' 'return' 'for']
-1921: ['function' 'var' 'return']
-1922: ['function' 'var' 'return']
-1930: ['return' 'function' 'var']
-1949: ['function' 'var' 'return']
-1951: ['function' 'var' 'return']
-1952: ['function' 'return' 'var']
-1953: ['function' 'return' 'var']
-1955: ['function' 'var' 'this']
-1957: ['return' 'function' 'var']
-1970: ['this' 'var' 'if']
-1971: ['var' 'for' 'if']
-1972: ['var' 'return' 'function']
-1973: ['function' 'var' 'return']
-1974: ['this' 'var' 'function']
-1975: ['var' 'for' 'function']
+194: ['this']
+274: ['var' 'return' 'function']
+296: ['function' 'var' 'return']
+323: ['return' 'function' 'var']
+324: ['var' 'return' 'function']
+329: ['new' 'return' 'function']
+332: ['var' 'return' 'function']
+339: ['var' 'function' 'return']
+340: ['new' 'var' 'this']
+342: ['var' 'new' 'if']
+347: ['return' 'function' 'var']
+348: ['var' 'if' 'break']
+349: ['var' 'if' 'case']
+351: ['var' 'if' 'return']
+352: ['var' 'new' 'if']
+353: ['var' 'new' 'if']
+354: ['return' 'function' 'while']
+355: ['this' 'var']
+356: ['var' 'if' 'return']
+357: ['var' 'return' 'function']
 
 topPunctuators:
-114: [',' ')' '(']
-1858: ['=' ';' ')']
-1872: [';' '=' ']']
-1910: [';' ')' '(']
-1913: [',' ')' '(']
-1921: [',' ']' '[']
-1922: [',' '(' ')']
-1930: [';' ')' '(']
-1949: ['(' ')' ';']
-1951: [';' ']' '[']
-1952: [']' '[' ';']
-1953: [';' ')' '(']
-1955: [';' ')' '(']
-1957: [';' ')' '(']
-1970: ['.' '(' ')']
-1971: [';' '=' '+']
-1972: [';' '=' '+=']
-1973: [';' ']' '[']
-1974: ['.' ')' '(']
-1975: ['(' ')' ';']
+194: [']' '[' ')']
+274: [']' '[' ',']
+296: ['(' ')' ',']
+323: [';' '=' ')']
+324: [')' '(' '+']
+329: [')' '(' ',']
+332: ['+' ')' '(']
+339: [';' '+' '=']
+340: [',' ']' '[']
+342: ['+' '(' ')']
+347: [',' ']' '[']
+348: [';' '+' '(']
+349: [',' ']' '[']
+351: [';' '=' ')']
+352: [']' '[' ',']
+353: [';' '(' ')']
+354: [')' '(' ',']
+355: [',' ']' '[']
+356: ['+' '(' ')']
+357: ['(' ')' ',']
 

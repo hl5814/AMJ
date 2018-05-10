@@ -92,6 +92,7 @@ else
     exit 1
 fi
 
+>&2 echo  "$((${curr}*100/${total})) % [ ${curr}/${total} ] $filename"
 # ./checkFiles.sh -s /Users/hongtao/Desktop/IndividualProject/jsob/samples/badstuff/javascript-malware-collection > Clustering/javascript-malware-collection.csv 
 
 
