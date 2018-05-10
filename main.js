@@ -982,7 +982,6 @@ if (showHeader) {
 		}
 		// CASE 3: dot notation used in function name
 		var dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
-		// console.log("\n\n", dotFuncName)
 		if (dotFuncName !== null){
 			if (verbose>0) console.log("FEATURE[DotNotationInFunctionName]");
 			updateResultMap(resultMap, "DotNotationInFunctionName", "in_file");
