@@ -158,8 +158,8 @@ function updateResultMap(resultMap, featureType, scope, point=1) {
 	FEATURE_TOTAL++;
 
 	for (var s of scope) {
-		prevValue = resultMap.get(scope);
-		resultMap.set(scope, prevValue+point);
+		prevValue = resultMap.get(s);
+		resultMap.set(s, prevValue+point);
 		SCOPE_TOTAL++;
 	}
 }
@@ -182,7 +182,7 @@ function showResult(resultMap) {
 			// console.log("SCOPES:", key," value: ",value/FEATURE_SCOPE_TOTAL);
 			var val = (value > 0) ? value/SCOPE_TOTAL : 0;
 		} else {
-			// console.log(">>", key)
+			console.log(">>", key)
 			var val = value;
 		}
 		resultArray.push(val);
@@ -229,7 +229,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					resultMap.set(pt.value, prevValue+1);
 					KEYWORD_TOTAL++;
 					if (verbose>0) console.log("FEATURE[UsingKeywordThis]");
-					updateResultMap(resultMap, "UsingKeywordThis", "in_file");
+					updateResultMap(resultMap, "UsingKeywordThis", ["in_file"]);
 				}
 			}
 			
@@ -948,7 +948,7 @@ if (showHeader) {
 			var htmlCommentInScriptBlock = scriptBlock.match(/<!--[\s\S]*?-->/g, "");
 			if (htmlCommentInScriptBlock !== null) {
 				if (verbose>0) console.log("FEATURE[HtmlCommentInScriptBlock]");
-				updateResultMap(resultMap, "HtmlCommentInScriptBlock", "in_file");
+				updateResultMap(resultMap, "HtmlCommentInScriptBlock", ["in_file"]);
 			}
 
 			scriptCodes = scriptCodes + scriptBlock;
@@ -978,13 +978,13 @@ if (showHeader) {
 		if (hasAt !== null) {
 			scriptCodes=""
 			if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
-			updateResultMap(resultMap, "ConditionalCompilationCode", "in_file");
+			updateResultMap(resultMap, "ConditionalCompilationCode", ["in_file"]);
 		}
 		// CASE 3: dot notation used in function name
 		var dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
 		if (dotFuncName !== null){
 			if (verbose>0) console.log("FEATURE[DotNotationInFunctionName]");
-			updateResultMap(resultMap, "DotNotationInFunctionName", "in_file");
+			updateResultMap(resultMap, "DotNotationInFunctionName", ["in_file"]);
 		
 			var nCodes = ""
 		    while (dotFuncName !== null){
