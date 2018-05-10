@@ -991,8 +991,11 @@ if (showHeader) {
 		    while (dotFuncName !== null){
 		    	var start = dotFuncName.index;
 		    	var matchString = dotFuncName[0];
-		    	nCodes += scriptCodes.replace(matchString, matchString.replace(/\./g, "")).slice(0, start+matchString.length-1);
-		    	scriptCodes = scriptCodes.slice(start+matchString.length+1, scriptCodes.length);
+		    	var replaceMatchStr = matchString.replace(/\./g, "");
+		    	replaceStr =  scriptCodes.replace(matchString, replaceMatchStr).slice(0, start+replaceMatchStr.length);
+		    	scriptCodes =  scriptCodes.replace(matchString, replaceMatchStr);
+		    	nCodes += replaceStr;
+		    	scriptCodes = scriptCodes.slice(replaceStr.length, scriptCodes.length);
 		    	dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
 		    }
 		    nCodes += scriptCodes;
