@@ -847,6 +847,8 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 			}
 		} else if (this._expr.property.type == "Literal") {
 			val = [ {type : "Numeric", value: this._expr.property.value}]
+		} else {
+			val = [ {type : "UNKONWN", value: this._expr.property.type}]
 		}
 
 		return [identifier, val];
