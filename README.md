@@ -325,12 +325,15 @@ Week 6 	(4	5	6	7	8 ) <- finish Draft Report & extensions
 # Problematic Samples
 	11: 	error equal sign
 	44: 	dot notation in function name
+	1890: 	dash in variable name
+	/Users/hongtao/javascript-malware-collection/2016//20160311_3950b9c5d81a393495053382ef607cc9.js
 	5957:	double quote in double quoted string
 	6695:	conditional compilation @cc_on @if 
 				Conditional compilation is not supported in Internet Explorer 11 Standards mode and Windows 8.x Store apps. Conditional compilation is supported in Internet Explorer 10 Standards mode and in all earlier versions.
 	9696:	python file
 	12301:	function declaration without identifier function(xxx){...}
 	17092:	missing ending back tick at EOF (human error)
+
 	
 
 # Other:

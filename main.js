@@ -981,18 +981,19 @@ if (showHeader) {
 			updateResultMap(resultMap, "ConditionalCompilationCode", "in_file");
 		}
 		// CASE 3: dot notation used in function name
-		var dotFuncName = scriptCodes.match(/function (.*?)\(/);
-		if (dotFuncName !== null && dotFuncName[1].indexOf('.') > -1){
+		var dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
+		// console.log("\n\n", dotFuncName)
+		if (dotFuncName !== null){
 			if (verbose>0) console.log("FEATURE[DotNotationInFunctionName]");
 			updateResultMap(resultMap, "DotNotationInFunctionName", "in_file");
 		
 			var nCodes = ""
-		    while (dotFuncName !== null && dotFuncName[1].indexOf('.') > -1){
+		    while (dotFuncName !== null){
 		    	var start = dotFuncName.index;
 		    	var matchString = dotFuncName[0];
-		    	nCodes += scriptCodes.replace(matchString, matchString.replace(/\./g, "")).slice(0, start+matchString.length-1);
+		    	nCodes += scriptCodes.replace(matchString, matchString.replace(/\./g, "")).slice(0, start+matchString.length);
 		    	scriptCodes = scriptCodes.slice(start+matchString.length+1, scriptCodes.length);
-		    	dotFuncName = scriptCodes.match(/function(.*)\(/);
+		    	dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
 		    }
 		    nCodes += scriptCodes;
 		    scriptCodes = nCodes;
