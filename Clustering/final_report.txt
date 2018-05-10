@@ -1,110 +1,110 @@
-numbers:
-2: 1
-17: 1
-23: 1
-34: 1
-35: 1
-36: 1
-42: 1
-43: 1
-44: 1
-46: 1
-48: 1
-67: 3
-69: 3
-73: 2
-74: 2
-81: 2
-82: 10
-83: 10
-84: 4
-85: 6
+number of files:
+3371: 190
+3689: 556
+4137: 25
+4527: 22
+4860: 60
+5430: 49
+5583: 112
+5595: 54
+5603: 99
+5604: 153
+5606: 70
+5610: 140
+5614: 151
+5615: 79
+5616: 65
+5622: 72
+5624: 97
+5625: 59
+5626: 447
+5627: 324
 
 topFeatures:
-2: ['StringConcatation' 'InitVariable']
-17: ['StringConcatation' 'InitVariable']
-23: ['FuncCallOnStringVariable' 'StringConcatation' 'PreFunctionObfuscation']
-34: ['StringConcatation' 'InitVariable']
-35: ['StringConcatation' 'InitVariable']
-36: ['StringConcatation' 'InitVariable']
-42: ['StringConcatation']
-43: ['StringConcatation' 'UsingKeywordThis' 'DotNotationInFunctionName']
-44: ['StringConcatation' 'UsingKeywordThis' 'DotNotationInFunctionName']
-46: ['StringConcatation' 'InitVariable']
-48: ['StringConcatation']
-67: ['StringConcatation' 'UsingKeywordThis' 'DotNotationInFunctionName']
-69: ['FuncCallOnStringVariable' 'StringConcatation' 'PreFunctionObfuscation']
-73: ['StringConcatation' 'InitVariable']
-74: ['FuncCallOnStringVariable' 'StringConcatation' 'PreFunctionObfuscation']
-81: ['StringConcatation' 'InitVariable']
-82: ['StringConcatation' 'FuncCallOnStringVariable' 'InitVariable']
-83: ['FuncCallOnStringVariable' 'StringConcatation' 'PreFunctionObfuscation']
-84: ['StringConcatation']
-85: ['FuncCallOnStringVariable' 'StringConcatation' 'PreFunctionObfuscation']
+3371: ['LongExpression' 'LongArray' 'AssignWithFuncCall']
+3689: ['ConditionalCompilationCode' 'LongExpression' 'FuncCallOnBinaryExpr']
+4137: ['LongExpression' 'LongArray' 'AssignWithFuncCall']
+4527: ['InitVariable' 'StringConcatation' 'FuncCallOnStringVariable']
+4860: ['LongExpression' 'LongArray' 'AssignWithFuncCall']
+5430: ['StringConcatation' 'InitVariable' 'LongArray']
+5583: ['StringConcatation' 'AssignWithFuncCall' 'FuncCallOnStringVariable']
+5595: ['AssignWithFuncCall' 'LongExpression' 'FuncCallOnCallExpr']
+5603: ['InitVariable' 'StringConcatation' 'FuncCallOnStringVariable']
+5604: ['StringConcatation' 'InitVariable' 'AssignWithFuncCall']
+5606: ['StringConcatation' 'LongExpression' 'AssignWithFuncCall']
+5610: ['FuncCallOnStringVariable' 'LongExpression' 'StringConcatation']
+5614: ['StringConcatation' 'InitVariable' 'LongExpression']
+5615: ['StringConcatation' 'InitVariable' 'FuncCallOnStringVariable']
+5616: ['FuncCallOnCallExpr' 'FuncCallOnStringVariable' 'AssignWithFuncCall']
+5622: ['StringConcatation' 'InitVariable' 'FuncCallOnStringVariable']
+5624: ['LongExpression' 'FuncCallOnStringVariable' 'StringConcatation']
+5625: ['FuncCallOnStringVariable' 'AssignWithFuncCall' 'StringConcatation']
+5626: ['StringConcatation' 'InitVariable' 'AssignWithFuncCall']
+5627: ['StringConcatation' 'AssignWithFuncCall' 'InitVariable']
 
 topScopes:
-2: ['in_main']
-17: ['in_main' 'in_try']
-23: ['in_main']
-34: ['in_main' 'in_function' 'in_try']
-35: ['in_main' 'in_try']
-36: ['in_main' 'in_try']
-42: ['in_main' 'in_try' 'in_loop']
-43: ['in_main' 'in_try' 'in_file']
-44: ['in_main' 'in_try' 'in_file']
-46: ['in_main' 'in_function' 'in_loop']
-48: ['in_main']
-67: ['in_main' 'in_try' 'in_file']
-69: ['in_main']
-73: ['in_main']
-74: ['in_main']
-81: ['in_main']
-82: ['in_main' 'in_function' 'in_try']
-83: ['in_main']
-84: ['in_main' 'in_try']
-85: ['in_main']
+3371: ['in_file' 'in_return' 'in_switch']
+3689: ['in_file' 'in_return' 'in_switch']
+4137: ['in_file' 'in_return' 'in_switch']
+4527: ['in_main' 'in_loop' 'in_file']
+4860: ['in_file' 'in_return' 'in_switch']
+5430: ['in_main' 'in_function' 'in_if']
+5583: ['in_main' 'in_if' 'in_loop']
+5595: ['in_main' 'in_file' 'in_return']
+5603: ['in_main' 'in_file' 'in_return']
+5604: ['in_if' 'in_main' 'in_loop']
+5606: ['in_main' 'in_loop' 'in_file']
+5610: ['in_main' 'in_file' 'in_return']
+5614: ['in_main' 'in_function' 'in_loop']
+5615: ['in_main' 'in_if' 'in_try']
+5616: ['in_main' 'in_file' 'in_return']
+5622: ['in_main' 'in_function' 'in_if']
+5624: ['in_main' 'in_if' 'in_return']
+5625: ['in_main' 'in_if' 'in_file']
+5626: ['in_main' 'in_function' 'in_loop']
+5627: ['in_main' 'in_try' 'in_function']
 
 topKeywords:
-2: ['var' 'this' 'new']
-17: ['var' 'try' 'new']
-23: ['var']
-34: ['var' 'this' 'new']
-35: ['var' 'new' 'try']
-36: ['var' 'try' 'new']
-42: ['try' 'this' 'catch']
-43: ['new' 'MY_MJSA_THIS' 'try']
-44: ['new' 'MY_MJSA_THIS' 'try']
-46: ['var' 'for' 'return']
-48: ['var' 'return' 'function']
-67: ['new' 'MY_MJSA_THIS' 'try']
-69: ['var']
-73: ['var' 'this']
-74: ['var']
-81: ['var' 'this']
-82: ['var' 'this' 'new']
-83: ['var']
-84: ['new' 'var' 'try']
-85: ['var']
+3371: ['MY_MJSA_THIS' 'in' 'case']
+3689: ['MY_MJSA_THIS' 'in' 'case']
+4137: ['var' 'MY_MJSA_THIS' 'in']
+4527: ['return' 'function' 'var']
+4860: ['return' 'function' 'MY_MJSA_THIS']
+5430: ['var' 'if' 'this']
+5583: ['var' 'this' 'if']
+5595: ['if' 'var' 'this']
+5603: ['var' 'new' 'function']
+5604: ['var' 'function' 'return']
+5606: ['var' 'new' 'for']
+5610: ['var' 'for' 'new']
+5614: ['var' 'return' 'function']
+5615: ['var' 'this' 'function']
+5616: ['function' 'var' 'new']
+5622: ['var' 'this' 'if']
+5624: ['if' 'var' 'return']
+5625: ['if' 'var' 'MY_MJSA_THIS']
+5626: ['var' 'function' 'return']
+5627: ['var' 'function' 'return']
 
 topPunctuators:
-2: [';' '=' ')']
-17: [';' '=' '+']
-23: ['+' '=' ',']
-34: [',' ')' '(']
-35: [',' '+' ')']
-36: [';' '=' '+']
-42: [',' '(' ')']
-43: [',' '(' ')']
-44: [',' '(' ')']
-46: [')' '(' ';']
-48: [')' '(' ';']
-67: [',' '(' ')']
-69: ['+' '=' ',']
-73: ['+' '=' ',']
-74: ['+' '=' ',']
-81: ['+' '=' ',']
-82: [',' ')' '(']
-83: ['+' '=' ',']
-84: [',' '+' '(']
-85: ['+' '=' ',']
+3371: ['~' '*=' '/']
+3689: ['~' '*=' '/']
+4137: [';' '=' '.']
+4527: [')' '(' ',']
+4860: [';' '(' ')']
+5430: [':' ',' '+']
+5583: [',' ';' '(']
+5595: [',' ')' '(']
+5603: [';' '(' ')']
+5604: [';' ')' '(']
+5606: [',' '*' ')']
+5610: [',' ':' ')']
+5614: [',' ':' '+']
+5615: ['+' '=' ';']
+5616: [')' '(' '.']
+5622: [',' '+' '/']
+5624: [',' ')' '(']
+5625: [')' '(' ';']
+5626: [')' '(' ',']
+5627: [',' '(' ')']
 

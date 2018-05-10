@@ -122,7 +122,7 @@ def printProgress(id, iteration, total,prefix='', suffix='', decimals=2, barLeng
         return ('%s |%s| %s%s\t%s' % (prefix, bar, str(percents).rjust(7), "%", suffix))
 
 iteration = 1
-FINAL_REPORT = {    "numbers":        "",
+FINAL_REPORT = {    "number of files":"",
                     "topFeatures":    "",
                     "topScopes":      "",
                     "topKeywords":    "",
@@ -131,9 +131,9 @@ FINAL_REPORT = {    "numbers":        "",
 
 
 for key, value in clustdict.items():
-    # if (VERBOSE == -1):
-    #     print(printProgress("1",iteration,clusternum,"","Cluster:["+str(key)+"]"), end="\r", flush=True, file=sys.stderr)
-    #     iteration = iteration + 1
+    if (VERBOSE == -1):
+        print(printProgress("1",iteration,clusternum,"","Cluster:["+str(key)+"]"), end="\r", flush=True, file=sys.stderr)
+        iteration = iteration + 1
 
     cluster_size.append(len(value))
     if FILE:
@@ -144,38 +144,34 @@ for key, value in clustdict.items():
         CLUSTER_REPORT = os.path.join(CLUSTER_DIR, "cluster_report.txt")
 
         c_df = pd.DataFrame(columns=HEADER)
-        # index = 0;
-
+        FILE_SOURCES = []
         for v in value:
             FILE_PATH = os.path.join(CLUSTER_DIR, str(v)+".js")
+            FILE_SOURCES.append(str(v)+','+fileIndex[v])
             copyfile(fileIndex[v], FILE_PATH)
             c_df.loc[len(c_df)] = X[v]
-            # c_df.append()
-            # c_df.loc[v] = X[v]
-            # print(c_df.loc[v])
-            # index += 1
             df.at[v, 'cluster'] = str(key) # update cluster number for the input dataFrame
        
         # Cluster Report DataFrames Processing
         file_df = c_df[["TokenPerFile"]]
 
         feature_df = c_df[["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","ArrayConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock","UsingKeywordThis","ConditionalCompilationCode","DotNotationInFunctionName","LongArray", "LongExpression"]]
-        feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
+        # feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
         feature_df = feature_df.reindex(feature_df.sum().sort_values(ascending=False).index, axis=1)
 
         scope_df = c_df[["in_test","in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]]
-        scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
+        # scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
         scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
 
         keyword_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "const", "void", "while", "with", "document","MY_MJSA_THIS"]]
-        keyword_df = keyword_df.loc[:, (keyword_df != 0).any(axis=0)]
+        # keyword_df = keyword_df.loc[:, (keyword_df != 0).any(axis=0)]
         keyword_df = keyword_df.reindex(keyword_df.sum().sort_values(ascending=False).index, axis=1)
 
         punctuator_df = c_df[["!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+","++",
                             "+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=","<=",
                             "=","==","===",">",">=",">>",">>=",">>>","?","[","]","^",
                             "^=","{","|","|=","||","}","~"]]
-        punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
+        # punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
         punctuator_df = punctuator_df.reindex(punctuator_df.sum().sort_values(ascending=False).index, axis=1)
 
 
@@ -206,9 +202,13 @@ for key, value in clustdict.items():
         f.write('\nTop 3: ' + str(punctuator_df.columns.values[:3]))
         f.write('\n--------------------------------------------------\n')
 
+        f.write('\n# FILES:\n\n')
+        f.write('\n'.join(FILE_SOURCES))
+        f.write('\n--------------------------------------------------\n')
+
         f.close()
 
-        FINAL_REPORT["numbers"] += str(key) + ": " +str(len(value)) + "\n"
+        FINAL_REPORT["number of files"] += str(key) + ": " +str(len(value)) + "\n"
         FINAL_REPORT["topFeatures"] += str(key) + ": " +str(feature_df.columns.values[:3]) + "\n"
         FINAL_REPORT["topScopes"] += str(key) + ": " +str(scope_df.columns.values[:3]) + "\n"
         FINAL_REPORT["topKeywords"] += str(key) + ": " +str(keyword_df.columns.values[:3]) + "\n"
@@ -239,7 +239,7 @@ plt.figure(figsize=(25, 10))
 
 
 if (args.dendrogram):
-    max_d = 50  # max_d as in max_distance
+    max_d = 10  # max_d as in max_distance
     fancy_dendrogram(
         Z,
         truncate_mode='lastp',
@@ -259,7 +259,6 @@ df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)
 
 if (VERBOSE == -1):
     print("                                                              ", end="\r", flush=True, file=sys.stderr)
-    sys.stderr.flush()
 if (VERBOSE >=0) :
     print("\n--------------------------------------------------\nAverage Cluster Size:  ", sum(cluster_size)/len(cluster_size))
 else:
