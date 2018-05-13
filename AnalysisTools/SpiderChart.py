@@ -60,7 +60,9 @@ for index, row in f_df.iterrows():
 	angles = [n / float(N) * 2 * pi for n in range(N)]
 	angles += angles[:1]
 	 
+
 	fig = plt.figure()
+	# fig.set_size_inches(6, 4)
 	# Initialise the spider plot
 	ax = plt.subplot(111, polar=True)
 	 
@@ -73,7 +75,7 @@ for index, row in f_df.iterrows():
 	 
 	# Draw ylabels
 	ax.set_rlabel_position(0)
-	plt.yticks([0.1, 0.25, 0.5], ["0.1","0.25","0.5"], color="grey", size=10)
+	plt.yticks([0.1, 0.25, 0.5], ["0.1","0.25","0.5"], color="grey", size=7)
 	plt.ylim(0,0.75)
 	 
 	 

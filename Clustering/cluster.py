@@ -102,7 +102,6 @@ for i in range(len(linkage)-clusternum+1):
     clustdict[max(clustdict)+1] = clustdict[clust1] + clustdict[clust2]
     del clustdict[clust1], clustdict[clust2]
 
-print(clustdict)
 # create result directories for different clusters
 RESULT_DIR = os.path.join(file_path, "clusters")
 
@@ -132,7 +131,7 @@ FINAL_REPORT = {    "number of files":"",
                 }
 
 FEATURE_LIST = ["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","ArrayConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock","UsingKeywordThis","ConditionalCompilationCode","DotNotationInFunctionName","LongArray", "LongExpression"]
-SCOPE_LIST = ["in_test","in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]
+SCOPE_LIST = ["in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]
 
 f_df = pd.DataFrame(columns=FEATURE_LIST)
 s_df = pd.DataFrame(columns=SCOPE_LIST)
@@ -180,7 +179,7 @@ for key, value in clustdict.items():
                             "+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=","<=",
                             "=","==","===",">",">=",">>",">>=",">>>","?","[","]","^",
                             "^=","{","|","|=","||","}","~"]]
-        # punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
+        punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
         punctuator_df = punctuator_df.reindex(punctuator_df.sum().sort_values(ascending=False).index, axis=1)
 
         f = open(CLUSTER_REPORT, 'a')
@@ -280,11 +279,15 @@ df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)
 if (VERBOSE == -1):
     print("                                                              ", end="\r", flush=True, file=sys.stderr)
 if (VERBOSE >=0) :
+    UN_FOUND_FEATURES = set(FEATURE_LIST) - set(f_df.columns.values)
+    UN_FOUND_SCOPES = set(SCOPE_LIST) - set(s_df.columns.values)
+
+    print("\n\nUN_FOUND_FEATURES:\n", UN_FOUND_FEATURES)
+    print("\nUN_FOUND_SCOPES:\n", UN_FOUND_SCOPES)
+
     print("\n--------------------------------------------------\nAverage Cluster Size:  ", sum(cluster_size)/len(cluster_size))
 else:
     print(sum(cluster_size)/len(cluster_size))
-
-
 
 
 
