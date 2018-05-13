@@ -28,8 +28,8 @@ PERCENT = args.percentage
 SOURCE = args.source
 
 # read input data csv file
-# DATA_FILES = ["malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv", "test.csv"]
-# DATA_FILE_INDEX = 1;
+# "malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv"
+
 
 
 file_path = os.path.abspath(os.path.dirname(__file__))
@@ -63,7 +63,9 @@ Z = linkage(X, 'ward')
 c, coph_dists = cophenet(Z, pdist(X))
 if (VERBOSE >= 0) : print("Using :[", L_MATRIX, "] as linkage matrix\nwith cophenet value: ", c, "\n")
 
-
+# First define the leaf label function.
+def llf(id):
+    return str(id)
 
 def fancy_dendrogram(*args, **kwargs):
     max_d = kwargs.pop('max_d', None)
@@ -71,11 +73,11 @@ def fancy_dendrogram(*args, **kwargs):
         kwargs['color_threshold'] = max_d
     annotate_above = kwargs.pop('annotate_above', 0)
 
-    ddata = dendrogram(*args, **kwargs)
 
+    ddata = dendrogram(*args, **kwargs)
     if not kwargs.get('no_plot', False):
         plt.title('Hierarchical Clustering Dendrogram (truncated)')
-        plt.xlabel('sample index or (cluster size)')
+        plt.xlabel('cluster index')
         plt.ylabel('distance')
         for i, d, c in zip(ddata['icoord'], ddata['dcoord'], ddata['color_list']):
             x = 0.5 * sum(i[1:3])
@@ -100,7 +102,7 @@ for i in range(len(linkage)-clusternum+1):
     clustdict[max(clustdict)+1] = clustdict[clust1] + clustdict[clust2]
     del clustdict[clust1], clustdict[clust2]
 
-
+print(clustdict)
 # create result directories for different clusters
 RESULT_DIR = os.path.join(file_path, "clusters")
 
@@ -126,9 +128,14 @@ FINAL_REPORT = {    "number of files":"",
                     "topFeatures":    "",
                     "topScopes":      "",
                     "topKeywords":    "",
-                    "topPunctuators": ""    
+                    "topPunctuators": ""
                 }
 
+FEATURE_LIST = ["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","ArrayConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock","UsingKeywordThis","ConditionalCompilationCode","DotNotationInFunctionName","LongArray", "LongExpression"]
+SCOPE_LIST = ["in_test","in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]
+
+f_df = pd.DataFrame(columns=FEATURE_LIST)
+s_df = pd.DataFrame(columns=SCOPE_LIST)
 
 for key, value in clustdict.items():
     if (VERBOSE == -1):
@@ -155,16 +162,18 @@ for key, value in clustdict.items():
         # Cluster Report DataFrames Processing
         file_df = c_df[["TokenPerFile"]]
 
-        feature_df = c_df[["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","ArrayConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock","UsingKeywordThis","ConditionalCompilationCode","DotNotationInFunctionName","LongArray", "LongExpression"]]
-        # feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
+        feature_df = c_df[FEATURE_LIST]
+        f_df.loc[key] = feature_df.mean().values
+        feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
         feature_df = feature_df.reindex(feature_df.sum().sort_values(ascending=False).index, axis=1)
 
-        scope_df = c_df[["in_test","in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]]
-        # scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
+        scope_df = c_df[SCOPE_LIST]
+        s_df.loc[key] = scope_df.mean().values
+        scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
         scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
 
         keyword_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "const", "void", "while", "with", "document","MY_MJSA_THIS"]]
-        # keyword_df = keyword_df.loc[:, (keyword_df != 0).any(axis=0)]
+        keyword_df = keyword_df.loc[:, (keyword_df != 0).any(axis=0)]
         keyword_df = keyword_df.reindex(keyword_df.sum().sort_values(ascending=False).index, axis=1)
 
         punctuator_df = c_df[["!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+","++",
@@ -173,7 +182,6 @@ for key, value in clustdict.items():
                             "^=","{","|","|=","||","}","~"]]
         # punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
         punctuator_df = punctuator_df.reindex(punctuator_df.sum().sort_values(ascending=False).index, axis=1)
-
 
         f = open(CLUSTER_REPORT, 'a')
         file_df.to_csv(f, encoding='utf-8', index=True)
@@ -218,6 +226,20 @@ for key, value in clustdict.items():
 
     if (VERBOSE >= 0): print(key, value)
     
+f_df = f_df.loc[:, (f_df != 0).any(axis=0)]
+s_df = s_df.loc[:, (s_df != 0).any(axis=0)]
+NUMBER_OF_COLUMNS = max(len(f_df.columns.values), len(s_df.columns.values))
+
+if len(f_df.columns.values) != NUMBER_OF_COLUMNS:
+    for i in range(len(f_df.columns.values), NUMBER_OF_COLUMNS):
+        f_df[str(i)] = 0
+
+if len(s_df.columns.values) != NUMBER_OF_COLUMNS:
+    for i in range(len(s_df.columns.values), NUMBER_OF_COLUMNS):
+        s_df[str(i)] = 0
+
+
+
 if FILE:
     FINAL_REPORT_PATH = os.path.join(file_path, "final_report.txt")
     f = open(FINAL_REPORT_PATH, 'w+')
@@ -226,33 +248,31 @@ if FILE:
         f.write(value + "\n")
     f.close()
 
+    FEATURE_MEAN_CSV = os.path.join(file_path, "f_df.csv")
+    f_df.to_csv(FEATURE_MEAN_CSV, encoding='utf-8', index=True)
+
+    SCOPE_MEAN_CSV = os.path.join(file_path, "s_df.csv")
+    s_df.to_csv(SCOPE_MEAN_CSV, encoding='utf-8', index=True)
+
 # draw full dendrogram
-plt.figure(figsize=(25, 10))
-# plt.title('Hierarchical Clustering Dendrogram')
-# plt.xlabel('sample index')
-# plt.ylabel('distance')
-# dendrogram(
-#     Z,
-#     leaf_rotation=90.,  # rotates the x axis labels
-#     leaf_font_size=8.,  # font size for the x axis labels
-# )
-
-
+fig = plt.figure()
+# plt.figure(figsize=(25, 10))
 if (args.dendrogram):
-    max_d = 10  # max_d as in max_distance
+    max_d = 10  # max_d as in max_distance for colouring sub tree
     fancy_dendrogram(
         Z,
+        leaf_label_func=llf,
         truncate_mode='lastp',
         p=LEVEL,
         # truncate_mode='level',
         # p=10,
-        leaf_rotation=90.,
-        leaf_font_size=12.,
+        leaf_font_size=8.,
         show_contracted=True,
-        annotate_above=10,
+        annotate_above=5,
         max_d=max_d,  # plot a horizontal cut-off line
     )
-    plt.show()
+# plt.show()
+plt.savefig(os.path.join(file_path,'dendrogram.png'))
 
 CLUSTER_RESULT = os.path.join(file_path, "cluster_result.csv")
 df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)

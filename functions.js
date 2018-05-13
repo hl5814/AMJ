@@ -299,7 +299,8 @@ AST.prototype.checkStaticMemberFunctionCall=function(node, varMap, verbose=false
 AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false) {
 	const identifier = block.id.name;
 	const expression = new Expr(block.init);
-
+	console.log(block.id)
+	console.log(block.init)
 	if (block.init == null){
 		return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 	}

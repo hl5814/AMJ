@@ -1,0 +1,28 @@
+\select@language {english}
+\contentsline {section}{\numberline {1}Introduction}{2}
+\contentsline {subsection}{\numberline {1.1}Motivation}{2}
+\contentsline {subsection}{\numberline {1.2}Objectives}{2}
+\contentsline {subsection}{\numberline {1.3}Challenges}{2}
+\contentsline {section}{\numberline {2}Background}{3}
+\contentsline {subsection}{\numberline {2.1}JavaScript Obfuscation Techniques}{3}
+\contentsline {subsection}{\numberline {2.2}Benign and Malicious JavaScript}{6}
+\contentsline {subsection}{\numberline {2.3}Existing Approaches}{6}
+\contentsline {subsubsection}{\numberline {2.3.1}Static Analysis}{6}
+\contentsline {subsubsection}{\numberline {2.3.2}Environment Analysis}{8}
+\contentsline {subsubsection}{\numberline {2.3.3}Function Invocation Based Analysis}{9}
+\contentsline {subsubsection}{\numberline {2.3.4}Dynamic Analysis}{9}
+\contentsline {paragraph}{Symbolic Execution:}{10}
+\contentsline {subparagraph}{For example:}{10}
+\contentsline {paragraph}{Dynamic Symbolic Interpreter}{10}
+\contentsline {paragraph}{Path Constraint Extractor}{11}
+\contentsline {paragraph}{Multi-execution:}{11}
+\contentsline {subsubsection}{\numberline {2.3.5}GUI Event Analysis}{12}
+\contentsline {subsection}{\numberline {2.4}Statistics Models}{13}
+\contentsline {paragraph}{$\chi ^{2}$ algorithm:}{13}
+\contentsline {paragraph}{Bayesian statistics:}{13}
+\contentsline {section}{\numberline {3}Project Plan}{14}
+\contentsline {section}{\numberline {4}Evaluation plan}{15}
+\contentsline {subsection}{\numberline {4.1}Data Samples}{15}
+\contentsline {subsection}{\numberline {4.2}Correctness \& Effectiveness}{15}
+\contentsline {subsection}{\numberline {4.3}Performance}{15}
+\contentsline {section}{References}{16}
