@@ -89,9 +89,17 @@ Set.prototype.my_add=function(values){
 
 var resultMap = new HashMap();
 
-const FEATURES = [	"InitVariable",
+const FEATURES = [	"InitVariableWithFunctionExpression",
+					"InitVariableWithExpression",
+					"InitVariableWithThisExpression",
+					"InitVariableWithUnaryExpression",
+					"InitVariableWithBinaryExpression",
+					"InitVariableWithCallExpression",
+					"InitVariableWithLogicalExpression",
 					"AssignWithFuncCall",
+					"AssignWithLogicalExpression",
 					"AssignWithBitOperation",
+					"AssignWithThisExpression",
 					"FunctionObfuscation",
 					"StringConcatation",
 					"ArrayConcatation",
@@ -128,7 +136,7 @@ const PUNCTUATORS = [	"!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+"
 						"<=","=","==","===",">",">=",">>",">>=",">>>","?","[","]",
 						"^","^=","{","|","|=","||","}","~"];
 
-const LENGTH = ["TokenPerFile"]
+const LENGTH = ["TokenPerFile", "CommentPerFile"]
 
 for (const k of KEYWORDS) {
 	resultMap.set(k, 0);
@@ -143,10 +151,14 @@ for (const f of FEATURES) {
 for (const s of SCOPES) {
 	resultMap.set(s, 0);
 }
+for (const l of LENGTH) {
+	resultMap.set(l, 0);
+}
 
-resultMap.set("TokenPerFile", 0);
 
 var FILE_LENGTH = 0;
+var COMMENT_LENGTH = 0;
+
 var FEATURE_TOTAL = 0;
 var SCOPE_TOTAL = 0;
 var KEYWORD_TOTAL = 0;
@@ -167,22 +179,20 @@ function updateResultMap(resultMap, featureType, scope, point=1) {
 function showResult(resultMap) {
 	var resultArray = [];
 	var h = "";
+	if (FILE_LENGTH > 0) {
+		resultMap.set("CommentPerFile", COMMENT_LENGTH/FILE_LENGTH);
+	}
 	resultMap.forEach(function(value, key){
 		h +=  "," + '"' + key + '"';
 		if (KEYWORDS.indexOf(key) > -1) {
-			// console.log("KEYWORDS:", key," value: ",value/KEYWORD_TOTAL);
 			var val = (value > 0) ? value/KEYWORD_TOTAL : 0;
 		} else if (PUNCTUATORS.indexOf(key) > -1) {
-			// console.log("PUNCTUATORS:", key," value: ",value/PUNCTUATOR_TOTAL);
 			var val = (value > 0) ? value/PUNCTUATOR_TOTAL : 0;
 		} else if (FEATURES.indexOf(key) > -1) {
-			// console.log("FEATURES:", key," value: ",value/FEATURE_SCOPE_TOTAL);
 			var val = (value > 0) ? value/FEATURE_TOTAL : 0;
 		} else if (SCOPES.indexOf(key) > -1) {
-			// console.log("SCOPES:", key," value: ",value/FEATURE_SCOPE_TOTAL);
 			var val = (value > 0) ? value/SCOPE_TOTAL : 0;
 		} else {
-			console.log(">>", key)
 			var val = value;
 		}
 		resultArray.push(val);
@@ -240,8 +250,16 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 	for (var i in ast.body){
 		var astNode = new Functions.AST(ast);
 
-		if (verbose>1 && (ast.body[i].type != "Line")) console.log("======================\n", ast.body[i],"\n======================\n");
-		
+		if (verbose>1 && (ast.body[i].type != "Line")) {
+			console.log("======================\n", ast.body[i],"\n======================\n");
+		}
+
+		if (ast.body[i].type == "Line" || ast.body[i].type == "Block") {
+			var commentLine = ASTUtils.getCode(ast.body[i]);
+			COMMENT_LENGTH += commentLine.length;
+		}
+
+
 		var stringConcat = astNode.checkStringConcatnation(i,varMap);
 		if (stringConcat != "") {
 			if (verbose>0) console.log("FEATURE[StringConcatation] :" + stringConcat);
@@ -263,13 +281,17 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				var variableName_Type = astNode.getVariableInitValue(i, declaration_blocks[block], varMap, verbose);
 				var variableName_Types = variableName_Type[1];
 				for (var v in variableName_Types) {
+					if (variableName_Types[v] === undefined) {
+						console.log(ast.body[i].declarations)
+						continue;
+					}
 					if (variableName_Types[v].type == "ArrayExpression" || 
 						variableName_Types[v].type == "NewExpression") {
 						
 						var numElements = astNode.getNumberOfElementsInArrayExpression(i, ast);
 						if (numElements > 1000){
-							if (verbose>0) console.log("FEATURE[HugeArray] : " + variableName_Type[0] + " contains " + numElements + " objects");
-							updateResultMap(resultMap, "HugeArray", coefficient);
+							if (verbose>0) console.log("FEATURE[LongArray] : " + variableName_Type[0] + " contains " + numElements + " objects");
+							updateResultMap(resultMap, "LongArray", coefficient);
 						}
 						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					} else if (variableName_Types[v].type == "pre_Function"){
@@ -280,9 +302,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					} else {
 						if (astNode.hasFunctionExpression(i)) {
 							//FunctionExpression
-							ASTUtils.traverse(ast.body[i], function(node){
+							ASTUtils.traverse(ast.body[i], function(node, parent){
 								if (node.type == "FunctionExpression"){
-									if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
+									if (verbose>0) console.log("FEATURE[InitVariableWithFunctionExpression] in :" + scope + " :" + ASTUtils.getCode(parent));
 								
 									var emptyVarMap = new Functions.VariableMap(varMap._varMap);
 									// assume all function parameters might be String type when parsing function body
@@ -301,11 +323,13 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										parseProgram(returnS, "ReturnStatement in " + variableName_Types[v].value, coef, emptyVarMap, verbose);
 									}
 
-									updateResultMap(resultMap, "InitVariable", coefficient);
+									updateResultMap(resultMap, "InitVariableWithFunctionExpression", coefficient);
 								} 
 							});
 							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
-						} else if (variableName_Types[v].type == "Expression") {
+						} else if (variableName_Types[v].type == "Expression" || variableName_Types[v].type == "BinaryExpression" || 
+								   variableName_Types[v].type == "UnaryExpression" || variableName_Types[v].type == "CallExpression" || 
+								   variableName_Types[v].type == "LogicalExpression" || variableName_Types[v].type == "ThisExpression") {
 							ASTUtils.traverse(ast.body[i], function(node){
 								if (node.type == "CallExpression" && node.callee.type == "MemberExpression" && node.callee.object.type == "Identifier") {
 									var object = node.callee.object.name;
@@ -329,8 +353,26 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									}
 								}
 							});
-							if (verbose>0) console.log("FEATURE[InitVariable] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + "=" +variableName_Types[v].value);
-							updateResultMap(resultMap, "InitVariable", coefficient);
+
+							if (variableName_Types[v].type == "BinaryExpression") {
+								if (verbose>0) console.log("FEATURE[InitVariableWithBinaryExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+								updateResultMap(resultMap, "InitVariableWithBinaryExpression", coefficient);
+							} else if (variableName_Types[v].type == "ThisExpression") {
+								if (verbose>0) console.log("FEATURE[InitVariableWithThisExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+								updateResultMap(resultMap, "InitVariableWithThisExpression", coefficient);
+							} else if (variableName_Types[v].type == "UnaryExpression") {
+								if (verbose>0) console.log("FEATURE[InitVariableWithUnaryExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+								updateResultMap(resultMap, "InitVariableWithUnaryExpression", coefficient);
+							} else if (variableName_Types[v].type == "CallExpression"){
+								if (verbose>0) console.log("FEATURE[InitVariableWithCallExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+								updateResultMap(resultMap, "InitVariableWithCallExpression", coefficient);
+							} else if (variableName_Types[v].type == "LogicalExpression"){
+								if (verbose>0) console.log("FEATURE[InitVariableWithLogicalExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+								updateResultMap(resultMap, "InitVariableWithLogicalExpression", coefficient);
+							} else {
+								if (verbose>0) console.log("FEATURE[InitVariableWithExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+								updateResultMap(resultMap, "InitVariableWithExpression", coefficient);
+							}
 							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 								
 						} else {
@@ -414,12 +456,22 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						});
 					} else {
 
-						ASTUtils.traverse(ast.body[i], function(node){
+						ASTUtils.traverse(ast.body[i], function(node, parent){
 							if (node.type == "ArrayExpression"){
 								if (node.elements.length > 1000){
-									if (verbose>0) console.log("FEATURE[HugeArray] : " + var_values[0] + " contains " + node.elements.length + " objects");
-									updateResultMap(resultMap, "HugeArray", coefficient);
+									if (verbose>0) console.log("FEATURE[LongArray] : " + var_values[0] + " contains " + node.elements.length + " objects");
+									updateResultMap(resultMap, "LongArray", coefficient);
 								}
+							}
+
+							if (node.type == "ThisExpression"){
+								if (verbose>0) console.log("FEATURE[AssignWithThisExpression] : " + ASTUtils.getCode(parent));
+								updateResultMap(resultMap, "AssignWithThisExpression", coefficient);
+							}
+
+							if (node.type == "LogicalExpression"){
+								if (verbose>0) console.log("FEATURE[AssignWithLogicalExpression] : " + ASTUtils.getCode(parent));
+								updateResultMap(resultMap, "AssignWithLogicalExpression", coefficient);
 							}
 							
 							if (node.type == "AssignmentExpression") {
@@ -439,7 +491,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									// i.e. function a(){...}()
 									var coef = coefficient.slice();
 									coef.push("in_function")
-									parseProgram(ASTUtils.getCode(node).slice(0, -2), "CallExpression", coef, varMap, verbose);
+									var funcBody = ASTUtils.getCode(node);
+									parseProgram(funcBody.slice(funcBody.indexOf("{"),funcBody.lastIndexOf("(")), "CallExpression", coef, varMap, verbose);
 									callee = node.callee.name;
 								} else {
 									callee = node.callee.name;
@@ -482,18 +535,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				}
 				
 				var funcNames = varMap.get(funcName);
-				// if (var_values === undefined) {
-				// 	ASTUtils.traverse(ast.body[i], function(node){
-				// 		if (node.type == "CallExpression"){
-				// 			var callee = node.callee.name;
-				// 			if (node.callee.name !== undefined && varMap.get(callee) === undefined) {
-				// 				if (verbose>0) console.log("FEATURE[UndefinedFunction] in :" + scope + ":" + callee);
-				// 				updateResultMap(resultMap, "UndefinedFunction", coefficient);
-				// 			}
-				// 		}
-				// 	});
-				// }
-
 				for (var f in funcNames) {
 					if (funcNames[f].type != "pre_Function" && funcNames[f].type != "user_Function" ) {
 						continue; 
@@ -667,7 +708,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					var var_values = varMap.get(val1.key);
 
 					// value updated in if-branch OR new value created in if-branche
-					// console.log (listEqual(var_values, val1.value))
 					for (var v in var_values) {
 						if (var_values[v] != val1.value) {
 							var prevValues = diffMap.get(val1.key);

@@ -98,7 +98,7 @@ AST.prototype.getReturnInstructions=function(index, varMap, ast) {
 				var name = node.argument;
 				var token = (new Expr(name)).getToken(parentNode);
 				if (token.type == "String") {
-					returnStatements.push(name.value);
+					returnStatements.push(name.raw);
 				}
 			} else if (node.argument.type == "CallExpression" && node.argument.callee.type == "FunctionExpression"){
 				ASTUtils.traverse(node.argument.callee.body, function(node2){
@@ -299,8 +299,7 @@ AST.prototype.checkStaticMemberFunctionCall=function(node, varMap, verbose=false
 AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false) {
 	const identifier = block.id.name;
 	const expression = new Expr(block.init);
-	console.log(block.id)
-	console.log(block.init)
+
 	if (block.init == null){
 		return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 	}
@@ -310,10 +309,14 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 		return [identifier, [{ type: token.type, value: token.value }]];
 	} else if (block.init.type == "ArrayExpression"){
 		return [identifier, [{ type: 'ArrayExpression', value: args }]];
+	} else if (block.init.type == "ThisExpression"){
+		return [identifier, [{ type: 'ThisExpression', value: "this" }]];
+	} else if (block.init.type == "UnaryExpression"){
+		return [identifier, [{ type: 'UnaryExpression', value: args }]];
 	} else if (block.init.type == "NewExpression"){
 		return [identifier, [{ type: 'NewExpression', value: args }]];
 	} else if (block.init.type == "CallExpression"){
-		return [identifier, [{ type: 'Expression', value: args }]];
+		return [identifier, [{ type: 'CallExpression', value: args }]];
 	} else if (block.init.type == "FunctionExpression"){ 
 		var functionName = null;
 		if (block.init.id) {
@@ -328,7 +331,9 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 		const object = (new Expr(block.init)).getValueFromMemberExpression(this._node, identifier, varMap, false, verbose);
 		const object_name = object[0];
 		const field_name  = object[1];
-
+		if (object_name == "this") {
+			return [identifier, field_name];
+		}
 		const field = varMap.get(object_name);
 		var values = [];
 
@@ -341,8 +346,12 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 					}
 				} else if (f.type == "ArrayExpression") {
 					for (const fn of field_name) {
-						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-						if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name][1]);
+						if (fn.type == "keyword" && fn.value == "length") {
+							values.concat([{ type: 'Numeric', value: f.value.length }]);
+						} else {
+							var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
+							if (f.value[f_name] !== undefined && f.value[f_name][1] !== undefined) values = values.concat(f.value[f_name][1]);
+						}
 					}
 				}
 			}
@@ -363,7 +372,14 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 				varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
 				return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 			}
-			return [identifier, [{ type: 'Expression', value: args }]];
+
+			if (block.init.type == "BinaryExpression") {
+				return [identifier, [{ type: 'BinaryExpression', value: args }]];
+			} else if (block.init.type == "LogicalExpression") {
+				return [identifier, [{ type: 'LogicalExpression', value: args }]];
+			} else {
+				return [identifier, [{ type: 'Expression', value: args }]];
+			}
 		}
 	}
 }
@@ -379,7 +395,12 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 	var lhs = expression.left;
 	var rhs = expression.right;
 	var identifier = (new Expr(lhs)).getIdentifier(varMap);
+	var token = (new Expr(lhs)).getToken(this._node);
 
+	if (identifier === undefined) {
+		varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
+		identifier = token.value;
+	}
 	// pre-process if left hand side is ArrayMemberExpression
 	if (expression.left.type == "MemberExpression") {
 		if (lhs.computed) {
@@ -439,6 +460,12 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		var result_types = [];
 
 		var token, rhs_left;
+
+		// get the fist binary expression
+		while (rhs.left !== undefined && rhs.left.type == "BinaryExpression") {
+			rhs = rhs.left
+		}
+
 		if (rhs.left !== undefined) {
 			token = (new Expr(rhs.left)).getToken(this._node);
 			rhs_left = rhs.left;
@@ -452,7 +479,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			if (ref_values) {
 				for (var i in ref_values) {
 
-					if (ref_values[i].type == "String") {
+					if (ref_values[i].type == "String" && rhs.operator == "+") {
 						if (val.length > 30) {
 							val = val.substring(1, 30) + "...";
 						}
@@ -463,8 +490,36 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 				}
 				if (result_types.length >0) return [identifier, result_types];
 			}
+		} else if (rhs_left.type == "MemberExpression") {
+			const object = (new Expr(rhs_left)).getValueFromMemberExpression(this._node, identifier, varMap, false, verbose);
+			const object_name = object[0];
+			const field_name  = object[1];
+
+			const field = varMap.get(object_name);
+			var values = [];
+			if (field !== undefined) {
+				for (const f of field) {
+					if (f.type == "ObjectExpression") {
+						for (const fn of field_name) {
+							var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
+							if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name]);
+						}
+					} else if (f.type == "ArrayExpression") {
+						for (const fn of field_name) {
+							var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
+							if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name][1]);
+						}
+					}
+				}
+			}
+			for (const v of values) {
+				if (v.type == "String" && rhs.operator == "+") {
+					return [identifier, [{ type: "String", value: val}]];
+				}
+			}
+			return [identifier, [{ type: "MemberExpression", value: val}]];
 		} else {
-			if (token.type == "String") {
+			if (token.type == "String" && rhs.operator == "+") {
 				if (val.length > 30) {
 					val = val.substring(1, 30) + "...";
 				}
@@ -529,11 +584,18 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 	} else if (rhs.type == "ObjectExpression" ){
 		var args = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
 		return [identifier, [{ type: 'ObjectExpression', value: args }]];
+	} else if (rhs.type == "LogicalExpression" ){
+		var args = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
+		return [identifier, [{ type: 'LogicalExpression', value: args }]];
+	}  else if (rhs.type == "ThisExpression" ){
+		return [identifier, [{ type: 'ThisExpression', value: "this" }]];
 	} else if (rhs.type == "MemberExpression" ){
 		const object = (new Expr(rhs)).getValueFromMemberExpression(this._node, identifier, varMap, false, verbose);
 		const object_name = object[0];
 		const field_name  = object[1];
-		
+		if (object_name == "this") {
+			return [identifier, field_name];
+		}
 		const field = varMap.get(object_name);
 		var values = [];
 		if (field !== undefined) {
@@ -724,6 +786,9 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 	} else if (this._expr.type == "NewExpression") {
 		var expr = new Expr(this._expr);
 		arg = expr.getValueFromNewExpression(node, identifier, varMap, inner, verbose);
+	} else if (this._expr.type == "LogicalExpression") {
+		var expr = new Expr(this._expr);
+		arg = expr.getValueFromLogicalExpression(node, identifier, varMap, inner, verbose);
 	} else if (this._expr.type == "ArrayExpression") {
 		var expr = new Expr(this._expr);
 		elem_array = expr.getValueFromArrayExpression(node, identifier, varMap, inner, verbose);
@@ -774,6 +839,10 @@ Expr.prototype.getValueFromObjectExpression=function(node, identifier, varMap, i
 	return object;
 }
 
+Expr.prototype.getValueFromLogicalExpression=function(node, identifier, varMap, inner, verbose=false) {
+	var expressionBody = ASTUtils.getCode(this._expr);
+	return expressionBody;
+}
 
 Expr.prototype.getValueFromFunctionExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
@@ -827,7 +896,9 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 		var val = (new Expr(this._expr.object)).getValueFromMemberExpression(node, identifier, varMap, true, verbose);
 		// console.log("val", val)
 		var identifier = val;
-	} else {
+	} else if (this._expr.object.type == "ThisExpression"){
+		var identifier = "this";
+	}else {
 		var identifier = this._expr.object.name;
 	}
 	
@@ -855,7 +926,11 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 		return [identifier, val];
 	} else {
 		if (identifier) {
-			return [identifier, [{type: "keyword", value:this._expr.property.name}]];
+			if (identifier == "this") {
+				return [identifier, [{type: "ThisExpression", value: ASTUtils.getCode(this._expr)}]];
+			} else {
+				return [identifier, [{type: "keyword", value:this._expr.property.name}]];
+			}
 		} else {
 			var arg = new Expr(this._expr.object);
 			var val = arg.getArg(node, identifier, varMap, true, verbose);

@@ -312,6 +312,8 @@ Switch cases statements might share code body between cases (no break instructio
 ## (2)Implement nested Array/Field Objects
 	var a = new Array([{a:"a",b:"b"},"2"]);
 	eval(a[0].b)
+## (3)
+	// ScriptFragment: "<script[^>]*>([\\S\\s]*?)<\/script>",
 	
 
 # PLAN

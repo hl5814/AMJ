@@ -127,7 +127,33 @@ FINAL_REPORT = {    "number of files":"",
                     "topPunctuators": ""
                 }
 
-FEATURE_LIST = ["InitVariable","AssignWithFuncCall","AssignWithBitOperation","FunctionObfuscation","StringConcatation","ArrayConcatation","DecodeString_OR_DOM_FunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock","AssigningToThis","ConditionalCompilationCode","DotNotationInFunctionName","LongArray", "LongExpression"]
+FEATURE_LIST = [    "InitVariableWithFunctionExpression",
+                    "InitVariableWithExpression",
+                    "InitVariableWithThisExpression",
+                    "InitVariableWithUnaryExpression",
+                    "InitVariableWithBinaryExpression",
+                    "InitVariableWithCallExpression",
+                    "InitVariableWithLogicalExpression",
+                    "AssignWithFuncCall",
+                    "AssignWithLogicalExpression",
+                    "AssignWithBitOperation",
+                    "AssignWithThisExpression",
+                    "FunctionObfuscation",
+                    "StringConcatation",
+                    "ArrayConcatation",
+                    "DecodeString_OR_DOM_FunctionCall",
+                    "FuncCallOnBinaryExpr",
+                    "FuncCallOnUnaryExpr",
+                    "FuncCallOnStringVariable",
+                    "FuncCallOnCallExpr",
+                    "NonLocalArrayAccess",
+                    "HtmlCommentInScriptBlock",
+                    "AssigningToThis",
+                    "ConditionalCompilationCode",
+                    "DotNotationInFunctionName",
+                    "LongArray",
+                    "LongExpression"]
+
 SCOPE_LIST = ["in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]
 
 f_df = pd.DataFrame(columns=FEATURE_LIST)
@@ -137,6 +163,7 @@ feature_dict = {}
 for f in FEATURE_LIST:
     feature_dict[f] = 0
 
+print("\n--------------------------------------------------")
 TOTAL_FILES = 0
 for key, value in clustdict.items():
     TOTAL_FILES = TOTAL_FILES + len(value)
@@ -162,7 +189,7 @@ for key, value in clustdict.items():
             df.at[v, 'cluster'] = str(key) # update cluster number for the input dataFrame
        
         # Cluster Report DataFrames Processing
-        file_df = c_df[["TokenPerFile"]]
+        file_df = c_df[["TokenPerFile", "CommentPerFile"]]
 
         feature_df = c_df[FEATURE_LIST]
         f_df.loc[key] = feature_df.mean().values
@@ -230,7 +257,7 @@ for key, value in clustdict.items():
             feature_dict[f] = feature_dict[f] + feature_df[f].astype(bool).sum()
 
 
-    if (VERBOSE >= 0): print(key, len(value))
+    if (VERBOSE >= 0): print("Cluster["+str(key)+"]     #files: ", len(value))
     
 f_df = f_df.loc[:, (f_df != 0).any(axis=0)]
 s_df = s_df.loc[:, (s_df != 0).any(axis=0)]
@@ -278,14 +305,15 @@ if FILE:
 fig = plt.figure()
 # plt.figure(figsize=(25, 10))
 if (args.dendrogram):
+    sys.setrecursionlimit(1500)
     max_d = 10  # max_d as in max_distance for colouring sub tree
     fancy_dendrogram(
         Z,
         leaf_label_func=llf,
-        truncate_mode='lastp',
-        p=NODES,
-        # truncate_mode='level',
-        # p=10,
+        # truncate_mode='lastp',
+        # p=NODES,
+        truncate_mode='level',
+        p=100,
         leaf_font_size=8.,
         show_contracted=True,
         annotate_above=5,
