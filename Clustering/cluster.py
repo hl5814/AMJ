@@ -2,10 +2,9 @@ from matplotlib import pyplot as plt
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 import numpy as np
 import pandas as pd
-import csv, os, shutil
+import csv, os, shutil, argparse, sys, operator
 from io import StringIO
 from shutil import copyfile
-import argparse, sys
 from scipy.cluster.hierarchy import cophenet
 from scipy.spatial.distance import pdist
 
@@ -21,7 +20,7 @@ parser.add_argument("-p", dest='percentage', action='store',type=float, default=
 parser.add_argument("-s", dest='source', required=True, action='store',type=str, help="input csv file path")
 
 args = parser.parse_args()
-LEVEL = args.level
+NODES = args.level
 VERBOSE = args.verbose
 FILE = args.file
 PERCENT = args.percentage
@@ -58,7 +57,7 @@ L_MATRIX = "ward"
 #         TOP_COPHENET = c
 #         L_MATRIX = L
 # Z = linkage(X, L_MATRIX)
-if (VERBOSE >= 0) : print("Clustering into " + str(LEVEL) + " clusters . . .\n")
+if (VERBOSE >= 0) : print("Clustering into " + str(NODES) + " clusters . . .\n")
 Z = linkage(X, 'ward')
 c, coph_dists = cophenet(Z, pdist(X))
 if (VERBOSE >= 0) : print("Using :[", L_MATRIX, "] as linkage matrix\nwith cophenet value: ", c, "\n")
@@ -93,12 +92,10 @@ def fancy_dendrogram(*args, **kwargs):
 
 
 # Print out file index within each cluster
-linkage = Z
-clusternum = LEVEL
-clustdict = {i:[i] for i in range(len(linkage)+1)}
-for i in range(len(linkage)-clusternum+1):
-    clust1= int(linkage[i][0])
-    clust2= int(linkage[i][1])
+clustdict = {i:[i] for i in range(len(Z)+1)}
+for i in range(len(Z)-NODES+1):
+    clust1= int(Z[i][0])
+    clust2= int(Z[i][1])
     clustdict[max(clustdict)+1] = clustdict[clust1] + clustdict[clust2]
     del clustdict[clust1], clustdict[clust2]
 
@@ -130,15 +127,21 @@ FINAL_REPORT = {    "number of files":"",
                     "topPunctuators": ""
                 }
 
-FEATURE_LIST = ["InitVariable","AssignWithFuncCall","AssignWithBitOperation","PreFunctionObfuscation","StringConcatation","ArrayConcatation","MaliciousFunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock","UsingKeywordThis","ConditionalCompilationCode","DotNotationInFunctionName","LongArray", "LongExpression"]
+FEATURE_LIST = ["InitVariable","AssignWithFuncCall","AssignWithBitOperation","FunctionObfuscation","StringConcatation","ArrayConcatation","DecodeString_OR_DOM_FunctionCall","FuncCallOnBinaryExpr","FuncCallOnUnaryExpr","FuncCallOnStringVariable","FuncCallOnCallExpr","NonLocalArrayAccess","HtmlCommentInScriptBlock","AssigningToThis","ConditionalCompilationCode","DotNotationInFunctionName","LongArray", "LongExpression"]
 SCOPE_LIST = ["in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]
 
 f_df = pd.DataFrame(columns=FEATURE_LIST)
 s_df = pd.DataFrame(columns=SCOPE_LIST)
 
+feature_dict = {}
+for f in FEATURE_LIST:
+    feature_dict[f] = 0
+
+TOTAL_FILES = 0
 for key, value in clustdict.items():
+    TOTAL_FILES = TOTAL_FILES + len(value)
     if (VERBOSE == -1):
-        print(printProgress("1",iteration,clusternum,"","Cluster:["+str(key)+"]"), end="\r", flush=True, file=sys.stderr)
+        print(printProgress("1",iteration,NODES,"","Cluster:["+str(key)+"]"), end="\r", flush=True, file=sys.stderr)
         iteration = iteration + 1
 
     cluster_size.append(len(value))
@@ -216,14 +219,18 @@ for key, value in clustdict.items():
         f.close()
 
         FINAL_REPORT["number of files"] += str(key) + ": " +str(len(value)) + "\n"
-        FINAL_REPORT["topFeatures"] += str(key) + ": " +str(feature_df.columns.values[:3]) + "\n"
-        FINAL_REPORT["topScopes"] += str(key) + ": " +str(scope_df.columns.values[:3]) + "\n"
-        FINAL_REPORT["topKeywords"] += str(key) + ": " +str(keyword_df.columns.values[:3]) + "\n"
-        FINAL_REPORT["topPunctuators"] += str(key) + ": " +str(punctuator_df.columns.values[:3]) + "\n"
+        FINAL_REPORT["topFeatures"] += str(key) + ": " +str(feature_df.columns.values) + "\n"
+        FINAL_REPORT["topScopes"] += str(key) + ": " +str(scope_df.columns.values) + "\n"
+        FINAL_REPORT["topKeywords"] += str(key) + ": " +str(keyword_df.columns.values) + "\n"
+        FINAL_REPORT["topPunctuators"] += str(key) + ": " +str(punctuator_df.columns.values) + "\n"
 
 
+        # update feature dict
+        for f in feature_df.columns.values:
+            feature_dict[f] = feature_dict[f] + feature_df[f].astype(bool).sum()
 
-    if (VERBOSE >= 0): print(key, value)
+
+    if (VERBOSE >= 0): print(key, len(value))
     
 f_df = f_df.loc[:, (f_df != 0).any(axis=0)]
 s_df = s_df.loc[:, (s_df != 0).any(axis=0)]
@@ -239,9 +246,23 @@ if len(s_df.columns.values) != NUMBER_OF_COLUMNS:
 
 
 
+sorted_f = sorted(feature_dict.items(), key=operator.itemgetter(1), reverse=True)
+UN_FOUND_FEATURES = set(FEATURE_LIST) - set(f_df.columns.values)
+UN_FOUND_SCOPES = set(SCOPE_LIST) - set(s_df.columns.values)
+
 if FILE:
     FINAL_REPORT_PATH = os.path.join(file_path, "final_report.txt")
     f = open(FINAL_REPORT_PATH, 'w+')
+    f.write("\n\nTop Features from the sample set:\n--------------------------------------------------\n")
+    for ft in sorted_f:
+        if ft[1] > 0:
+            percent = ft[1]/TOTAL_FILES * 100
+            f.write("{:<35}:{:<5}({:>7}\n".format(ft[0],ft[1],"%.2f%%)" % percent))
+
+
+    f.write("\n\nUN_FOUND_FEATURES:\n"+ str(UN_FOUND_FEATURES))
+    f.write("\nUN_FOUND_SCOPES:\n"+ str(UN_FOUND_SCOPES) + "\n\n")
+
     for key, value in FINAL_REPORT.items():
         f.write(key + ":\n")
         f.write(value + "\n")
@@ -262,7 +283,7 @@ if (args.dendrogram):
         Z,
         leaf_label_func=llf,
         truncate_mode='lastp',
-        p=LEVEL,
+        p=NODES,
         # truncate_mode='level',
         # p=10,
         leaf_font_size=8.,
@@ -279,11 +300,15 @@ df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)
 if (VERBOSE == -1):
     print("                                                              ", end="\r", flush=True, file=sys.stderr)
 if (VERBOSE >=0) :
-    UN_FOUND_FEATURES = set(FEATURE_LIST) - set(f_df.columns.values)
-    UN_FOUND_SCOPES = set(SCOPE_LIST) - set(s_df.columns.values)
+    
+    print("\n\nTop Features from the sample set:\n--------------------------------------------------")
+    for f in sorted_f:
+        if f[1] > 0:
+            percent = f[1]/TOTAL_FILES * 100
+            print("{:<35}".format(f[0]), ":" ,"{:<5}".format(f[1]), "("+"{:>7}".format("%.2f%%)" % percent))
 
-    print("\n\nUN_FOUND_FEATURES:\n", UN_FOUND_FEATURES)
-    print("\nUN_FOUND_SCOPES:\n", UN_FOUND_SCOPES)
+    if len(UN_FOUND_FEATURES) > 0: print("\n\nUN_FOUND_FEATURES:\n", UN_FOUND_FEATURES)
+    if len(UN_FOUND_SCOPES) > 0: print("\nUN_FOUND_SCOPES:\n", UN_FOUND_SCOPES)
 
     print("\n--------------------------------------------------\nAverage Cluster Size:  ", sum(cluster_size)/len(cluster_size))
 else:

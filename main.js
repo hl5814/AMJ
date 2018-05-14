@@ -92,17 +92,17 @@ var resultMap = new HashMap();
 const FEATURES = [	"InitVariable",
 					"AssignWithFuncCall",
 					"AssignWithBitOperation",
-					"PreFunctionObfuscation",
+					"FunctionObfuscation",
 					"StringConcatation",
 					"ArrayConcatation",
-					"MaliciousFunctionCall",
+					"DecodeString_OR_DOM_FunctionCall",
 					"FuncCallOnBinaryExpr",
 					"FuncCallOnUnaryExpr",
 					"FuncCallOnStringVariable",
 					"FuncCallOnCallExpr",
 					"NonLocalArrayAccess",
 					"HtmlCommentInScriptBlock",
-					"UsingKeywordThis",
+					"AssigningToThis",
 					"ConditionalCompilationCode",
 					"DotNotationInFunctionName",
 					"LongArray",
@@ -228,8 +228,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
 					resultMap.set(pt.value, prevValue+1);
 					KEYWORD_TOTAL++;
-					if (verbose>0) console.log("FEATURE[UsingKeywordThis]");
-					updateResultMap(resultMap, "UsingKeywordThis", ["in_file"]);
+					if (verbose>0) console.log("FEATURE[AssigningToThis]");
+					updateResultMap(resultMap, "AssigningToThis", ["in_file"]);
 				}
 			}
 			
@@ -274,8 +274,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					} else if (variableName_Types[v].type == "pre_Function"){
 						// e.g. var myVariable = eval;	
-						if (verbose>0) console.log("FEATURE[PreFunctionObfuscation] :[", variableName_Type[0], "] -> [", variableName_Types[v].value, "]")
-						updateResultMap(resultMap, "PreFunctionObfuscation", coefficient);
+						if (verbose>0) console.log("FEATURE[FunctionObfuscation] :[", variableName_Type[0], "] -> [", variableName_Types[v].value, "]")
+						updateResultMap(resultMap, "FunctionObfuscation", coefficient);
 						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					} else {
 						if (astNode.hasFunctionExpression(i)) {
@@ -381,8 +381,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 														}
 													}
 												} else {
-													if (verbose>0) console.log("FEATURE[MaliciousFunctionCall] :", ASTUtils.getCode(node));
-													updateResultMap(resultMap, "MaliciousFunctionCall", coefficient);
+													if (verbose>0) console.log("FEATURE[DecodeString_OR_DOM_FunctionCall] :", ASTUtils.getCode(node));
+													updateResultMap(resultMap, "DecodeString_OR_DOM_FunctionCall", coefficient);
 												}
 											}
 										}
@@ -425,8 +425,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 							if (node.type == "AssignmentExpression") {
 								var var_value = astNode.checkStaticMemberFunctionCall(node, varMap);
 								if (var_value !== undefined) {
-									if (verbose>0) console.log("FEATURE[PreFunctionObfuscation] :[", var_value[0], "] -> [", var_value[1].value, "]")
-									updateResultMap(resultMap, "PreFunctionObfuscation", coefficient);
+									if (verbose>0) console.log("FEATURE[FunctionObfuscation] :[", var_value[0], "] -> [", var_value[1].value, "]")
+									updateResultMap(resultMap, "FunctionObfuscation", coefficient);
 								}
 							}
 							if (node.type == "CallExpression"){
@@ -448,8 +448,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									var types = varMap.get(callee);
 									for (var t in types) {
 										if (types[t].type == "pre_Function") {
-											if (verbose>0) console.log("FEATURE[MaliciousFunctionCall] :", ASTUtils.getCode(node));
-											updateResultMap(resultMap, "MaliciousFunctionCall", coefficient);
+											if (verbose>0) console.log("FEATURE[DecodeString_OR_DOM_FunctionCall] :", ASTUtils.getCode(node));
+											updateResultMap(resultMap, "DecodeString_OR_DOM_FunctionCall", coefficient);
 										}
 									}
 								}
