@@ -316,7 +316,9 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		return [identifier, [{ type: 'NewExpression', value: args }]];
 	} else if (initExpr.type == "CallExpression"){
 		return [identifier, [{ type: 'CallExpression', value: args }]];
-	}  else if (initExpr.type == "SequenceExpression"){
+	} else if (initExpr.type == "ConditionalExpression"){
+		return [identifier, args];
+	} else if (initExpr.type == "SequenceExpression"){
 		return [identifier, args[1]];
 	} else if (initExpr.type == "FunctionExpression"){ 
 		return [identifier, [{ type: 'FunctionExpression', value: ASTUtils.getCode(initExpr) }]];
@@ -727,6 +729,9 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 	} else if (this._expr.type == "CallExpression") {
 		var expr = new Expr(this._expr);
 		arg = expr.getValueFromCallExpression(node, identifier, varMap, inner, verbose);
+	} else if (this._expr.type == "ConditionalExpression") {
+		var expr = new Expr(this._expr);
+		arg = expr.getValueFromConditionalExpression(node, identifier, varMap, inner, verbose);
 	} else if (this._expr.type == "NewExpression") {
 		var expr = new Expr(this._expr);
 		arg = expr.getValueFromNewExpression(node, identifier, varMap, inner, verbose);
@@ -784,6 +789,17 @@ Expr.prototype.getValueFromObjectExpression=function(node, identifier, varMap, i
 	}
 
 	return object;
+}
+
+Expr.prototype.getValueFromConditionalExpression=function(node, identifier, varMap, inner, verbose=false) {
+	var expr1 = this._expr.consequent;
+	var expr2 = this._expr.alternate;
+
+	var astNode = new AST(node);
+	var types = [];
+	var type1 = astNode.getVariableInitValue(identifier, expr1, varMap, verbose);
+	var type2 = astNode.getVariableInitValue(identifier, expr2, varMap, verbose);
+	return types.concat(type1[1]).concat(type2[1]);
 }
 
 Expr.prototype.getValueFromLogicalExpression=function(node, identifier, varMap, inner, verbose=false) {

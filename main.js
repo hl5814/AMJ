@@ -168,7 +168,7 @@ function updateResultMap(resultMap, featureType, scope, point=1) {
 	var prevValue = resultMap.get(featureType);
 	resultMap.set(featureType, prevValue+point);
 	FEATURE_TOTAL++;
-	
+
 	for (var s of scope) {
 		prevValue = resultMap.get(s);
 		resultMap.set(s, prevValue+point);
@@ -290,6 +290,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			for (var block in declaration_blocks) {
 				var variableName_Type = astNode.getVariableInitValue(declaration_blocks[block].id.name, declaration_blocks[block].init, varMap, verbose);
 				var variableName_Types = variableName_Type[1];
+
+
+				varMap.setVariable(variableName_Type[0], variableName_Types, verbose)
 				for (var v in variableName_Types) {
 					if (variableName_Types[v] === undefined) {
 						console.log(ast.body[i].declarations)
@@ -303,12 +306,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 							if (verbose>0) console.log("FEATURE[LongArray] : " + variableName_Type[0] + " contains " + numElements + " objects");
 							updateResultMap(resultMap, "LongArray", coefficient);
 						}
-						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					} else if (variableName_Types[v].type == "pre_Function"){
 						// e.g. var myVariable = eval;	
 						if (verbose>0) console.log("FEATURE[FunctionObfuscation] :[", variableName_Type[0], "] -> [", variableName_Types[v].value, "]")
 						updateResultMap(resultMap, "FunctionObfuscation", coefficient);
-						varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
 					} else {
 						if (astNode.hasFunctionExpression(i)) {
 							//FunctionExpression
@@ -336,7 +337,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									updateResultMap(resultMap, "InitVariableWithFunctionExpression", coefficient);
 								} 
 							});
-							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
+							
 						} else if (variableName_Types[v].type == "Expression" || variableName_Types[v].type == "BinaryExpression" || 
 								   variableName_Types[v].type == "UnaryExpression" || variableName_Types[v].type == "CallExpression" || 
 								   variableName_Types[v].type == "LogicalExpression" || variableName_Types[v].type == "ThisExpression") {
@@ -382,12 +383,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 							} else {
 								if (verbose>0) console.log("FEATURE[InitVariableWithExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
 								updateResultMap(resultMap, "InitVariableWithExpression", coefficient);
-							}
-							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
-								
-						} else {
-							varMap.setVariable(variableName_Type[0], [variableName_Types[v]], verbose);
+							}		
 						}
+						//else
 					}
 				}
 			}
