@@ -1006,12 +1006,13 @@ if (showHeader) {
 		if (match !== null) {
 			while (match !== null) {
 				const matchLength = match[0].length;
-				const scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
+				var scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
 
 				var htmlCommentInScriptBlock = scriptBlock.match(/<!--[\s\S]*?-->/g, "");
 				if (htmlCommentInScriptBlock !== null) {
 					if (verbose>0) console.log("FEATURE[HtmlCommentInScriptBlock]");
 					updateResultMap(resultMap, "HtmlCommentInScriptBlock", ["in_file"]);
+					scriptBlock = scriptBlock.replace(/<!--[\s\S]*?-->/g, "")
 				}
 
 				scriptCodes = scriptCodes + scriptBlock;

@@ -333,27 +333,29 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		}
 		const field = varMap.get(object_name);
 		var values = [];
-
-		if (field !== undefined) {
-			for (const f of field) {
-				if (f.type == "ObjectExpression") {
-					for (const fn of field_name) {
-						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-						if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name]);
-					}
-				} else if (f.type == "ArrayExpression") {
-					for (const fn of field_name) {
-						if (fn.type == "keyword" && fn.value == "length") {
-							values.concat([{ type: 'Numeric', value: f.value.length }]);
-						} else {
+		try {
+			if (field !== undefined) {
+				for (const f of field) {
+					if (f.type == "ObjectExpression") {
+						for (const fn of field_name) {
 							var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-							if (f.value[f_name] !== undefined && f.value[f_name][1] !== undefined) values = values.concat(f.value[f_name][1]);
+							if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name]);
+						}
+					} else if (f.type == "ArrayExpression") {
+						for (const fn of field_name) {
+							if (fn.type == "keyword" && fn.value == "length") {
+								values.concat([{ type: 'Numeric', value: f.value.length }]);
+							} else {
+								var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
+								if (f.value[f_name] !== undefined && f.value[f_name][1] !== undefined) values = values.concat(f.value[f_name][1]);
+							}
 						}
 					}
 				}
 			}
+		} catch(err) {
+			return [identifier, [ { type: 'String', value: 'UNKNOWN' } ]]
 		}
-
 		return [identifier, values];
 	} else {
 		// check if is pre-defined functions, e.g. eval, atob, etc.
