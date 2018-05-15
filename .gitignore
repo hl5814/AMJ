@@ -1,4 +1,6 @@
 .DS_Store
 Clustering/clusters
 *.txt
+*.csv
+*.png
 Clustering/figures
