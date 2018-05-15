@@ -168,7 +168,7 @@ function updateResultMap(resultMap, featureType, scope, point=1) {
 	var prevValue = resultMap.get(featureType);
 	resultMap.set(featureType, prevValue+point);
 	FEATURE_TOTAL++;
-
+	
 	for (var s of scope) {
 		prevValue = resultMap.get(s);
 		resultMap.set(s, prevValue+point);
@@ -282,7 +282,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					var codes = ASTUtils.getCode(node)
 					var startIndex = 0;
 					for (const exp of exprs) {
-						parseProgram(ASTUtils.getCode(exp), scope, coef, varMap, verbose);
+						parseProgram(ASTUtils.getCode(exp), scope, coefficient, varMap, verbose);
 					}
 				}
 			});
@@ -400,7 +400,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						var codes = ASTUtils.getCode(node)
 						var startIndex = 0;
 						for (const exp of exprs) {
-							parseProgram(ASTUtils.getCode(exp), scope, coef, varMap, verbose);
+							parseProgram(ASTUtils.getCode(exp), scope, coefficient, varMap, verbose);
 						}
 					}
 				});
