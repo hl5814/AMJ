@@ -109,6 +109,7 @@ const FEATURES = [	"InitVariableWithFunctionExpression",
 					"FuncCallOnStringVariable",
 					"FuncCallOnCallExpr",
 					"FuncCallOnNonLocalArray",
+					"FuncCallOnUnkonwnArrayIndex",
 					"HtmlCommentInScriptBlock",
 					"AssigningToThis",
 					"ConditionalCompilationCode",
@@ -133,7 +134,7 @@ const KEYWORDS = [	"break", "case", "catch", "continue", "debugger", "default",
 
 const PUNCTUATORS = [	"!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+",
 						"++","+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=",
-						"<=","=","==","===",">",">=",">>",">>=",">>>","?","[","]",
+						"<=","=","==","===",">",">=",">>",">>=",">>>",">>>=","?","[","]",
 						"^","^=","{","|","|=","||","}","~"];
 
 const LENGTH = ["TokenPerFile", "CommentPerFile"]
@@ -583,20 +584,25 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										var indx = [];
 										while (object instanceof Array) {
 											var obj = varMap.get(object[0]);
-											if (obj == undefined) {
+											if (obj === undefined) {
+												console.log("Non", object[0]," => ", obj)
 												if (verbose>0) console.log("FEATURE[FuncCallOnNonLocalArray] in :" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
 												updateResultMap(resultMap, "FuncCallOnNonLocalArray", coefficient);
 											}
 											indx = indx.concat(object[1]);
 											object = object[0];
 										}
-										for (var ii = indx.length-1; ii >=0;ii--){
-											var objIndex = indx[ii].value;
-											if (obj !== undefined) obj = obj[0].value[objIndex][1];
+										try {
+											for (var ii = indx.length-1; ii >=0;ii--){
+												var objIndex = indx[ii].value;
+												if (obj !== undefined) obj = obj[0].value[objIndex][1];
+											}
+										} catch (err) {
+											if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnArrayIndex] in :" + scope + ": " + ASTUtils.getCode(astNode._node.body[i]));
+											updateResultMap(resultMap, "FuncCallOnUnkonwnArrayIndex", coefficient);
 										}
 										r_vs = obj;
 									} else {
-
 										r_vs = varMap.get(object);
 										if (r_vs === undefined) { 
 											if (verbose>0) console.log("FEATURE[FuncCallOnNonLocalArray] in :" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));

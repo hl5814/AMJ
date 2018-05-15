@@ -147,6 +147,7 @@ FEATURE_LIST = [    "InitVariableWithFunctionExpression",
                     "FuncCallOnStringVariable",
                     "FuncCallOnCallExpr",
                     "FuncCallOnNonLocalArray",
+                    "FuncCallOnUnkonwnArrayIndex",
                     "HtmlCommentInScriptBlock",
                     "AssigningToThis",
                     "ConditionalCompilationCode",
@@ -207,7 +208,7 @@ for key, value in clustdict.items():
 
         punctuator_df = c_df[["!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+","++",
                             "+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=","<=",
-                            "=","==","===",">",">=",">>",">>=",">>>","?","[","]","^",
+                            "=","==","===",">",">=",">>",">>=",">>>",">>>=","?","[","]","^",
                             "^=","{","|","|=","||","}","~"]]
         punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
         punctuator_df = punctuator_df.reindex(punctuator_df.sum().sort_values(ascending=False).index, axis=1)
@@ -245,11 +246,11 @@ for key, value in clustdict.items():
 
         f.close()
 
-        FINAL_REPORT["number of files"] += str(key) + ": " +str(len(value)) + "\n"
-        FINAL_REPORT["topFeatures"] += str(key) + ": " +str(feature_df.columns.values) + "\n"
-        FINAL_REPORT["topScopes"] += str(key) + ": " +str(scope_df.columns.values) + "\n"
-        FINAL_REPORT["topKeywords"] += str(key) + ": " +str(keyword_df.columns.values) + "\n"
-        FINAL_REPORT["topPunctuators"] += str(key) + ": " +str(punctuator_df.columns.values) + "\n"
+        FINAL_REPORT["number of files"] += "{:>5}".format(str(key)) + ":  " + str(len(value)) + "\n"
+        FINAL_REPORT["topFeatures"] += "{:>5}".format(str(key)) + ": [" + ", ".join(feature_df.columns.values) + "]\n"
+        FINAL_REPORT["topScopes"] += "{:>5}".format(str(key)) + ": [" + ", ".join(scope_df.columns.values) + "]\n"
+        FINAL_REPORT["topKeywords"] += "{:>5}".format(str(key)) + ": [" + ", ".join(keyword_df.columns.values) + "]\n"
+        FINAL_REPORT["topPunctuators"] += "{:>5}".format(str(key)) + ": [" + ", ".join(punctuator_df.columns.values) + "]\n"
 
         # update feature dict
         for f in feature_df.columns.values:
@@ -311,10 +312,10 @@ if (args.dendrogram):
     fancy_dendrogram(
         Z,
         leaf_label_func=llf,
-        # truncate_mode='lastp',
-        # p=NODES,
-        truncate_mode='level',
-        p=100,
+        truncate_mode='lastp',
+        p=NODES,
+        # truncate_mode='level',
+        # p=100,
         leaf_font_size=8.,
         show_contracted=True,
         annotate_above=5,
@@ -329,7 +330,6 @@ df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)
 if (VERBOSE == -1):
     print("                                                              ", end="\r", flush=True, file=sys.stderr)
 if (VERBOSE >=0) :
-    
     print("\n\nTop Features from the sample set:\n--------------------------------------------------")
     for f in sorted_f:
         if f[1] > 0:

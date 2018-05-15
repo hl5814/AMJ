@@ -496,21 +496,26 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 
 			const field = varMap.get(object_name);
 			var values = [];
-			if (field !== undefined) {
-				for (const f of field) {
-					if (f.type == "ObjectExpression") {
-						for (const fn of field_name) {
-							var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-							if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name]);
-						}
-					} else if (f.type == "ArrayExpression") {
-						for (const fn of field_name) {
-							var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-							if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name][1]);
+			try{
+				if (field !== undefined) {
+					for (const f of field) {
+						if (f.type == "ObjectExpression") {
+							for (const fn of field_name) {
+								var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
+								if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name]);
+							}
+						} else if (f.type == "ArrayExpression") {
+							for (const fn of field_name) {
+								var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
+								if (f.value[f_name] !== undefined && f.value[f_name][1] !== undefined) values = values.concat(f.value[f_name][1]);
+							}
 						}
 					}
 				}
+			} catch(err) {
+				values = [ { type: 'String', value: 'UNKNOWN' } ];
 			}
+			
 			for (const v of values) {
 				if (v.type == "String" && rhs.operator == "+") {
 					return [identifier, [{ type: "String", value: val}]];
