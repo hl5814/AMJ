@@ -276,9 +276,19 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 		/* Variable Declaration */
 		if (astNode.isVariableDeclaration(i)) {
+			ASTUtils.traverse(ast.body[i], function(node, parent){
+				if (node.type == "SequenceExpression") {
+					var exprs = node.expressions;
+					var codes = ASTUtils.getCode(node)
+					var startIndex = 0;
+					for (const exp of exprs) {
+						parseProgram(ASTUtils.getCode(exp), scope, coef, varMap, verbose);
+					}
+				}
+			});
 			var declaration_blocks = astNode.getAllDeclarationBlocks(i);
 			for (var block in declaration_blocks) {
-				var variableName_Type = astNode.getVariableInitValue(i, declaration_blocks[block], varMap, verbose);
+				var variableName_Type = astNode.getVariableInitValue(declaration_blocks[block].id.name, declaration_blocks[block].init, varMap, verbose);
 				var variableName_Types = variableName_Type[1];
 				for (var v in variableName_Types) {
 					if (variableName_Types[v] === undefined) {
@@ -384,6 +394,16 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 		}
 		else if (astNode.isExpressionStatement(i)) {
 			if (astNode.isAssignmentExpression(i)) {
+				ASTUtils.traverse(ast.body[i], function(node, parent){
+					if (node.type == "SequenceExpression") {
+						var exprs = node.expressions;
+						var codes = ASTUtils.getCode(node)
+						var startIndex = 0;
+						for (const exp of exprs) {
+							parseProgram(ASTUtils.getCode(exp), scope, coef, varMap, verbose);
+						}
+					}
+				});
 				var var_values = astNode.getAssignmentLeftRight(i, varMap, verbose);
 
 				for (var v in var_values[1]){

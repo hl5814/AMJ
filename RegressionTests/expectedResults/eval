@@ -3,5 +3,5 @@ FEATURE[FuncCallOnStringVariable] in :User_Program: pre_Function:eval(STRING) =>
 FEATURE[FuncCallOnBinaryExpr] in :User_Program: eval(BinaryExpression) => eval(1+1)
 FEATURE[FuncCallOnCallExpr] in :User_Program: eval(CallExpression) => eval(foo((1+(bar()))))
 FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [c] ==> eval("alert(b)")
-FEATURE[PreFunctionObfuscation] :[ a ] -> [ eval ]
+FEATURE[FunctionObfuscation] :[ a ] -> [ eval ]
 FEATURE[FuncCallOnStringVariable] in :User_Program: pre_Function:a(STRING) => eval("test")

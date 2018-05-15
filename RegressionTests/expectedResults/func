@@ -1,14 +1,14 @@
 FEATURE[FuncCallOnStringVariable] in :function a (){eval("str1.1");}: pre_Function:eval(STRING) => eval("str1.1")
-FEATURE[InitVariable] in :User_Program, Init Variable by FunctionExpression:b=a
-FEATURE[FuncCallOnStringVariable] in :a: pre_Function:eval(STRING) => eval("str1.2")
+FEATURE[InitVariableWithFunctionExpression] in :User_Program :b=function a (){eval("str1.2");}
+FEATURE[FuncCallOnStringVariable] in :function a (){eval("str1.2");}: pre_Function:eval(STRING) => eval("str1.2")
 FEATURE[FuncCallOnStringVariable] in :function(){eval("str2.1");}: pre_Function:eval(STRING) => eval("str2.1")
-FEATURE[InitVariable] in :User_Program, Init Variable by FunctionExpression:c=function(){eval("str2.2");}
+FEATURE[InitVariableWithFunctionExpression] in :User_Program :c=function(){eval("str2.2");}
 FEATURE[FuncCallOnStringVariable] in :function(){eval("str2.2");}: pre_Function:eval(STRING) => eval("str2.2")
 FEATURE[FuncCallOnStringVariable] in :testScope2: eval(Object->STRING) => [test] ==> eval("inner2")
 FEATURE[FuncCallOnStringVariable] in :testScope1: eval(Object->STRING) => [test] ==> eval("inner1")
-FEATURE[PreFunctionObfuscation] :[ b ] -> [ eval ]
+FEATURE[FunctionObfuscation] :[ b ] -> [ eval ]
 FEATURE[FuncCallOnStringVariable] in :User_Program: user_Function:b(STRING) => b("test2")
-FEATURE[PreFunctionObfuscation] :[ a ] -> [ eval ]
+FEATURE[FunctionObfuscation] :[ a ] -> [ eval ]
 FEATURE[FuncCallOnStringVariable] in :User_Program: pre_Function:a(STRING) => eval("test")
 FEATURE[FuncCallOnStringVariable] in :User_Program: user_Function:a(STRING) => b("test")
 FEATURE[FuncCallOnStringVariable] in :ReturnStatement in function(x) {

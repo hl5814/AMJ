@@ -77,16 +77,16 @@ describe('AST getVariableInitValue', function() {
         const astNode = new Functions.AST(ASTUtils.parse(program));
         const declaration_blocks = astNode.getAllDeclarationBlocks(0);
 
-        expect(astNode.getVariableInitValue(0, declaration_blocks[0], varMap)).to.deep.equal(["a", [{type: "Numeric",value: "1"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[0].id.name,declaration_blocks[0].init, varMap)).to.deep.equal(["a", [{type: "Numeric",value: "1"}]]);
         varMap.setVariable("a", [{type: 'Numeric', value: "1" }] );
 
-        expect(astNode.getVariableInitValue(0, declaration_blocks[1], varMap)).to.deep.equal(["b", [{type: "String",value: '"test"'}]]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[2], varMap)).to.deep.equal(["c", [{type: "Expression",value: "(1+1)+1"}]]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[3], varMap)).to.deep.equal(["d", [{type: "Expression",value: "1+\"STR\""}]]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[4], varMap)).to.deep.equal(["e", [{type: "Expression",value: "a+1"}]]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[5], varMap)).to.deep.equal(["f", [{type: "undefined",value: "undefined"}]]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[6], varMap)).to.deep.equal(["g", [{type: "String",value: "\'g\'"}]]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[7], varMap)).to.deep.equal(
+        expect(astNode.getVariableInitValue(declaration_blocks[1].id.name, declaration_blocks[1].init, varMap)).to.deep.equal(["b", [{type: "String",value: '"test"'}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[2].id.name, declaration_blocks[2].init, varMap)).to.deep.equal(["c", [{type: "BinaryExpression",value: "(1+1)+1"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[3].id.name, declaration_blocks[3].init, varMap)).to.deep.equal(["d", [{type: "BinaryExpression",value: "1+\"STR\""}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[4].id.name, declaration_blocks[4].init, varMap)).to.deep.equal(["e", [{type: "BinaryExpression",value: "a+1"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[5].id.name, declaration_blocks[5].init, varMap)).to.deep.equal(["f", [{type: "undefined",value: "undefined"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[6].id.name, declaration_blocks[6].init, varMap)).to.deep.equal(["g", [{type: "String",value: "\'g\'"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[7].id.name, declaration_blocks[7].init, varMap)).to.deep.equal(
             ["h", [ {type: "ArrayExpression",
                     value: 
                         [
@@ -95,7 +95,7 @@ describe('AST getVariableInitValue', function() {
                         ]}
                    ]
             ]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[8], varMap)).to.deep.equal(
+        expect(astNode.getVariableInitValue(declaration_blocks[8].id.name, declaration_blocks[8].init, varMap)).to.deep.equal(
             ["i", [ {type: "NewExpression",
                     value: 
                         [
@@ -103,14 +103,14 @@ describe('AST getVariableInitValue', function() {
                         ]}
                    ]
             ]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[9], varMap)).to.deep.equal(["j", [{type: "Expression",value: "eval(\"test\")"}]]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[10], varMap)).to.deep.equal(["k", [{type: "FunctionExpression",value: "function(){var a=1;}"}]]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[11], varMap)).to.deep.equal(["l", [{type: "FunctionExpression",value: "a"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[9].id.name, declaration_blocks[9].init, varMap)).to.deep.equal(["j", [{type: "CallExpression",value: "eval(\"test\")"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[10].id.name, declaration_blocks[10].init, varMap)).to.deep.equal(["k", [{type: "FunctionExpression",value: "function(){var a=1;}"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[11].id.name, declaration_blocks[11].init, varMap)).to.deep.equal(["l", [{type: "FunctionExpression",value: "function a (){var a=1;}"}]]);
     
         varMap.setVariable("eval", [{ type: 'pre_Function', value: "eval" }] );
 
-        expect(astNode.getVariableInitValue(0, declaration_blocks[12], varMap)).to.deep.equal(["m", [{type: "pre_Function",value: "eval"}]]);
-        expect(astNode.getVariableInitValue(0, declaration_blocks[13], varMap)).to.deep.equal(["n", [{type: "undefined",value: "undefined"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[12].id.name, declaration_blocks[12].init, varMap)).to.deep.equal(["m", [{type: "pre_Function",value: "eval"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[13].id.name, declaration_blocks[13].init, varMap)).to.deep.equal(["n", [{type: "undefined",value: "undefined"}]]);
     });
 });
 

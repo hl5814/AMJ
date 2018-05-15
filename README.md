@@ -281,6 +281,13 @@ Switch cases statements might share code body between cases (no break instructio
 ==>varMap:
 >{key:x, value:["main", "1", "2"]}
 
+# SequenceExpression
+In JavaScript, SequenceExpression will be executed from left to right, and if this happends on the right hand side of an variable inialization, the variable on the left hand side will get the value of last expression in the sequence.
+#### example:
+	var x = (1,2,3) //x=3
+	var x,y,z;
+	x = (y=1, z=2) // x=2,y=1,z=2
+
 
 # TODO & ISSUES:
 ## (1)Clustering

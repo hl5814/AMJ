@@ -296,39 +296,34 @@ AST.prototype.checkStaticMemberFunctionCall=function(node, varMap, verbose=false
 	}
 }
 
-AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false) {
-	const identifier = block.id.name;
-	const expression = new Expr(block.init);
-
-	if (block.init == null){
+AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbose=false) {
+	const expression = new Expr(initExpr);
+	// console.log(initExpr)
+	if (initExpr == null){
 		return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 	}
 	const args = expression.getArg(this._node, identifier, varMap, false, verbose); 
-	if  (block.init.type == "Literal") {
-		var token = (new Expr(block.init)).getToken(this._node);
+	if  (initExpr.type == "Literal") {
+		var token = (new Expr(initExpr)).getToken(this._node);
 		return [identifier, [{ type: token.type, value: token.value }]];
-	} else if (block.init.type == "ArrayExpression"){
+	} else if (initExpr.type == "ArrayExpression"){
 		return [identifier, [{ type: 'ArrayExpression', value: args }]];
-	} else if (block.init.type == "ThisExpression"){
+	} else if (initExpr.type == "ThisExpression"){
 		return [identifier, [{ type: 'ThisExpression', value: "this" }]];
-	} else if (block.init.type == "UnaryExpression"){
+	} else if (initExpr.type == "UnaryExpression"){
 		return [identifier, [{ type: 'UnaryExpression', value: args }]];
-	} else if (block.init.type == "NewExpression"){
+	} else if (initExpr.type == "NewExpression"){
 		return [identifier, [{ type: 'NewExpression', value: args }]];
-	} else if (block.init.type == "CallExpression"){
+	} else if (initExpr.type == "CallExpression"){
 		return [identifier, [{ type: 'CallExpression', value: args }]];
-	} else if (block.init.type == "FunctionExpression"){ 
-		var functionName = null;
-		if (block.init.id) {
-			functionName= (new Expr(block.init.id)).getArg(this._node, identifier, varMap, false, verbose);
-		} else {
-			functionName = ASTUtils.getCode(block.init);
-		}
-		return [identifier, [{ type: 'FunctionExpression', value: functionName }]];
-	} else if (block.init.type == "ObjectExpression") {
+	}  else if (initExpr.type == "SequenceExpression"){
+		return [identifier, args[1]];
+	} else if (initExpr.type == "FunctionExpression"){ 
+		return [identifier, [{ type: 'FunctionExpression', value: ASTUtils.getCode(initExpr) }]];
+	} else if (initExpr.type == "ObjectExpression") {
 		return [identifier, [{type:"ObjectExpression", value:args}]];
-	} else if (block.init.type == "MemberExpression") {
-		const object = (new Expr(block.init)).getValueFromMemberExpression(this._node, identifier, varMap, false, verbose);
+	} else if (initExpr.type == "MemberExpression") {
+		const object = (new Expr(initExpr)).getValueFromMemberExpression(this._node, identifier, varMap, false, verbose);
 		const object_name = object[0];
 		const field_name  = object[1];
 		if (object_name == "this") {
@@ -365,7 +360,7 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 		if (var_value != undefined){
 			return [identifier, var_value];
 		} else {
-			var token = (new Expr(block.init)).getToken(this._node);
+			var token = (new Expr(initExpr)).getToken(this._node);
 
 			//undefined variable, we set the init value to undefined and update varMap
 			if (token.type == "Identifier" && !varMap.get(token.value, verbose)){
@@ -373,9 +368,9 @@ AST.prototype.getVariableInitValue=function(index, block, varMap, verbose=false)
 				return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 			}
 
-			if (block.init.type == "BinaryExpression") {
+			if (initExpr.type == "BinaryExpression") {
 				return [identifier, [{ type: 'BinaryExpression', value: args }]];
-			} else if (block.init.type == "LogicalExpression") {
+			} else if (initExpr.type == "LogicalExpression") {
 				return [identifier, [{ type: 'LogicalExpression', value: args }]];
 			} else {
 				return [identifier, [{ type: 'Expression', value: args }]];
@@ -564,59 +559,8 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		if (foundStringFunc) return [identifier, [{ type: "String", value: val}]];
 
 		return [identifier, [{ type: "Expression", value: val}]];
-	} else if (rhs.type == "CallExpression") {
-		var arg = new Expr(rhs);
-		var val = arg.getArg(this._node, identifier, varMap, false, verbose);
-		return [identifier, [{ type: "FunctionCall", value: val}]];
-	} else if (rhs.type == "Identifier") {
-		var ref_values = varMap.get(rhs.name);
-		if (ref_values !== undefined) {
-			return [identifier, ref_values];
-		} else {
-			return [identifier, [{ type: 'undefined', value: 'undefined' }]];
-		}
-	} else if (rhs.type == "FunctionExpression") {
-		var val = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
-		return [identifier, [{ type: 'FunctionExpression', value: ASTUtils.getCode(rhs) }]];
-	} else if (rhs.type == "ArrayExpression" ){
-		var args = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
-		return [identifier, [{ type: 'ArrayExpression', value: args }]];
-	} else if (rhs.type == "ObjectExpression" ){
-		var args = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
-		return [identifier, [{ type: 'ObjectExpression', value: args }]];
-	} else if (rhs.type == "LogicalExpression" ){
-		var args = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
-		return [identifier, [{ type: 'LogicalExpression', value: args }]];
-	}  else if (rhs.type == "ThisExpression" ){
-		return [identifier, [{ type: 'ThisExpression', value: "this" }]];
-	} else if (rhs.type == "MemberExpression" ){
-		const object = (new Expr(rhs)).getValueFromMemberExpression(this._node, identifier, varMap, false, verbose);
-		const object_name = object[0];
-		const field_name  = object[1];
-		if (object_name == "this") {
-			return [identifier, field_name];
-		}
-		const field = varMap.get(object_name);
-		var values = [];
-		if (field !== undefined) {
-			for (const f of field) {
-				if (f.type == "ObjectExpression") {
-					for (const fn of field_name) {
-						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-						if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name]);
-					}
-				} else if (f.type == "ArrayExpression") {
-					for (const fn of field_name) {
-						var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
-						if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name][1]);
-					}
-				}
-			}
-		}
-		return [identifier, values];
 	} else {
-		var token = (new Expr(rhs)).getToken(this._node);
-		return [identifier, [{ type: token.type, value: token.value}]];
+		return this.getVariableInitValue(identifier, rhs, varMap, verbose);
 	}
 };
 
@@ -789,6 +733,9 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 	} else if (this._expr.type == "LogicalExpression") {
 		var expr = new Expr(this._expr);
 		arg = expr.getValueFromLogicalExpression(node, identifier, varMap, inner, verbose);
+	} else if (this._expr.type == "SequenceExpression") {
+		var expr = new Expr(this._expr);
+		arg = expr.getValueFromSequenceExpression(node, identifier, varMap, inner, verbose);
 	} else if (this._expr.type == "ArrayExpression") {
 		var expr = new Expr(this._expr);
 		elem_array = expr.getValueFromArrayExpression(node, identifier, varMap, inner, verbose);
@@ -842,6 +789,17 @@ Expr.prototype.getValueFromObjectExpression=function(node, identifier, varMap, i
 Expr.prototype.getValueFromLogicalExpression=function(node, identifier, varMap, inner, verbose=false) {
 	var expressionBody = ASTUtils.getCode(this._expr);
 	return expressionBody;
+}
+
+Expr.prototype.getValueFromSequenceExpression=function(node, identifier, varMap, inner, verbose=false) {
+	var exprs = this._expr.expressions;
+	var last_expr = exprs.slice(-1).pop();
+	var astNode = new AST(node);
+	if (last_expr.type == "AssignmentExpression"){
+		return astNode.getVariableInitValue(identifier, last_expr.right, varMap, verbose)
+	} else {
+		return astNode.getVariableInitValue(identifier, last_expr, varMap, verbose)
+	}
 }
 
 Expr.prototype.getValueFromFunctionExpression=function(node, identifier, varMap, inner, verbose=false) {
