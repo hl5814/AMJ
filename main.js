@@ -108,7 +108,7 @@ const FEATURES = [	"InitVariableWithFunctionExpression",
 					"FuncCallOnUnaryExpr",
 					"FuncCallOnStringVariable",
 					"FuncCallOnCallExpr",
-					"NonLocalArrayAccess",
+					"FuncCallOnNonLocalArray",
 					"HtmlCommentInScriptBlock",
 					"AssigningToThis",
 					"ConditionalCompilationCode",
@@ -310,82 +310,79 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						// e.g. var myVariable = eval;	
 						if (verbose>0) console.log("FEATURE[FunctionObfuscation] :[", variableName_Type[0], "] -> [", variableName_Types[v].value, "]")
 						updateResultMap(resultMap, "FunctionObfuscation", coefficient);
-					} else {
-						if (astNode.hasFunctionExpression(i)) {
-							//FunctionExpression
-							ASTUtils.traverse(ast.body[i], function(node, parent){
-								if (node.type == "FunctionExpression"){
-									if (verbose>0) console.log("FEATURE[InitVariableWithFunctionExpression] in :" + scope + " :" + ASTUtils.getCode(parent));
-								
-									var emptyVarMap = new Functions.VariableMap(varMap._varMap);
-									// assume all function parameters might be String type when parsing function body
-									astNode.updateFunctionParams(i, emptyVarMap);
-									
-									var returnStatement = astNode.getReturnInstructions(i, emptyVarMap, ast);
-
-									astNode.removeJumpInstructions(i, ast);
-									// parse function body
-									var coef = coefficient.slice();
-									coef.push("in_function");
-									parseProgram(ASTUtils.getCode(node.body).slice(1,-1), variableName_Types[v].value, coef, emptyVarMap, verbose);
-									coef.push("in_return")
-									for (var returnS of returnStatement) {
-										// parse return statement
-										parseProgram(returnS, "ReturnStatement in " + variableName_Types[v].value, coef, emptyVarMap, verbose);
-									}
-
-									updateResultMap(resultMap, "InitVariableWithFunctionExpression", coefficient);
-								} 
-							});
+					} else if (astNode.hasFunctionExpression(i)) {
+						//FunctionExpression
+						ASTUtils.traverse(ast.body[i], function(node, parent){
+							if (node.type == "FunctionExpression"){
+								if (verbose>0) console.log("FEATURE[InitVariableWithFunctionExpression] in :" + scope + " :" + ASTUtils.getCode(parent));
 							
-						} else if (variableName_Types[v].type == "Expression" || variableName_Types[v].type == "BinaryExpression" || 
-								   variableName_Types[v].type == "UnaryExpression" || variableName_Types[v].type == "CallExpression" || 
-								   variableName_Types[v].type == "LogicalExpression" || variableName_Types[v].type == "ThisExpression") {
-							ASTUtils.traverse(ast.body[i], function(node){
-								if (node.type == "CallExpression" && node.callee.type == "MemberExpression" && node.callee.object.type == "Identifier") {
-									var object = node.callee.object.name;
-									var obj_type = varMap.get(object);
-									var property = node.callee.property.name;
-									var funcNames = varMap.get(property);
-									if (funcNames !== undefined && obj_type !== undefined) {
-										for (const f of funcNames){
-											if (f.type == "pre_Function" && f.value == "concat") {
-												for (var ot of obj_type) {
-													if (ot.type == "ArrayExpression") {
-														if (verbose>0) console.log("FEATURE[ArrayConcatation] in :" + scope + " :" + variableName_Type[0] + "=" +variableName_Types[v].value);
-														updateResultMap(resultMap, "ArrayConcatation", coefficient);
-													} else if (ot.type == "String") {
-														if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + " :" + variableName_Type[0] + "=" +variableName_Types[v].value);
-														updateResultMap(resultMap, "StringConcatation", coefficient);
-													}
+								var emptyVarMap = new Functions.VariableMap(varMap._varMap);
+								// assume all function parameters might be String type when parsing function body
+								astNode.updateFunctionParams(i, emptyVarMap);
+								
+								var returnStatement = astNode.getReturnInstructions(i, emptyVarMap, ast);
+
+								astNode.removeJumpInstructions(i, ast);
+								// parse function body
+								var coef = coefficient.slice();
+								coef.push("in_function");
+								parseProgram(ASTUtils.getCode(node.body).slice(1,-1), variableName_Types[v].value, coef, emptyVarMap, verbose);
+								coef.push("in_return")
+								for (var returnS of returnStatement) {
+									// parse return statement
+									parseProgram(returnS, "ReturnStatement in " + variableName_Types[v].value, coef, emptyVarMap, verbose);
+								}
+
+								updateResultMap(resultMap, "InitVariableWithFunctionExpression", coefficient);
+							} 
+						});
+					} else if (variableName_Types[v].type == "Expression" || variableName_Types[v].type == "BinaryExpression" || 
+							   variableName_Types[v].type == "UnaryExpression" || variableName_Types[v].type == "CallExpression" || 
+							   variableName_Types[v].type == "LogicalExpression" || variableName_Types[v].type == "ThisExpression") {
+						ASTUtils.traverse(ast.body[i], function(node){
+							if (node.type == "CallExpression" && node.callee.type == "MemberExpression" && node.callee.object.type == "Identifier") {
+								var object = node.callee.object.name;
+								var obj_type = varMap.get(object);
+								var property = node.callee.property.name;
+								var funcNames = varMap.get(property);
+								if (funcNames !== undefined && obj_type !== undefined) {
+									for (const f of funcNames){
+										if (f.type == "pre_Function" && f.value == "concat") {
+											for (var ot of obj_type) {
+												if (ot.type == "ArrayExpression") {
+													if (verbose>0) console.log("FEATURE[ArrayConcatation] in :" + scope + " :" + variableName_Type[0] + "=" +variableName_Types[v].value);
+													updateResultMap(resultMap, "ArrayConcatation", coefficient);
+												} else if (ot.type == "String") {
+													if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + " :" + variableName_Type[0] + "=" +variableName_Types[v].value);
+													updateResultMap(resultMap, "StringConcatation", coefficient);
 												}
 											}
 										}
 									}
 								}
-							});
+							}
+						});
 
-							if (variableName_Types[v].type == "BinaryExpression") {
-								if (verbose>0) console.log("FEATURE[InitVariableWithBinaryExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
-								updateResultMap(resultMap, "InitVariableWithBinaryExpression", coefficient);
-							} else if (variableName_Types[v].type == "ThisExpression") {
-								if (verbose>0) console.log("FEATURE[InitVariableWithThisExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
-								updateResultMap(resultMap, "InitVariableWithThisExpression", coefficient);
-							} else if (variableName_Types[v].type == "UnaryExpression") {
-								if (verbose>0) console.log("FEATURE[InitVariableWithUnaryExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
-								updateResultMap(resultMap, "InitVariableWithUnaryExpression", coefficient);
-							} else if (variableName_Types[v].type == "CallExpression"){
-								if (verbose>0) console.log("FEATURE[InitVariableWithCallExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
-								updateResultMap(resultMap, "InitVariableWithCallExpression", coefficient);
-							} else if (variableName_Types[v].type == "LogicalExpression"){
-								if (verbose>0) console.log("FEATURE[InitVariableWithLogicalExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
-								updateResultMap(resultMap, "InitVariableWithLogicalExpression", coefficient);
-							} else {
-								if (verbose>0) console.log("FEATURE[InitVariableWithExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
-								updateResultMap(resultMap, "InitVariableWithExpression", coefficient);
-							}		
-						}
-						//else
+						if (variableName_Types[v].type == "BinaryExpression") {
+							if (verbose>0) console.log("FEATURE[InitVariableWithBinaryExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+							updateResultMap(resultMap, "InitVariableWithBinaryExpression", coefficient);
+						} else if (variableName_Types[v].type == "ThisExpression") {
+							if (verbose>0) console.log("FEATURE[InitVariableWithThisExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+							updateResultMap(resultMap, "InitVariableWithThisExpression", coefficient);
+						} else if (variableName_Types[v].type == "UnaryExpression") {
+							if (verbose>0) console.log("FEATURE[InitVariableWithUnaryExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+							updateResultMap(resultMap, "InitVariableWithUnaryExpression", coefficient);
+						} else if (variableName_Types[v].type == "CallExpression"){
+							if (verbose>0) console.log("FEATURE[InitVariableWithCallExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+							updateResultMap(resultMap, "InitVariableWithCallExpression", coefficient);
+						} else if (variableName_Types[v].type == "LogicalExpression"){
+							if (verbose>0) console.log("FEATURE[InitVariableWithLogicalExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+							updateResultMap(resultMap, "InitVariableWithLogicalExpression", coefficient);
+						} else {
+							if (verbose>0) console.log("FEATURE[InitVariableWithExpression] in :" + scope + ", Init Variable by "+variableName_Types[v].type +":" + variableName_Type[0] + " = " +variableName_Types[v].value);
+							updateResultMap(resultMap, "InitVariableWithExpression", coefficient);
+						}		
+					//else
 					}
 				}
 			}
@@ -504,13 +501,14 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 								if (node.callee.type == "MemberExpression") {
 									callee = node.callee.property.name;
 								} else if (node.callee.type == "FunctionExpression") {
+									astNode.removeJumpInstructions(i, ast);
 									// e.g. x = a[...] + (function foo(){...}());
 									// remove the call bracket at the end of function expression
 									// i.e. function a(){...}()
 									var coef = coefficient.slice();
 									coef.push("in_function")
 									var funcBody = ASTUtils.getCode(node);
-									parseProgram(funcBody.slice(funcBody.indexOf("{"),funcBody.lastIndexOf("(")), "CallExpression", coef, varMap, verbose);
+									parseProgram(funcBody.slice(funcBody.indexOf("{"),funcBody.lastIndexOf("}")+1), "CallExpression", coef, varMap, verbose);
 									callee = node.callee.name;
 								} else {
 									callee = node.callee.name;
@@ -544,7 +542,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					}
 					continue;
 				}
-
 
 				var funcName = "";
 				// if expression is function call
@@ -587,8 +584,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										while (object instanceof Array) {
 											var obj = varMap.get(object[0]);
 											if (obj == undefined) {
-												if (verbose>0) console.log("FEATURE[NonLocalArrayAccess] in :" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
-												updateResultMap(resultMap, "NonLocalArrayAccess", coefficient);
+												if (verbose>0) console.log("FEATURE[FuncCallOnNonLocalArray] in :" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
+												updateResultMap(resultMap, "FuncCallOnNonLocalArray", coefficient);
 											}
 											indx = indx.concat(object[1]);
 											object = object[0];
@@ -599,10 +596,11 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										}
 										r_vs = obj;
 									} else {
+
 										r_vs = varMap.get(object);
 										if (r_vs === undefined) { 
-											if (verbose>0) console.log("FEATURE[NonLocalArrayAccess] in :" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
-											updateResultMap(resultMap, "NonLocalArrayAccess", coefficient);
+											if (verbose>0) console.log("FEATURE[FuncCallOnNonLocalArray] in :" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
+											updateResultMap(resultMap, "FuncCallOnNonLocalArray", coefficient);
 										}
 									}
 									
@@ -994,71 +992,79 @@ if (showHeader) {
 } else if (filePath !== undefined && filePath !== null) {
 	var sourcefile = fs.readFileSync(filePath, "utf8");
 	FILE_LENGTH = sourcefile.length;
-	// extract all scattered <script>blocks</script>
-	var match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
-
-	var scriptCodes = "";
-	if (match !== null) {
-		while (match !== null) {
-			const matchLength = match[0].length;
-			const scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
-
-			var htmlCommentInScriptBlock = scriptBlock.match(/<!--[\s\S]*?-->/g, "");
-			if (htmlCommentInScriptBlock !== null) {
-				if (verbose>0) console.log("FEATURE[HtmlCommentInScriptBlock]");
-				updateResultMap(resultMap, "HtmlCommentInScriptBlock", ["in_file"]);
-			}
-
-			scriptCodes = scriptCodes + scriptBlock;
-			sourcefile = sourcefile.substring(matchLength+1, sourcefile.length);
-			match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
-		}
-	} else {
-		scriptCodes = sourcefile;
-	}
-	
-	// ========================
 	try {
-	    parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
+		// try to parse the program directly
+		// if input file is JavaScript Codes
+	    parseProgram(sourcefile, "User_Program", ["in_main"], init_varMap, verbose);
 	}
 	catch(err) {
-		// try to fix some errors for compliation
-		// CASE 1: using "this" in code snippet
-	    var hasThis = scriptCodes.match(/this/);
-		if (hasThis !== null){
-			// replace this => MY_MJSA_THIS
-			// precent parsing error for some code snippet
-			scriptCodes=scriptCodes.replace(/this/g, "MY_MJSA_THIS")
+		// try to extract all scattered <script>blocks</script>
+		// if input file is HTML file
+		var match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
 
+		var scriptCodes = "";
+		if (match !== null) {
+			while (match !== null) {
+				const matchLength = match[0].length;
+				const scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
+
+				var htmlCommentInScriptBlock = scriptBlock.match(/<!--[\s\S]*?-->/g, "");
+				if (htmlCommentInScriptBlock !== null) {
+					if (verbose>0) console.log("FEATURE[HtmlCommentInScriptBlock]");
+					updateResultMap(resultMap, "HtmlCommentInScriptBlock", ["in_file"]);
+				}
+
+				scriptCodes = scriptCodes + scriptBlock;
+				sourcefile = sourcefile.substring(matchLength+1, sourcefile.length);
+				match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+			}
+		} else {
+			scriptCodes = sourcefile;
 		}
-		// CASE 2: using conditional compilation targeting IE browser
-	    var hasAt = scriptCodes.match(/@cc_on|@if|@end|@_win32|@_win64/);
-		if (hasAt !== null) {
-			scriptCodes=""
-			if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
-			updateResultMap(resultMap, "ConditionalCompilationCode", ["in_file"]);
-		}
-		// CASE 3: dot notation used in function name
-		var dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
-		if (dotFuncName !== null){
-			if (verbose>0) console.log("FEATURE[DotNotationInFunctionName]");
-			updateResultMap(resultMap, "DotNotationInFunctionName", ["in_file"]);
 		
-			var nCodes = ""
-		    while (dotFuncName !== null){
-		    	var start = dotFuncName.index;
-		    	var matchString = dotFuncName[0];
-		    	var replaceMatchStr = matchString.replace(/\./g, "");
-		    	replaceStr =  scriptCodes.replace(matchString, replaceMatchStr).slice(0, start+replaceMatchStr.length);
-		    	scriptCodes =  scriptCodes.replace(matchString, replaceMatchStr);
-		    	nCodes += replaceStr;
-		    	scriptCodes = scriptCodes.slice(replaceStr.length, scriptCodes.length);
-		    	dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
-		    }
-		    nCodes += scriptCodes;
-		    scriptCodes = nCodes;
+		try {
+		    parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
 		}
-		parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
+		catch(err) {
+			// still encounter parsing errors
+			// try to fix some errors for compliation
+			// CASE 1: using "this" in code snippet
+		    var hasThis = scriptCodes.match(/this/);
+			if (hasThis !== null){
+				// replace this => MY_MJSA_THIS
+				// precent parsing error for some code snippet
+				scriptCodes=scriptCodes.replace(/this/g, "MY_MJSA_THIS")
+
+			}
+			// CASE 2: using conditional compilation targeting IE browser
+		    var hasAt = scriptCodes.match(/@cc_on|@if|@end|@_win32|@_win64/);
+			if (hasAt !== null) {
+				scriptCodes=""
+				if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
+				updateResultMap(resultMap, "ConditionalCompilationCode", ["in_file"]);
+			}
+			// CASE 3: dot notation used in function name
+			var dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
+			if (dotFuncName !== null){
+				if (verbose>0) console.log("FEATURE[DotNotationInFunctionName]");
+				updateResultMap(resultMap, "DotNotationInFunctionName", ["in_file"]);
+			
+				var nCodes = ""
+			    while (dotFuncName !== null){
+			    	var start = dotFuncName.index;
+			    	var matchString = dotFuncName[0];
+			    	var replaceMatchStr = matchString.replace(/\./g, "");
+			    	replaceStr =  scriptCodes.replace(matchString, replaceMatchStr).slice(0, start+replaceMatchStr.length);
+			    	scriptCodes =  scriptCodes.replace(matchString, replaceMatchStr);
+			    	nCodes += replaceStr;
+			    	scriptCodes = scriptCodes.slice(replaceStr.length, scriptCodes.length);
+			    	dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
+			    }
+			    nCodes += scriptCodes;
+			    scriptCodes = nCodes;
+			}
+			parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
+		}
 	}
 	// ========================
 

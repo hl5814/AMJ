@@ -146,7 +146,7 @@ FEATURE_LIST = [    "InitVariableWithFunctionExpression",
                     "FuncCallOnUnaryExpr",
                     "FuncCallOnStringVariable",
                     "FuncCallOnCallExpr",
-                    "NonLocalArrayAccess",
+                    "FuncCallOnNonLocalArray",
                     "HtmlCommentInScriptBlock",
                     "AssigningToThis",
                     "ConditionalCompilationCode",
@@ -163,7 +163,7 @@ feature_dict = {}
 for f in FEATURE_LIST:
     feature_dict[f] = 0
 
-print("\n--------------------------------------------------")
+if (VERBOSE >= 0): print("\n--------------------------------------------------")
 TOTAL_FILES = 0
 for key, value in clustdict.items():
     TOTAL_FILES = TOTAL_FILES + len(value)
@@ -251,13 +251,14 @@ for key, value in clustdict.items():
         FINAL_REPORT["topKeywords"] += str(key) + ": " +str(keyword_df.columns.values) + "\n"
         FINAL_REPORT["topPunctuators"] += str(key) + ": " +str(punctuator_df.columns.values) + "\n"
 
-
         # update feature dict
         for f in feature_df.columns.values:
             feature_dict[f] = feature_dict[f] + feature_df[f].astype(bool).sum()
 
 
-    if (VERBOSE >= 0): print("Cluster["+str(key)+"]     #files: ", len(value))
+    if (VERBOSE >= 0): print("Cluster[{:>5}]".format(str(key))+"    #files: ", len(value))
+
+if (VERBOSE >= 0): print("--------------------------------------------------\nTotal: ", TOTAL_FILES)
     
 f_df = f_df.loc[:, (f_df != 0).any(axis=0)]
 s_df = s_df.loc[:, (s_df != 0).any(axis=0)]
