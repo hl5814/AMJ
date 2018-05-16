@@ -515,7 +515,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			} catch(err) {
 				values = [ { type: 'String', value: 'UNKNOWN' } ];
 			}
-			
+
 			for (const v of values) {
 				if (v.type == "String" && rhs.operator == "+") {
 					return [identifier, [{ type: "String", value: val}]];
@@ -611,20 +611,32 @@ AST.prototype.getCalleeName= function(index, varMap, verbose=false) {
 };
 
 AST.prototype.updateFunctionParams= function(index, varMap, verbose=false) {
+	var thisAST = new AST(this._node);
 	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "FunctionExpression") {
 			const params = node.params;
-			for (var p in params) {
+			for (var p of params) {
 				// Assume all parameters are Identifiers
-				if (params[p].type == "Identifier"){
-					var var_values = varMap.get(params[p].name);
+				if (p.type == "Identifier"){
+					var var_values = varMap.get(p.name);
 					if (var_values === undefined) {
-						varMap.setVariable(params[p].name, [{ type: 'String', value: 'STR' }]);
+						varMap.setVariable(p.name, [{ type: 'String', value: 'STR' }]);
 					} else {
 						var_values.push({ type: 'String', value: 'STR' });
-						varMap.setVariable(params[p].name, var_values)
+						varMap.setVariable(p.name, var_values)
+					}
+				} else if (p.type == "AssignmentPattern"){
+					var var_values = varMap.get(p.left.name);
+					var type = thisAST.getVariableInitValue(p.left.name, p.right, varMap, verbose);
+					if (var_values === undefined) {
+						varMap.setVariable(p.left.name, [{ type: 'String', value: 'STR' }, type[1][0]]);
+					} else {
+						var_values.push({ type: 'String', value: 'STR' });
+						var_values.push(type[1][0]);
+						varMap.setVariable(p.name, var_values)
 					}
 				} else {
+					console.log(p)
 					console.log("Function Declaration's Parameter not Identifier!!!!!!!!!!");
 				}
 				
@@ -636,7 +648,6 @@ AST.prototype.updateFunctionParams= function(index, varMap, verbose=false) {
 
 AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
 	//assert isExpressionStatement()
-
 	const expression = this._node.body[index].expression;
 	var args = [];
 

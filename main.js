@@ -26,6 +26,7 @@ var init_varMap = new Functions.VariableMap(new HashMap());
 var funcNames = ["eval", "unescape", "replace", "write", "document.write", "document.writeln", "document.createElement",
 				 "atob", "btoa", "setTimeout", "setInterval", "toString", "String.fromCharCode", "fromCharCode",
 				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring", "concat","join"];
+
 for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
 }
@@ -112,7 +113,8 @@ const FEATURES = [	"InitVariableWithFunctionExpression",
 					"FuncCallOnUnkonwnArrayIndex",
 					"HtmlCommentInScriptBlock",
 					"AssigningToThis",
-					"ConditionalCompilationCode",
+					"ActiveConditionalCompilationCode",
+					"ConditionalCompilationCodeInComment",
 					"DotNotationInFunctionName",
 					"LongArray",
 					"LongExpression"]
@@ -184,6 +186,8 @@ function showResult(resultMap) {
 		resultMap.set("CommentPerFile", COMMENT_LENGTH/FILE_LENGTH);
 	}
 	resultMap.forEach(function(value, key){
+		console.log("key",key)
+		console.log("value",value)
 		h +=  "," + '"' + key + '"';
 		if (KEYWORDS.indexOf(key) > -1) {
 			var val = (value > 0) ? value/KEYWORD_TOTAL : 0;
@@ -258,6 +262,11 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 		if (ast.body[i].type == "Line" || ast.body[i].type == "Block") {
 			var commentLine = ASTUtils.getCode(ast.body[i]);
 			COMMENT_LENGTH += commentLine.length;
+			var hasAt = commentLine.match(/@cc_on|@if|@end|@_win32|@_win64/);
+			if (hasAt !== null) {
+				if (verbose>0) console.log("FEATURE[ConditionalCompilationCodeInComment]");
+				updateResultMap(resultMap, "ConditionalCompilationCodeInComment", coefficient);
+			}
 		}
 
 
@@ -1047,8 +1056,8 @@ if (showHeader) {
 		    var hasAt = scriptCodes.match(/@cc_on|@if|@end|@_win32|@_win64/);
 			if (hasAt !== null) {
 				scriptCodes=""
-				if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
-				updateResultMap(resultMap, "ConditionalCompilationCode", ["in_file"]);
+				if (verbose>0) console.log("FEATURE[ActiveConditionalCompilationCode]");
+				updateResultMap(resultMap, "ActiveConditionalCompilationCode", ["in_file"]);
 			}
 			// CASE 3: dot notation used in function name
 			var dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
@@ -1074,7 +1083,6 @@ if (showHeader) {
 		}
 	}
 	// ========================
-
 	if (calcualteWeight && resultMap.size > 0) showResult(resultMap);
 } 
 

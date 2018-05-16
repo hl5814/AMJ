@@ -322,7 +322,24 @@ In JavaScript, SequenceExpression will be executed from left to right, and if th
 ## (3)
 	// ScriptFragment: "<script[^>]*>([\\S\\s]*?)<\/script>",
 	
+## Analysis from number_of_tokens/length_of_file
+	var x = "1"+"2"+"3"+"4"+"5"+"6"+"7"+"8"+"9"+"0"
+	// ast.tokens.length 22
+	// file length 47
+	// 46.81%
 
+	var x = "1234567890"
+	// ast.tokens.length 4
+	// file length 21
+	// 19.05%
+	
+	var x = ["1","2","3","4","5","6","7","8","9","0"]
+	// ast.tokens.length 24
+	// file length 49
+	// 48.98%
+the higher the percentage of number_of_tokens/length_of_file, implies the code tend to split string into small pieces
+
+However, the low percentage might caused by long unused comments, which increase the length of the file (comments are not tokens), so the cluster also report high percentage comments
 # PLAN
 ```
 Week 3 	(14	15	16	17	18) 
