@@ -113,8 +113,7 @@ const FEATURES = [	"InitVariableWithFunctionExpression",
 					"FuncCallOnUnkonwnArrayIndex",
 					"HtmlCommentInScriptBlock",
 					"AssigningToThis",
-					"ActiveConditionalCompilationCode",
-					"ConditionalCompilationCodeInComment",
+					"ConditionalCompilationCode",
 					"DotNotationInFunctionName",
 					"LongArray",
 					"LongExpression"]
@@ -183,20 +182,20 @@ function showResult(resultMap) {
 	var resultArray = [];
 	var h = "";
 	if (FILE_LENGTH > 0) {
-		resultMap.set("CommentPerFile", COMMENT_LENGTH/FILE_LENGTH);
+		resultMap.set("CommentPerFile", (COMMENT_LENGTH/FILE_LENGTH).toFixed(4));
 	}
 	resultMap.forEach(function(value, key){
 		console.log("key",key)
 		console.log("value",value)
 		h +=  "," + '"' + key + '"';
 		if (KEYWORDS.indexOf(key) > -1) {
-			var val = (value > 0) ? value/KEYWORD_TOTAL : 0;
+			var val = (value > 0) ? (value/KEYWORD_TOTAL).toFixed(4) : 0;
 		} else if (PUNCTUATORS.indexOf(key) > -1) {
-			var val = (value > 0) ? value/PUNCTUATOR_TOTAL : 0;
+			var val = (value > 0) ? (value/PUNCTUATOR_TOTAL).toFixed(4)  : 0;
 		} else if (FEATURES.indexOf(key) > -1) {
-			var val = (value > 0) ? value/FEATURE_TOTAL : 0;
+			var val = (value > 0) ? (value/FEATURE_TOTAL).toFixed(4)  : 0;
 		} else if (SCOPES.indexOf(key) > -1) {
-			var val = (value > 0) ? value/SCOPE_TOTAL : 0;
+			var val = (value > 0) ? (value/SCOPE_TOTAL).toFixed(4)  : 0;
 		} else {
 			var val = value;
 		}
@@ -216,35 +215,28 @@ function printHeader(resultMap) {
 
 function parseProgram(program, scope, coefficient, varMap, verbose){
 	// TODO: check program === null, program == undefined
+	if (program === null || program === undefined) {
+		console.log("!!!!!!!!!!!!! program null or undefined: ", program)
+	}
 	if (program === null || program === undefined || program.replace(/\s+/g, "") == "") return varMap.toList();
 	var ast = ASTUtils.parse(program);
 	// parse main program tokens
 	if (scope == "User_Program") {
-		resultMap.set("TokenPerFile", ast.tokens.length/FILE_LENGTH);
+		resultMap.set("TokenPerFile", (ast.tokens.length/FILE_LENGTH).toFixed(4));
 		for (const pt of ast.tokens) {
 			if (pt.type == "Keyword") {
 				var prevValue = resultMap.get(pt.value);
-				if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
 				resultMap.set(pt.value, prevValue+1);
 				KEYWORD_TOTAL++;
 			} else if (pt.type == "Punctuator") {
 				var prevValue = resultMap.get(pt.value);
-				if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
 				resultMap.set(pt.value, prevValue+1);
 				PUNCTUATOR_TOTAL++;
 			} else if (pt.type == "Identifier") {
 				if (pt.value == "document") {
 					var prevValue = resultMap.get(pt.value);
-					if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
 					resultMap.set(pt.value, prevValue+1);
 					KEYWORD_TOTAL++;
-				} else if (pt.value == "MY_MJSA_THIS") {
-					var prevValue = resultMap.get(pt.value);
-					if (prevValue === undefined) console.log("!!!!!!!!!!!", pt);
-					resultMap.set(pt.value, prevValue+1);
-					KEYWORD_TOTAL++;
-					if (verbose>0) console.log("FEATURE[AssigningToThis]");
-					updateResultMap(resultMap, "AssigningToThis", ["in_file"]);
 				}
 			}
 			
@@ -264,8 +256,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			COMMENT_LENGTH += commentLine.length;
 			var hasAt = commentLine.match(/@cc_on|@if|@end|@_win32|@_win64/);
 			if (hasAt !== null) {
-				if (verbose>0) console.log("FEATURE[ConditionalCompilationCodeInComment]");
-				updateResultMap(resultMap, "ConditionalCompilationCodeInComment", coefficient);
+				if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
+				updateResultMap(resultMap, "ConditionalCompilationCode", coefficient);
 			}
 		}
 
@@ -407,10 +399,18 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 						for (const exp of exprs) {
 							parseProgram(ASTUtils.getCode(exp), scope, coefficient, varMap, verbose);
 						}
-					}
+					} 
 				});
 				var var_values = astNode.getAssignmentLeftRight(i, varMap, verbose);
 
+				if (var_values[0] == "MY_MJSA_THIS") {
+					var prevValue = resultMap.get("MY_MJSA_THIS");
+					resultMap.set("MY_MJSA_THIS", prevValue+1);
+					KEYWORD_TOTAL++;
+					if (verbose>0) console.log("FEATURE[AssigningToThis]");
+					updateResultMap(resultMap, "AssigningToThis", coefficient);
+				}
+				
 				for (var v in var_values[1]){
 					if (var_values[1][v].type == "BitwiseOperationExpression" ||
 						var_values[1][v].type == "FunctionCall") {
@@ -1052,12 +1052,13 @@ if (showHeader) {
 				scriptCodes=scriptCodes.replace(/this/g, "MY_MJSA_THIS")
 
 			}
+
 			// CASE 2: using conditional compilation targeting IE browser
 		    var hasAt = scriptCodes.match(/@cc_on|@if|@end|@_win32|@_win64/);
 			if (hasAt !== null) {
 				scriptCodes=""
-				if (verbose>0) console.log("FEATURE[ActiveConditionalCompilationCode]");
-				updateResultMap(resultMap, "ActiveConditionalCompilationCode", ["in_file"]);
+				if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
+				updateResultMap(resultMap, "ConditionalCompilationCode", ["in_file"]);
 			}
 			// CASE 3: dot notation used in function name
 			var dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
