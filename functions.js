@@ -673,7 +673,6 @@ AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
 	//assert isExpressionStatement()
 	const expression = this._node.body[index].expression;
 	var args = [];
-
 	if (expression.arguments.length > 0) {
 		for (var i in expression.arguments) {
 			if (expression.arguments[i].type == "BinaryExpression") {
@@ -693,6 +692,7 @@ AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
 			} else if (expression.arguments[i].type == "MemberExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
 				var object_index = exprArgs.getValueFromMemberExpression(this._node, "", varMap, false,verbose);
+				// console.log("object_index:", object_index)
 				if (exprArgs._expr.computed) {
 					args.push({type: "ArrayMemberExpression", value: object_index});
 				} else {
@@ -818,17 +818,21 @@ Expr.prototype.getValueFromObjectExpression=function(node, identifier, varMap, i
 	for (var p in properties) { 
 		var key = (new Expr(properties[p].key)).getArg(node, identifier, varMap, false, verbose);
 		var token = (new Expr(properties[p].value)).getToken(node);
+
+		var astNode = new AST(node);
+		var type1 = astNode.getVariableInitValue(identifier, properties[p].value, varMap, verbose);
+
 		if (typeof key == "string") {
 			key = key.replace(/"/g,'');
 		}
-		results.push([key, [{ type: token.type, value: token.value }]])
+		results.push([key, type1[1]]);
 	}
 
 	var object = {};
-	for (var r in results) {
-		object[results[r][0]] = results[r][1]
+	for (var r of results) {
+		// console.log(">", r)
+		object[r[0]] = r[1]
 	}
-
 	return object;
 }
 
@@ -909,7 +913,6 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 	// console.log(this._expr)
 	if (this._expr.object.type == "MemberExpression") {
 		var val = (new Expr(this._expr.object)).getValueFromMemberExpression(node, identifier, varMap, true, verbose);
-		// console.log("val", val)
 		var identifier = val;
 	} else if (this._expr.object.type == "ThisExpression"){
 		var identifier = "this";

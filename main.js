@@ -592,17 +592,25 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										var indx = [];
 										while (object instanceof Array) {
 											var obj = varMap.get(object[0]);
-											if (obj === undefined) {
-												if (verbose>0) console.log("FEATURE[FuncCallOnNonLocalArray] in :" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
-												updateResultMap(resultMap, "FuncCallOnNonLocalArray", coefficient);
-											}
 											indx = indx.concat(object[1]);
 											object = object[0];
 										}
+										// console.log("\nobject:", object)
+										// console.log("obj:", obj)
+										// console.log("obj.value:", obj[0].value)
+										// console.log("indx:", indx)
+										// console.log("\n")
 										try {
 											for (var ii = indx.length-1; ii >=0;ii--){
 												var objIndex = indx[ii].value;
-												if (obj !== undefined) obj = obj[0].value[objIndex][1];
+												// console.log("objIndex:", objIndex)
+												if (obj !== undefined) {
+													if (obj[0].type == "ObjectExpression") {
+														obj = obj[0].value[objIndex];
+													} else {
+														obj = obj[0].value[objIndex][1];
+													}
+												}
 											}
 										} catch (err) {
 											if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnArrayIndex] in :" + scope + ": " + ASTUtils.getCode(astNode._node.body[i]));
@@ -616,7 +624,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 											updateResultMap(resultMap, "FuncCallOnNonLocalArray", coefficient);
 										}
 									}
-									
+
 									var ref_values = [];
 									for (var inx in indices){
 										// skip " when handling object field access aka o["f"] => o.f
@@ -642,12 +650,36 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									}
 
 								} else if (args[0].type == "FieldMemberExpression") {
-									const object = args[0].value[0];
-									const fields = args[0].value[1];
-									const r_vs = varMap.get(object);
+									var object = args[0].value[0];
+									var fields = args[0].value[1];
+									var r_vs = varMap.get(object);
+
+									if (object instanceof Array) {
+										var field = [];
+										while (object instanceof Array) {
+											var obj = varMap.get(object[0]);
+											field = field.concat(object[1]);
+											object = object[0];
+										}
+										try {
+											for (var ii = field.length-1; ii >=0;ii--){
+												var objIndex = field[ii].value;
+												if (obj !== undefined) {
+													if (obj[0].type == "ObjectExpression") {
+														obj = obj[0].value[objIndex];
+													} else {
+														obj = obj[0].value[objIndex][1];
+													}
+												}
+											}
+										} catch (err) {
+											if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnArrayIndex] in :" + scope + ": " + ASTUtils.getCode(astNode._node.body[i]));
+											updateResultMap(resultMap, "FuncCallOnUnkonwnArrayIndex", coefficient);
+										}
+										r_vs = obj;
+									} 
 
 									var ref_values = [];
-
 									for (var f in fields) {
 										const field = fields[f];
 										for (var r in r_vs){
@@ -656,6 +688,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 											}
 										}
 									}
+									
 								} else {
 									/* args[0].type == "Identifier" 
 									 * we assume the parameter passed in can be type String */

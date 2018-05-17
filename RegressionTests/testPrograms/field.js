@@ -41,3 +41,13 @@ var a = [1,"b",3];
 var f = {b:2};
 f[a[1]] = "str";
 eval(f[a[1]]);
+// FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [f,[object Object]] ==> eval("str")
+
+// array in object field
+var f = {b:[1,"2"]};
+eval(f.b[1]);
+// FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [f,[object Object],[object Object]] ==> eval("2")
+
+// nested field objects
+var f = {b:{c:"nf"}};
+eval(f.b.c);
