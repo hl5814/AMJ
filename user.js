@@ -1,3 +1,4 @@
-function foo(x){
-    return eval(x);
+var x = ["a","b","c"];
+for (var t of x) {
+    eval(t)
 }

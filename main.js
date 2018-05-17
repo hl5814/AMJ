@@ -410,7 +410,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					if (verbose>0) console.log("FEATURE[AssigningToThis]");
 					updateResultMap(resultMap, "AssigningToThis", coefficient);
 				}
-				
+
 				for (var v in var_values[1]){
 					if (var_values[1][v].type == "BitwiseOperationExpression" ||
 						var_values[1][v].type == "FunctionCall") {
@@ -793,7 +793,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			}
 			diffMap.multipleUpdate(varMap);
 
-		} else if (astNode.isForStatement(i) || astNode.isForInStatement(i)) {
+		} else if (astNode.isForStatement(i) || astNode.isForInStatement(i) || astNode.isForOfStatement(i)) {
 			astNode.removeJumpInstructions(i, ast);
 
 			const bodyExprs = astNode.parseForStatement(i, varMap, verbose);
@@ -818,23 +818,25 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			});
 			diffMap.multipleUpdate(varMap);
 
-			// parse for body with current varMap
-			var eVarMap = new Functions.VariableMap(varMap._varMap);
+			if (bodyExprs.length > 1) {
+				// parse for body with current varMap
+				var eVarMap = new Functions.VariableMap(varMap._varMap);
 
-			var coef = coefficient.slice();
-			coef.push("in_loop")
-			const subVarMapList2 = parseProgram(bodyExprs[1], "for_statements", coef, eVarMap, verbose);
-			subVarMapList2.forEach(function(val1) {
-				var prevValues = varMap.get(val1.key);
-				var typeSet = new Set();
+				var coef = coefficient.slice();
+				coef.push("in_loop")
+				const subVarMapList2 = parseProgram(bodyExprs[1], "for_statements", coef, eVarMap, verbose);
+				subVarMapList2.forEach(function(val1) {
+					var prevValues = varMap.get(val1.key);
+					var typeSet = new Set();
 
-				// if variable exists in main program and been updated in for-body, add the prev_value
-				if (prevValues && prevValues != val1.value) typeSet.my_add(prevValues);
+					// if variable exists in main program and been updated in for-body, add the prev_value
+					if (prevValues && prevValues != val1.value) typeSet.my_add(prevValues);
 
-				typeSet.my_add(val1.value);
-				diffMap.setVariable(val1.key, typeSet);
-			});
-			diffMap.multipleUpdate(varMap);
+					typeSet.my_add(val1.value);
+					diffMap.setVariable(val1.key, typeSet);
+				});
+				diffMap.multipleUpdate(varMap);
+			}
 
 		} else if (astNode.isWhileStatement(i)) {
 			astNode.removeJumpInstructions(i, ast);

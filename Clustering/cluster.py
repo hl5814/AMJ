@@ -315,7 +315,7 @@ if FILE:
 
 # draw full dendrogram
 fig = plt.figure()
-# plt.figure(figsize=(25, 10))
+plt.figure(figsize=(25, 10))
 if (args.dendrogram):
     sys.setrecursionlimit(1500)
     max_d = 10  # max_d as in max_distance for colouring sub tree

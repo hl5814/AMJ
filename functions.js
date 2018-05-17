@@ -41,6 +41,10 @@ AST.prototype.isForInStatement=function(index){
 	return  (this._node.body[index].type == "ForInStatement" );
 };
 
+AST.prototype.isForOfStatement=function(index){
+	return  (this._node.body[index].type == "ForOfStatement" );
+};
+
 AST.prototype.isTryStatement=function(index){
 	return  (this._node.body[index].type == "TryStatement");
 };
@@ -934,10 +938,40 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=false) {
 	// for in statements, e.g. for(var x in list){...}
 
-	if (this._expr.left) {
-		var left = new Expr(this._expr.left);
-		blockRanges.push(ASTUtils.getCode(left._expr));
+	if (this._expr.type == "ForOfStatement") {
+		var leftVar;
+		var leftValue;
+		if (this._expr.left.type == "Identifier") {
+			leftVar = this._expr.left.name;
+			leftValue = varMap.get(leftVar);
+		} else if (this._expr.left.type == "VariableDeclaration") {
+			leftVar = this._expr.left.declarations[0].id.name;
+			leftValue = [];
+		}
+
+		if (leftValue !== undefined && leftVar !== undefined) {
+			var right = this._expr.right;
+			var astNode = new AST(node);
+			var rhs = astNode.getVariableInitValue("", right, varMap, verbose)[1];
+			for (var t of rhs) {
+				if (t.type == "ArrayExpression") {
+					var arrayElements = t.value;
+					var possibleValues = [];
+					for (var e of arrayElements){
+						possibleValues = possibleValues.concat(e[1]);
+					}
+					leftValue = leftValue.concat(possibleValues);
+					varMap.setVariable(leftVar, leftValue);
+				}
+			}
+		}
+	} else {
+		if (this._expr.left) {
+			var left = new Expr(this._expr.left);
+			blockRanges.push(ASTUtils.getCode(left._expr));
+		}
 	}
+	
 
 	// regular for statements, e.g. for(var i=0;i<5;i++){...}
 	if (this._expr.init) {
@@ -954,6 +988,7 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 			blockRanges.push(code);
 		}
 	}
+	
 	return blockRanges;
 }
 
