@@ -60,3 +60,22 @@ var a = [1,2,3];
 var f = {b:2};
 a[f.b] = "str";
 eval(a[f.b]);
+// FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [a,[object Object]] ==> eval("str")
+
+// field object in array
+var a = [{f:"f"}];
+eval(a[0].f)
+// FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [a,[object Object],[object Object]] ==> eval("f")
+
+// nested array
+var a = [ 	
+			[ ["0","1"], ["2","3"] ], 
+		  	[ ["4","5"], ["6","7"] ], 
+		  	[ ["8","9"], ["a","b"] ]
+		];
+eval(a[2][1][0])
+//  FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [a,[object Object],[object Object],[object Object]] ==> eval("a")
+
+
+
+
