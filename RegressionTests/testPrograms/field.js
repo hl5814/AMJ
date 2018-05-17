@@ -51,3 +51,8 @@ eval(f.b[1]);
 // nested field objects
 var f = {b:{c:"nf"}};
 eval(f.b.c);
+// FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [f,[object Object],[object Object]] ==> eval("nf")
+
+var f = {b:{c:{d:"d"}}, t:"c"};
+eval(f["b"][f.t]["d"]);
+// FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [f,[object Object],[object Object],[object Object]] ==> eval("d")

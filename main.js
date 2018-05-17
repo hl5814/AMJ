@@ -595,17 +595,13 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 											indx = indx.concat(object[1]);
 											object = object[0];
 										}
-										// console.log("\nobject:", object)
-										// console.log("obj:", obj)
-										// console.log("obj.value:", obj[0].value)
-										// console.log("indx:", indx)
-										// console.log("\n")
 										try {
 											for (var ii = indx.length-1; ii >=0;ii--){
 												var objIndex = indx[ii].value;
 												// console.log("objIndex:", objIndex)
 												if (obj !== undefined) {
 													if (obj[0].type == "ObjectExpression") {
+														objIndex = objIndex.replace(/"/g,"");
 														obj = obj[0].value[objIndex];
 													} else {
 														obj = obj[0].value[objIndex][1];

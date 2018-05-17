@@ -77,5 +77,13 @@ eval(a[2][1][0])
 //  FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [a,[object Object],[object Object],[object Object]] ==> eval("a")
 
 
+var a = [ 	
+			[ ["0","1"], ["2","3"] ], 
+		  	[ ["4","5"], ["6","7"] ], 
+		  	[ ["8","9"], [{test:"test"},"b"] ]
+		];
 
+var f = {b:2};
+eval(a[f.b][1][0].test)
+// FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [a,[object Object],[object Object],[object Object],[object Object]] ==> eval("test")
 
