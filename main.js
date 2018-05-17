@@ -116,8 +116,7 @@ const FEATURES = [	"InitVariableWithFunctionExpression",
 					"ConditionalCompilationCode",
 					"DotNotationInFunctionName",
 					"LongArray",
-					"LongExpression",
-					"ForOfStatement"]
+					"LongExpression"]
 
 const SCOPES = [	"in_test",
 					"in_main",
@@ -791,10 +790,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			diffMap.multipleUpdate(varMap);
 
 		} else if (astNode.isForStatement(i) || astNode.isForInStatement(i) || astNode.isForOfStatement(i)) {
-			if (astNode.isForOfStatement(i)) {
-				if (verbose>0) console.log("FEATURE[ForOfStatement]");
-				updateResultMap(resultMap, "ForOfStatement", coefficient);			
-			}
 			astNode.removeJumpInstructions(i, ast);
 
 			const bodyExprs = astNode.parseForStatement(i, varMap, verbose);
