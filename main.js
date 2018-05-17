@@ -799,44 +799,45 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			const bodyExprs = astNode.parseForStatement(i, varMap, verbose);
 			var diffMap = new Functions.VariableMap(new HashMap());
 
-			// parse for condition
-			var coef = coefficient.slice();
-			coef.push("in_loop")
-			const subVarMapList1 = parseProgram(bodyExprs[0], "for_statements", coef, varMap, verbose);
-			subVarMapList1.forEach(function(val1) {
-				var typeSet = new Set();
-				if (astNode.isForInStatement(i)) {
-					typeSet.my_add([ { type: 'Numeric', value: '0' } ]);
-				} else if (astNode.isForStatement(i) && val1.value.length > 0){
-					if (val1.value[0].type == "undefined" && val1.value[0].value == "undefined") {
-						typeSet.my_add(varMap.get(val1.key));
-					} else {
-						typeSet.my_add(val1.value);
-					}
-				} 
-				diffMap.setVariable(val1.key, typeSet);
-			});
-			diffMap.multipleUpdate(varMap);
-
 			if (bodyExprs.length > 1) {
-				// parse for body with current varMap
-				var eVarMap = new Functions.VariableMap(varMap._varMap);
-
+				// parse for condition
 				var coef = coefficient.slice();
 				coef.push("in_loop")
-				const subVarMapList2 = parseProgram(bodyExprs[1], "for_statements", coef, eVarMap, verbose);
-				subVarMapList2.forEach(function(val1) {
-					var prevValues = varMap.get(val1.key);
+				const subVarMapList1 = parseProgram(bodyExprs[0], "for_statements", coef, varMap, verbose);
+				subVarMapList1.forEach(function(val1) {
 					var typeSet = new Set();
-
-					// if variable exists in main program and been updated in for-body, add the prev_value
-					if (prevValues && prevValues != val1.value) typeSet.my_add(prevValues);
-
-					typeSet.my_add(val1.value);
+					if (astNode.isForInStatement(i)) {
+						typeSet.my_add([ { type: 'Numeric', value: '0' } ]);
+					} else if (astNode.isForStatement(i) && val1.value.length > 0){
+						if (val1.value[0].type == "undefined" && val1.value[0].value == "undefined") {
+							typeSet.my_add(varMap.get(val1.key));
+						} else {
+							typeSet.my_add(val1.value);
+						}
+					} 
 					diffMap.setVariable(val1.key, typeSet);
 				});
 				diffMap.multipleUpdate(varMap);
 			}
+
+
+			// parse for body with current varMap
+			var eVarMap = new Functions.VariableMap(varMap._varMap);
+
+			var coef = coefficient.slice();
+			coef.push("in_loop")
+			const subVarMapList2 = parseProgram(bodyExprs[bodyExprs.length-1], "for_statements", coef, eVarMap, verbose);
+			subVarMapList2.forEach(function(val1) {
+				var prevValues = varMap.get(val1.key);
+				var typeSet = new Set();
+
+				// if variable exists in main program and been updated in for-body, add the prev_value
+				if (prevValues && prevValues != val1.value) typeSet.my_add(prevValues);
+
+				typeSet.my_add(val1.value);
+				diffMap.setVariable(val1.key, typeSet);
+			});
+			diffMap.multipleUpdate(varMap);
 
 		} else if (astNode.isWhileStatement(i)) {
 			astNode.removeJumpInstructions(i, ast);

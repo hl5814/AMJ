@@ -171,6 +171,13 @@ therefore we need to capture both cases.
 when a variable is overwritten in the condition line, the problem became more complicated
 it has 5 different cases (details see RegressionTests/testPrograms/for.js)
 
+## [REMARK]: forOfExpression, we check on all possible values in the array,
+		var x = ["1", "2", "3"];
+		for (var t of x){
+			// when parsing for body, we have {key:t, value:["1", "2", "3"]}
+			eval(t);
+		}
+
 
 ## while blocks
 different to for blocks, while blocks don't have assignment in condition, so we only need
@@ -360,7 +367,9 @@ Week 6 	(4	5	6	7	8 ) <- finish Draft Report & extensions
 	9696:	python file
 	12301:	function declaration without identifier function(xxx){...}
 	17092:	missing ending back tick at EOF (human error)
-
+	==> assign to this, i.e. try { this =  ... }
+	6968: /Users/hongtao/javascript-malware-collection//20160421_7693d1d7c6eeb845f7576b1b9b7aa2ed.js
+	6973: /Users/hongtao/javascript-malware-collection//20160421_e0cf41e3d0176a98680fe9006162f623.js
 
 # Other:
 // https://github.com/facebook/flow

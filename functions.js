@@ -937,13 +937,15 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 
 Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=false) {
 	// for in statements, e.g. for(var x in list){...}
-
 	if (this._expr.type == "ForOfStatement") {
 		var leftVar;
 		var leftValue;
 		if (this._expr.left.type == "Identifier") {
 			leftVar = this._expr.left.name;
 			leftValue = varMap.get(leftVar);
+			if (leftValue == undefined) {
+				leftValue = [];
+			}
 		} else if (this._expr.left.type == "VariableDeclaration") {
 			leftVar = this._expr.left.declarations[0].id.name;
 			leftValue = [];
@@ -988,7 +990,7 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 			blockRanges.push(code);
 		}
 	}
-	
+
 	return blockRanges;
 }
 

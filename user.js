@@ -1,4 +1,4 @@
 var x = ["a","b","c"];
-for (var t of x) {
+for (t of x) {
     eval(t)
 }
