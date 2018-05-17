@@ -939,19 +939,14 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 	// for in statements, e.g. for(var x in list){...}
 	if (this._expr.type == "ForOfStatement") {
 		var leftVar;
-		var leftValue;
+		var leftValue = [];
 		if (this._expr.left.type == "Identifier") {
 			leftVar = this._expr.left.name;
-			leftValue = varMap.get(leftVar);
-			if (leftValue == undefined) {
-				leftValue = [];
-			}
 		} else if (this._expr.left.type == "VariableDeclaration") {
 			leftVar = this._expr.left.declarations[0].id.name;
-			leftValue = [];
 		}
 
-		if (leftValue !== undefined && leftVar !== undefined) {
+		if (leftVar !== undefined) {
 			var right = this._expr.right;
 			var astNode = new AST(node);
 			var rhs = astNode.getVariableInitValue("", right, varMap, verbose)[1];
@@ -967,13 +962,23 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 				}
 			}
 		}
+	} else if (this._expr.type == "ForInStatement") {
+		var leftVar;
+		if (this._expr.left.type == "Identifier") {
+			leftVar = this._expr.left.name;
+		} else if (this._expr.left.type == "VariableDeclaration") {
+			leftVar = this._expr.left.declarations[0].id.name;
+		}
+		if (leftVar !== undefined) {
+			varMap.setVariable(leftVar, [ { type: 'Numeric', value: '0' } ]);
+		}
+
 	} else {
 		if (this._expr.left) {
 			var left = new Expr(this._expr.left);
 			blockRanges.push(ASTUtils.getCode(left._expr));
 		}
 	}
-	
 
 	// regular for statements, e.g. for(var i=0;i<5;i++){...}
 	if (this._expr.init) {

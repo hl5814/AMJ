@@ -185,8 +185,6 @@ function showResult(resultMap) {
 		resultMap.set("CommentPerFile", (COMMENT_LENGTH/FILE_LENGTH).toFixed(4));
 	}
 	resultMap.forEach(function(value, key){
-		console.log("key",key)
-		console.log("value",value)
 		h +=  "," + '"' + key + '"';
 		if (KEYWORDS.indexOf(key) > -1) {
 			var val = (value > 0) ? (value/KEYWORD_TOTAL).toFixed(4) : 0;
@@ -292,7 +290,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			for (var block in declaration_blocks) {
 				var variableName_Type = astNode.getVariableInitValue(declaration_blocks[block].id.name, declaration_blocks[block].init, varMap, verbose);
 				var variableName_Types = variableName_Type[1];
-
 
 				varMap.setVariable(variableName_Type[0], variableName_Types, verbose)
 				for (var v in variableName_Types) {
@@ -508,6 +505,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 							}
 							if (node.type == "CallExpression"){
 								var callee;
+
 								if (node.callee.type == "MemberExpression") {
 									callee = node.callee.property.name;
 								} else if (node.callee.type == "FunctionExpression") {
@@ -544,6 +542,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				var var_value = astNode.getUpdateExpression(i, varMap, verbose);
 				// ++, --, etc.
 			} else {
+
 				// single identifier expressions, (e.g. x;) skip to next expression
 				if (astNode._node.body[i].expression.type == "Identifier") {
 					var var_values = varMap.get(astNode._node.body[i].expression.name);
@@ -573,6 +572,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 					if (funcNames[f].type == "pre_Function" || funcNames[f].type == "user_Function") {
 						var args = astNode.getFunctionArguments(i, varMap);
+
 
 						// JS will ignore extra parameters, if function is defined with only one parameter
 						// Attacker might add more unuse d parameters to confuse the detector
@@ -806,9 +806,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				const subVarMapList1 = parseProgram(bodyExprs[0], "for_statements", coef, varMap, verbose);
 				subVarMapList1.forEach(function(val1) {
 					var typeSet = new Set();
-					if (astNode.isForInStatement(i)) {
-						typeSet.my_add([ { type: 'Numeric', value: '0' } ]);
-					} else if (astNode.isForStatement(i) && val1.value.length > 0){
+					if (astNode.isForStatement(i) && val1.value.length > 0){
 						if (val1.value[0].type == "undefined" && val1.value[0].value == "undefined") {
 							typeSet.my_add(varMap.get(val1.key));
 						} else {
