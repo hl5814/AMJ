@@ -153,7 +153,8 @@ FEATURE_LIST = [    "InitVariableWithFunctionExpression",
                     "ConditionalCompilationCode",
                     "DotNotationInFunctionName",
                     "LongArray",
-                    "LongExpression"]
+                    "LongExpression",
+                    "ForOfStatement"]
 
 SCOPE_LIST = ["in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]
 

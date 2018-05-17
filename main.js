@@ -116,7 +116,8 @@ const FEATURES = [	"InitVariableWithFunctionExpression",
 					"ConditionalCompilationCode",
 					"DotNotationInFunctionName",
 					"LongArray",
-					"LongExpression"]
+					"LongExpression",
+					"ForOfStatement"]
 
 const SCOPES = [	"in_test",
 					"in_main",
@@ -399,7 +400,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					} 
 				});
 				var var_values = astNode.getAssignmentLeftRight(i, varMap, verbose);
-
 				if (var_values[0] == "MY_MJSA_THIS") {
 					var prevValue = resultMap.get("MY_MJSA_THIS");
 					resultMap.set("MY_MJSA_THIS", prevValue+1);
@@ -594,7 +594,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 										while (object instanceof Array) {
 											var obj = varMap.get(object[0]);
 											if (obj === undefined) {
-												console.log("Non", object[0]," => ", obj)
 												if (verbose>0) console.log("FEATURE[FuncCallOnNonLocalArray] in :" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
 												updateResultMap(resultMap, "FuncCallOnNonLocalArray", coefficient);
 											}
@@ -620,12 +619,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 									}
 									
 									var ref_values = [];
-
 									for (var inx in indices){
 										// skip " when handling object field access aka o["f"] => o.f
 										// indices will be `"f"` instead of [{type:"Numeric", value:2}]
 										if (indices[inx] == "") continue;
-
 										index = indices[inx].value;
 										for (var r in r_vs){
 											var array_values = r_vs[r];
@@ -794,6 +791,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			diffMap.multipleUpdate(varMap);
 
 		} else if (astNode.isForStatement(i) || astNode.isForInStatement(i) || astNode.isForOfStatement(i)) {
+			if (astNode.isForOfStatement(i)) {
+				if (verbose>0) console.log("FEATURE[ForOfStatement]");
+				updateResultMap(resultMap, "ForOfStatement", coefficient);			
+			}
 			astNode.removeJumpInstructions(i, ast);
 
 			const bodyExprs = astNode.parseForStatement(i, varMap, verbose);

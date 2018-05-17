@@ -35,3 +35,9 @@ eval(x.a);
 eval(x.b);
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b1")
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b2")
+
+// use array element as object field
+var a = [1,"b",3];
+var f = {b:2};
+f[a[1]] = "str";
+eval(f[a[1]]);

@@ -404,6 +404,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
 		identifier = token.value;
 	}
+
 	// pre-process if left hand side is ArrayMemberExpression
 	if (expression.left.type == "MemberExpression") {
 		if (lhs.computed) {
@@ -412,20 +413,27 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			var lhs_property = new Expr(lhs.property);
 
 			var lhs_index = lhs_property.getPropertyValue(this._node, varMap, false, verbose);
-			
 			var token = (new Expr(rhs)).getToken(this._node);
 
 			var var_values = varMap.get(lhs_object);
 			var vals = [];
-			if (var_values !== undefined) {
-				for (var inx in lhs_index) {
-					if (lhs_index[inx].type == "undefined" && lhs_index[inx].value == "undefined") {
+			if (var_values !== undefined && lhs_index !== undefined) {
+				for (var inx of lhs_index) {
+					if (inx.type == "undefined" && inx.value == "undefined") {
 						vals.push(var_values);
 						continue;
 					}
-					if (lhs_index[inx].type == "Numeric") {
-						var index = lhs_index[inx].value;
+					if (inx.type == "Numeric" || inx.type == "String") {
+						var index = inx.value;
 						for (var v in var_values) {
+							if (var_values[v].type == "ObjectExpression") {
+								index = index.replace(/['"]+/g, '');
+								if (Object.keys(var_values[v].value).length > 0 && var_values[v].value[index] !== undefined) {
+									var_values[v].value[index] = [{ type: token.type, value: token.value}];
+									vals.push(var_values[v]);
+									continue;
+								}
+							}
 							if (var_values[v].type != "ArrayExpression" && var_values[v].type != "NewExpression") continue;
 							if (var_values[v].value.length > 0 && var_values[v].value[index] !== undefined) var_values[v].value[index][1] = [{ type: token.type, value: token.value}];
 							vals.push(var_values[v]);
@@ -591,13 +599,24 @@ Expr.prototype.getPropertyValue=function(node, varMap, rhsExpr, verbose=false) {
 		var object_index = this.getValueFromMemberExpression(node, "", varMap, false,verbose);
 		var indices = object_index[1];
 		var array_values = varMap.get(object_index[0]);
-		
 		var types = [];
-		for (var i in indices){
-			for (var v in array_values) {
-				if (array_values[v].type == "ArrayExpression") types.push(array_values[v].value[indices[i]]);
+		for (var i of indices){
+			var inx = (new Expr(i)).getArg(node, "", varMap, true, verbose);
+			for (var v of array_values) {
+				if (v.type == "ArrayExpression") {
+					types = types.concat(v.value[inx][1]);
+				}
+				if (v.type == "ObjectExpression") {
+					types = types.concat(v.value[inx]);
+				}
 			}
 		}
+		if (types.length > 0) {
+			return types;
+		} else {
+			return [{type:"undefined", value:"undefined"}];
+		}
+		
 	}
 }
 
@@ -897,7 +916,6 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 	}else {
 		var identifier = this._expr.object.name;
 	}
-	
 
 	if (this._expr.computed) {
 		var val = (new Expr(this._expr.property)).getArg(node, identifier, varMap, true, verbose);
@@ -915,6 +933,46 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 			}
 		} else if (this._expr.property.type == "Literal") {
 			val = [ {type : "Numeric", value: this._expr.property.value}]
+		} else if (this._expr.property.type == "MemberExpression") {
+			val = (new Expr(this._expr.property)).getValueFromMemberExpression(node, identifier, varMap, true, verbose);
+			var obj = val[0];
+			var inx = val[1];
+			var types = [];
+			if (this._expr.property.computed) {
+				if (inx !== undefined) {
+					for (var i of inx) {
+						var index = (new Expr(i)).getArg(node, identifier, varMap, true, verbose);
+						var vs = varMap.get(obj);
+						if (vs !== undefined) {
+							for (var v of vs) {
+								if (v.value[index] !== undefined && v.value[index][1] !== undefined) {
+									types = types.concat(v.value[index][1]);
+								}		
+											
+							}
+							
+						}
+					}
+				}
+			} else {
+				if (inx !== undefined) {
+					for (var i of inx) {
+						var index = (new Expr(i)).getArg(node, identifier, varMap, true, verbose);
+						var vs = varMap.get(obj);
+						if (vs !== undefined) {
+							for (var v of vs) {
+								if (v.value[index] !== undefined){
+									types = types.concat(v.value[index]);
+								}
+							}
+							
+						}
+					}
+				}
+			}
+			if (types.length > 0) {
+				return [identifier, types];
+			}
 		} else {
 			val = [ {type : "UNKONWN", value: this._expr.property.type}]
 		}

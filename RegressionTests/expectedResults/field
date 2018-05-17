@@ -5,3 +5,4 @@ FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [x,[
 FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("c")
 FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b1")
 FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b2")
+FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [f,[object Object]] ==> eval("str")

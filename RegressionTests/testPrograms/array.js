@@ -54,3 +54,9 @@ eval(x[0]);
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("0")
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("1")
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("2")
+
+// use object field as array index
+var a = [1,2,3];
+var f = {b:2};
+a[f.b] = "str";
+eval(a[f.b]);
