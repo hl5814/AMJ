@@ -55,3 +55,33 @@ if (1>2) {
 	b = "else"
 }
 eval(b);
+
+// block-level variable ->let
+var x = "main";
+if (1>2) {
+	let x = "if";
+} else {
+	let x = "else";
+}
+eval(x);
+// FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [x] ==> eval("main")
+
+// block-level variable ->const
+var y = "main";
+if (1>2) {
+	const y = "if";
+	if (2>1) {
+		eval(y);
+	}
+}
+eval(y);
+
+// FEATURE[FuncCallOnStringVariable] in :if_statements: eval(Object->STRING) => [y] ==> eval("if")
+// FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [y] ==> eval("main")
+
+
+
+
+
+
+

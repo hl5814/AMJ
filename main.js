@@ -293,8 +293,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			var declaration_blocks = astNode.getAllDeclarationBlocks(i);
 			var declaration_kind = astNode.getAllDeclarationKind(i);
 
-
-			console.log(ast.body[i].kind)
 			for (var block of declaration_blocks) {
 				var variableName_Type = astNode.getVariableInitValue(block.id.name, block.init, varMap, verbose);
 				var variableName_Types = variableName_Type[1];
@@ -303,9 +301,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					local_variables.push(variableName_Type[0]);
 				}
 				varMap.setVariable(variableName_Type[0], variableName_Types, verbose)
+				
 				for (var v in variableName_Types) {
 					if (variableName_Types[v] === undefined) {
-						console.log(ast.body[i].declarations)
 						continue;
 					}
 					if (variableName_Types[v].type == "ArrayExpression" || 
@@ -1036,7 +1034,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 	}
 
 	varMap.deleteObjects(local_variables);
-	
+
 	if (verbose>1 && scope == "User_Program") varMap.printMap();
 	return varMap.toList();
 }

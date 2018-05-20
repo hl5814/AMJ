@@ -10,3 +10,6 @@ FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [b] 
 FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [b] ==> eval("elseif1")
 FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [b] ==> eval("elseif2")
 FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [b] ==> eval("else")
+FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [x] ==> eval("main")
+FEATURE[FuncCallOnStringVariable] in :if_statements: eval(Object->STRING) => [y] ==> eval("if")
+FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [y] ==> eval("main")
