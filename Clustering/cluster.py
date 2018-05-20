@@ -313,26 +313,7 @@ if FILE:
     SCOPE_MEAN_CSV = os.path.join(file_path, "s_df.csv")
     s_df.to_csv(SCOPE_MEAN_CSV, encoding='utf-8', index=True)
 
-# draw full dendrogram
-fig = plt.figure()
-plt.figure(figsize=(25, 10))
-if (args.dendrogram):
-    sys.setrecursionlimit(1500)
-    max_d = 10  # max_d as in max_distance for colouring sub tree
-    fancy_dendrogram(
-        Z,
-        leaf_label_func=llf,
-        truncate_mode='lastp',
-        p=NODES,
-        # truncate_mode='level',
-        # p=100,
-        leaf_font_size=8.,
-        show_contracted=True,
-        annotate_above=5,
-        max_d=max_d,  # plot a horizontal cut-off line
-    )
-# plt.show()
-plt.savefig(os.path.join(file_path,'dendrogram.png'))
+
 
 CLUSTER_RESULT = os.path.join(file_path, "cluster_result.csv")
 df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)
@@ -354,7 +335,26 @@ else:
     print(sum(cluster_size)/len(cluster_size))
 
 
-
+# draw full dendrogram
+fig = plt.figure()
+plt.figure(figsize=(25, 10))
+if (args.dendrogram):
+    sys.setrecursionlimit(1500)
+    max_d = 10  # max_d as in max_distance for colouring sub tree
+    fancy_dendrogram(
+        Z,
+        leaf_label_func=llf,
+        truncate_mode='lastp',
+        p=NODES,
+        # truncate_mode='level',
+        # p=100,
+        leaf_font_size=8.,
+        show_contracted=True,
+        annotate_above=5,
+        max_d=max_d,  # plot a horizontal cut-off line
+    )
+# plt.show()
+plt.savefig(os.path.join(file_path,'dendrogram.png'))
 
 
 

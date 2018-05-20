@@ -199,6 +199,7 @@ function showResult(resultMap) {
 		}
 		resultArray.push(val);
 	});
+
 	console.log(`"`+filePath+`",`+resultArray)
 }
 
@@ -219,6 +220,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 	if (program === null || program === undefined || program.replace(/\s+/g, "") == "") return varMap.toList();
 	var ast = ASTUtils.parse(program);
 	// parse main program tokens
+
 	if (scope == "User_Program") {
 		resultMap.set("TokenPerFile", (ast.tokens.length/FILE_LENGTH).toFixed(4));
 		for (const pt of ast.tokens) {
@@ -241,6 +243,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 		}
 	}
 
+	var local_variables = [];
 	// iterate through each AST node
 	for (var i in ast.body){
 		var astNode = new Functions.AST(ast);
@@ -286,11 +289,19 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 					}
 				}
 			});
+
 			var declaration_blocks = astNode.getAllDeclarationBlocks(i);
-			for (var block in declaration_blocks) {
-				var variableName_Type = astNode.getVariableInitValue(declaration_blocks[block].id.name, declaration_blocks[block].init, varMap, verbose);
+			var declaration_kind = astNode.getAllDeclarationKind(i);
+
+
+			console.log(ast.body[i].kind)
+			for (var block of declaration_blocks) {
+				var variableName_Type = astNode.getVariableInitValue(block.id.name, block.init, varMap, verbose);
 				var variableName_Types = variableName_Type[1];
 
+				if (declaration_kind == "let" || declaration_kind == "const") {
+					local_variables.push(variableName_Type[0]);
+				}
 				varMap.setVariable(variableName_Type[0], variableName_Types, verbose)
 				for (var v in variableName_Types) {
 					if (variableName_Types[v] === undefined) {
@@ -1023,6 +1034,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			diffMap.multipleUpdate(varMap);
 		}
 	}
+
+	varMap.deleteObjects(local_variables);
+	
 	if (verbose>1 && scope == "User_Program") varMap.printMap();
 	return varMap.toList();
 }

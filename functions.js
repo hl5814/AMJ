@@ -239,6 +239,10 @@ AST.prototype.getAllDeclarationBlocks=function(index, verbose=false) {
 	return this._node.body[index].declarations;
 }
 
+AST.prototype.getAllDeclarationKind=function(index, verbose=false) {
+	return this._node.body[index].kind;
+}
+
 AST.prototype.parseIfStatement=function(index, varMap, verbose=false){
 	const ifExpr = new Expr(this._node.body[index]);
 	return ifExpr.parseIfStatementExpr(this._node, varMap, [], verbose);
@@ -1323,6 +1327,7 @@ VariableMap.prototype.get = function(key) {
 VariableMap.prototype.printMap = function() {
 	this._varMap.forEach(function(value, key){
 		console.log(key, ":", value);
+		console.log(value[0].value)
 	});
 }
 
@@ -1348,6 +1353,14 @@ VariableMap.prototype.copyTo = function(destinationVarMap) {
 	this._varMap.forEach(function(value, key){
 		destinationVarMap._varMap.set(key, value);
 	});
+}
+
+VariableMap.prototype.deleteObjects = function(objectNameList) {
+	for (var objectName of objectNameList) {
+		if (this._varMap.has(objectName)) {
+			this._varMap.remove(objectName); 
+		}
+	}
 }
 
 module.exports = {AST, Expr, VariableMap};
