@@ -297,11 +297,12 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				var variableName_Type = astNode.getVariableInitValue(block.id.name, block.init, varMap, verbose);
 				var variableName_Types = variableName_Type[1];
 
+				// block scope declarations will be delete at the end of the scope
 				if (declaration_kind == "let" || declaration_kind == "const") {
 					local_variables.push(variableName_Type[0]);
 				}
 				varMap.setVariable(variableName_Type[0], variableName_Types, verbose)
-				
+
 				for (var v in variableName_Types) {
 					if (variableName_Types[v] === undefined) {
 						continue;

@@ -18,6 +18,9 @@ parser.add_argument("-l", dest='level',default=1,action='store',type=int, help="
 parser.add_argument('--verbose', '-v', action='count', default=-1,help="-v print file index for each cluster,-vv print top 3 features of each cluster")
 parser.add_argument("-p", dest='percentage', action='store',type=float, default=1, nargs='?', help="randomly pick p%  from samples")
 parser.add_argument("-s", dest='source', required=True, action='store',type=str, help="input csv file path")
+parser.add_argument("-r", dest='result', action='store',type=str,default="cluster_result.csv", help="result file path, cluster_result.csv by default")
+
+
 
 args = parser.parse_args()
 NODES = args.level
@@ -25,6 +28,7 @@ VERBOSE = args.verbose
 FILE = args.file
 PERCENT = args.percentage
 SOURCE = args.source
+RESULT_PATH = args.result
 
 # read input data csv file
 # "malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv"
@@ -40,6 +44,8 @@ df = pd.read_csv(dataCSV)
 if PERCENT >= 0 and PERCENT < 1:
     df = df.sample(frac=PERCENT) # randomly taking 10% of input samples
 fileIndex = df.ix[:,0] # get first column as File Indices
+FULL_HEADER = df.columns.values
+
 df=df.drop(['header'], axis=1) # drop first column and use the rest as weightArray
 df = df.reset_index(drop=True)
 fileIndex = fileIndex.reset_index(drop=True)
@@ -102,11 +108,12 @@ for i in range(len(Z)-NODES+1):
 # create result directories for different clusters
 RESULT_DIR = os.path.join(file_path, "clusters")
 
-if not os.path.exists(RESULT_DIR):
-    os.makedirs(RESULT_DIR)
-else:
-    shutil.rmtree(RESULT_DIR)
-    os.makedirs(RESULT_DIR)
+if FILE:
+    if not os.path.exists(RESULT_DIR):
+        os.makedirs(RESULT_DIR)
+    else:
+        shutil.rmtree(RESULT_DIR)
+        os.makedirs(RESULT_DIR)
 
 df['cluster'] = -1
 
@@ -157,6 +164,11 @@ FEATURE_LIST = [    "InitVariableWithFunctionExpression",
 
 SCOPE_LIST = ["in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]
 
+result_df = pd.DataFrame(columns=FULL_HEADER)
+result_df['cluster'] = -1
+line = 1;
+
+
 f_df = pd.DataFrame(columns=FEATURE_LIST)
 s_df = pd.DataFrame(columns=SCOPE_LIST)
 
@@ -166,6 +178,7 @@ for f in FEATURE_LIST:
 
 if (VERBOSE >= 0): print("\n--------------------------------------------------")
 TOTAL_FILES = 0
+
 for key, value in clustdict.items():
     TOTAL_FILES = TOTAL_FILES + len(value)
     if (VERBOSE == -1):
@@ -173,48 +186,56 @@ for key, value in clustdict.items():
         iteration = iteration + 1
 
     cluster_size.append(len(value))
-    if FILE:
-        CLUSTER_DIR = os.path.join(RESULT_DIR, str(key))
+
+    CLUSTER_DIR = os.path.join(RESULT_DIR, str(key))
+    if FILE:    
         if not os.path.exists(CLUSTER_DIR):
             os.makedirs(CLUSTER_DIR)
 
-        CLUSTER_REPORT = os.path.join(CLUSTER_DIR, "cluster_report.txt")
+    CLUSTER_REPORT = os.path.join(CLUSTER_DIR, "cluster_report.txt")
 
-        c_df = pd.DataFrame(columns=HEADER)
-        FILE_SOURCES = []
-        for v in value:
-            FILE_PATH = os.path.join(CLUSTER_DIR, str(v)+".js")
-            FILE_SOURCES.append(str(v)+','+fileIndex[v])
-            copyfile(fileIndex[v], FILE_PATH)
-            c_df.loc[len(c_df)] = X[v]
-            df.at[v, 'cluster'] = str(key) # update cluster number for the input dataFrame
-       
-        # Cluster Report DataFrames Processing
-        file_df = c_df[["TokenPerFile", "CommentPerFile"]]
-        averageCommentPercentage = file_df.mean().values[1] * 100
-        averageKeywordPercentage = file_df.mean().values[0] * 100
+    c_df = pd.DataFrame(columns=HEADER)
+    FILE_SOURCES = []
+    
+    for v in value:
+        # update result dataframe
+        result_df.loc[line] = np.concatenate(([fileIndex[v]], X[v], [str(key)]), axis=0)
+        line = line + 1
 
-        feature_df = c_df[FEATURE_LIST]
-        f_df.loc[key] = feature_df.mean().values
-        feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
-        feature_df = feature_df.reindex(feature_df.sum().sort_values(ascending=False).index, axis=1)
+    FILE_PATH = os.path.join(CLUSTER_DIR, str(v)+".js")
+    FILE_SOURCES.append(str(v)+','+fileIndex[v])
+    if FILE:
+        copyfile(fileIndex[v], FILE_PATH)
+    c_df.loc[len(c_df)] = X[v]
+    df.at[v, 'cluster'] = str(key) # update cluster number for the input dataFrame
+   
+    # Cluster Report DataFrames Processing
+    file_df = c_df[["TokenPerFile", "CommentPerFile"]]
+    averageCommentPercentage = file_df.mean().values[1] * 100
+    averageKeywordPercentage = file_df.mean().values[0] * 100
 
-        scope_df = c_df[SCOPE_LIST]
-        s_df.loc[key] = scope_df.mean().values
-        scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
-        scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
+    feature_df = c_df[FEATURE_LIST]
+    f_df.loc[key] = feature_df.mean().values
+    feature_df = feature_df.loc[:, (feature_df != 0).any(axis=0)]
+    feature_df = feature_df.reindex(feature_df.sum().sort_values(ascending=False).index, axis=1)
 
-        keyword_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "const", "void", "while", "with", "document","MY_MJSA_THIS"]]
-        keyword_df = keyword_df.loc[:, (keyword_df != 0).any(axis=0)]
-        keyword_df = keyword_df.reindex(keyword_df.sum().sort_values(ascending=False).index, axis=1)
+    scope_df = c_df[SCOPE_LIST]
+    s_df.loc[key] = scope_df.mean().values
+    scope_df = scope_df.loc[:, (scope_df != 0).any(axis=0)]
+    scope_df = scope_df.reindex(scope_df.sum().sort_values(ascending=False).index, axis=1)
 
-        punctuator_df = c_df[["!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+","++",
-                            "+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=","<=",
-                            "=","==","===",">",">=",">>",">>=",">>>",">>>=","?","[","]","^",
-                            "^=","{","|","|=","||","}","~"]]
-        punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
-        punctuator_df = punctuator_df.reindex(punctuator_df.sum().sort_values(ascending=False).index, axis=1)
+    keyword_df = c_df[["break", "case", "catch", "continue", "debugger", "default", "delete", "do", "else", "finally", "for", "function", "if", "in", "instanceof", "new", "return", "switch", "this", "throw","try", "typeof", "var", "const", "void", "while", "with", "document","MY_MJSA_THIS"]]
+    keyword_df = keyword_df.loc[:, (keyword_df != 0).any(axis=0)]
+    keyword_df = keyword_df.reindex(keyword_df.sum().sort_values(ascending=False).index, axis=1)
 
+    punctuator_df = c_df[["!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+","++",
+                        "+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=","<=",
+                        "=","==","===",">",">=",">>",">>=",">>>",">>>=","?","[","]","^",
+                        "^=","{","|","|=","||","}","~"]]
+    punctuator_df = punctuator_df.loc[:, (punctuator_df != 0).any(axis=0)]
+    punctuator_df = punctuator_df.reindex(punctuator_df.sum().sort_values(ascending=False).index, axis=1)
+
+    if FILE:
         f = open(CLUSTER_REPORT, 'a')
         file_df.to_csv(f, encoding='utf-8', index=True)
 
@@ -248,15 +269,15 @@ for key, value in clustdict.items():
 
         f.close()
 
-        FINAL_REPORT["number of files"] += "{:>5}".format(str(key)) + ":  " + str(len(value)) + "\n"
-        FINAL_REPORT["topFeatures"] += "{:>5}".format(str(key)) + ": [" + ", ".join(feature_df.columns.values) + "]\n"
-        FINAL_REPORT["topScopes"] += "{:>5}".format(str(key)) + ": [" + ", ".join(scope_df.columns.values) + "]\n"
-        FINAL_REPORT["topKeywords"] += "{:>5}".format(str(key)) + ": [" + ", ".join(keyword_df.columns.values) + "]\n"
-        FINAL_REPORT["topPunctuators"] += "{:>5}".format(str(key)) + ": [" + ", ".join(punctuator_df.columns.values) + "]\n"
+    FINAL_REPORT["number of files"] += "{:>5}".format(str(key)) + ":  " + str(len(value)) + "\n"
+    FINAL_REPORT["topFeatures"] += "{:>5}".format(str(key)) + ": [" + ", ".join(feature_df.columns.values) + "]\n"
+    FINAL_REPORT["topScopes"] += "{:>5}".format(str(key)) + ": [" + ", ".join(scope_df.columns.values) + "]\n"
+    FINAL_REPORT["topKeywords"] += "{:>5}".format(str(key)) + ": [" + ", ".join(keyword_df.columns.values) + "]\n"
+    FINAL_REPORT["topPunctuators"] += "{:>5}".format(str(key)) + ": [" + ", ".join(punctuator_df.columns.values) + "]\n"
 
-        # update feature dict
-        for f in feature_df.columns.values:
-            feature_dict[f] = feature_dict[f] + feature_df[f].astype(bool).sum()
+    # update feature dict
+    for f in feature_df.columns.values:
+        feature_dict[f] = feature_dict[f] + feature_df[f].astype(bool).sum()
 
 
     if (VERBOSE >= 0): 
@@ -315,8 +336,8 @@ if FILE:
 
 
 
-CLUSTER_RESULT = os.path.join(file_path, "cluster_result.csv")
-df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)
+CLUSTER_RESULT = os.path.join(file_path, RESULT_PATH)
+result_df.to_csv(CLUSTER_RESULT, encoding='utf-8', index=False)
 
 if (VERBOSE == -1):
     print("                                                              ", end="\r", flush=True, file=sys.stderr)
@@ -353,8 +374,10 @@ if (args.dendrogram):
         annotate_above=5,
         max_d=max_d,  # plot a horizontal cut-off line
     )
-# plt.show()
-plt.savefig(os.path.join(file_path,'dendrogram.png'))
+    if RESULT_PATH != "cluster_result.csv":
+        plt.savefig(os.path.join(file_path,'t_dendrogram.png'))
+    else:
+        plt.savefig(os.path.join(file_path,'dendrogram.png'))
 
 
 
