@@ -60,10 +60,10 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 # check if the given source path is directory/file
 if [ -d $SOURCE ]; then
     node main.js -h  2>/dev/null | grep -E "header"
-    if [ -n $PREFIX ]; then
+    if [[ -z "${PREFIX}"  ]]; then
         total=$(find $SOURCE/* 2>/dev/null| wc -l)
     else
-        total=$(find $SOURCE -name "$PREFIX"*  2>/dev/null| wc -l)
+        total=$(find $SOURCE -name $PREFIX*  2>/dev/null| wc -l)
     fi
 
     curr=0
