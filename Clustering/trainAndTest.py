@@ -1,6 +1,8 @@
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 
+
+import threading
 import multiprocessing as mp
 import numpy as np
 import pandas as pd
@@ -8,6 +10,7 @@ import csv, os, shutil
 from pathlib import Path
 import argparse, subprocess, math
 import sys, operator, random
+import glob
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description="Cluster Malicious JS files based on features")
@@ -25,9 +28,9 @@ cluster_data = os.path.join(file_path, "cluster_result.csv")
 
 
 expect_cluster_dict = {}
-subprocess.run(['python3', 'Clustering/cluster.py','-s', "malwareforum.csv","-l", "10"], stdout=subprocess.PIPE)
+subprocess.run(['python3', 'Clustering/cluster.py','-s', SOURCE,"-l", "10"], stdout=subprocess.PIPE)
 df = pd.read_csv(cluster_data)
-data_df = pd.read_csv(os.path.join(file_path, "malwareforum.csv"))
+data_df = pd.read_csv(os.path.join(file_path, SOURCE))
 
 
 
@@ -58,7 +61,7 @@ output = mp.Queue()
 def runTest(number, output):
 	test_file_name = "train_df" + str(number) + ".csv"
 	test_cluster_data = "testing_cluster_result" + str(number) + ".csv"
-	train_df, test_df = train_test_split(data_df, test_size=0.5, random_state=random.randint(1, 50000))
+	train_df, test_df = train_test_split(data_df, test_size=0.9, random_state=random.randint(1, 50000))
 	train_df.to_csv(os.path.join(file_path, test_file_name), encoding='utf-8', index=False)
 	# Clustering the training data set
 	actual_cluster_dict = {}
@@ -106,22 +109,35 @@ def runTest(number, output):
 
 	accuracy_rate = (total_good/(total_bad+total_good) * 100)
 	output.put(accuracy_rate)
+
+	os.remove(os.path.join(file_path, test_file_name))
+	os.remove(os.path.join(file_path, test_cluster_data)) 
 	# print("%.2f%%" % accuracy_rate)
 
-processes = [mp.Process(target=runTest, args=(x, output)) for x in range(20)]
-
-# Run processes
-for p in processes:
-    p.start()
+# processes = [mp.Process(target=runTest, args=(x, output)) for x in range(10)]
+ts = [threading.Thread(target=runTest, args=(x, output)) for x in range(10)]
+for t in ts:
+    t.start()
 
 # Exit the completed processes
-for p in processes:
-    p.join()
+for t in ts:
+    t.join()
+
+
+# # Run processes
+# for p in processes:
+#     p.start()
+
+# # Exit the completed processes
+# for p in processes:
+#     p.join()
 
 # Get process results from the output queue
 # l = [1,2,3,4,5]
-results = [output.get() for p in processes]
+# results = [output.get() for p in processes]
+results = [output.get() for t in ts]
 
 print(results)
-print("Average accuracy rate of 10 runs: %.2f%%" % (sum(results) / float(len(results))))
+print("Average accuracy rate: %.2f%%" % (sum(results) / float(len(results))))
+
 

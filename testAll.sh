@@ -28,11 +28,11 @@ if [ -d $SOURCE_DIR ]; then
 		if [ ${UPDATE} ] ;
 		then
 			echo -e "\033[33m [update] \033[0m"
-			node main.js -s $filename -v > ${RESULT_DIR}/${s%.*}
+			node main.js -s $filename -v -t> ${RESULT_DIR}/${s%.*}
 			continue
 		fi
 
-		node main.js -s $filename -v > ${RESULT_DIR}/temp_result
+		node main.js -s $filename -v -t > ${RESULT_DIR}/temp_result
 		diff ${RESULT_DIR}/${s%.*} ${RESULT_DIR}/temp_result > ${RESULT_DIR}/temp_diff
 
 		if [ $? -ne 0 ] ; 

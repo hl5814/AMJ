@@ -2,7 +2,8 @@
 
 # move all subdiretories files into current directory
 # find . -mindepth 2 -type f -print -exec mv {} . \;
-
+# delete all non-js files
+# find . -type d ! -name '*.js' -delete
 
 # print help and exit 1 if no argument is given
 if [ -z "$2" ]
@@ -18,10 +19,14 @@ POSITIONAL=()
 while [[ $# -gt 0 ]]
 do
 key="$1"
-
 case $key in
     -s|--source)
     SOURCE="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -p|--prefix)
+    PREFIX="$2"
     shift # past argument
     shift # past value
     ;;
@@ -55,10 +60,15 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 # check if the given source path is directory/file
 if [ -d $SOURCE ]; then
     node main.js -h  2>/dev/null | grep -E "header"
-    total=$(ls $SOURCE 2>/dev/null| wc -l)
+    if [ -n $PREFIX ]; then
+        total=$(find $SOURCE/* 2>/dev/null| wc -l)
+    else
+        total=$(find $SOURCE -name "$PREFIX"*  2>/dev/null| wc -l)
+    fi
+
     curr=0
     # echo "$SOURCE is a directory"
-    for filename in $SOURCE/*; do
+    for filename in $SOURCE/"$PREFIX"*; do
         if [[ -n $SKIP ]]; then
             if [ "$SKIP" = "$filename" ] || [ "$SKIP" = "$curr" ]; then
                 SKIP=""

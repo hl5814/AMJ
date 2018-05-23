@@ -147,11 +147,56 @@ AST.prototype.getFunctionName= function(index) {
 						name = d.id.name;
 					}
 				}
-			}
+			} 
 		});
 		return name;
 	}
 };
+
+AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
+	var parentNode = this._node;
+	var HiddenString = "";
+	ASTUtils.traverse(this._node.body[index], function(node){
+		if (node.type == "CallExpression" && node.callee !== undefined && node.callee.type == "Identifier") {
+			var calleeName = node.callee.name;
+			if (calleeName != "eval") {
+				var types = varMap.get(calleeName);
+				if (types !== undefined) {
+					for (var t of types) {
+						if (t.type == "pre_Function" && t.value == "eval") {
+							calleeName = "eval";
+						}
+					}
+				}
+			}
+
+			if (calleeName == "eval") {
+				var rawCode = "";
+				if (node.arguments[0].type == "Identifier") {
+					var types = varMap.get(node.arguments[0].name);
+
+					if (types !== undefined) {
+						for (var t of types) {
+							if (t.type == "String") {
+								rawCode = t.value;
+							}
+						}
+					}
+				} 
+
+				if (rawCode == "") 
+					rawCode = ASTUtils.getCode(node.arguments[0]);
+
+				try {
+					HiddenString = eval("(" + rawCode + ")");
+				} catch (err) {
+					HiddenString = "FAIL_TO_EXECUTE";
+				}
+			}
+		}
+	});
+	return HiddenString;
+}
 
 AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 	var longString = "";
@@ -379,7 +424,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 				varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
 				return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 			}
-
+			
 			if (initExpr.type == "BinaryExpression") {
 				return [identifier, [{ type: 'BinaryExpression', value: args }]];
 			} else if (initExpr.type == "LogicalExpression") {
@@ -423,6 +468,7 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			var vals = [];
 			if (var_values !== undefined && lhs_index !== undefined) {
 				for (var inx of lhs_index) {
+					// if (inx === undefined) continue
 					if (inx.type == "undefined" && inx.value == "undefined") {
 						vals.push(var_values);
 						continue;
@@ -471,14 +517,14 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		var bitOperators = [">>", "<<", "|", "&", "^", "~", ">>>",
 							">>=", "<<=", "|=", "&=", "^=", "~=", ">>>="];
 
-		var val = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
+		var val = (new Expr(rhs.right)).getArg(this._node, identifier, varMap, false, verbose);
 		var result_types = [];
 
 		var token, rhs_left;
 
 		// get the fist binary expression
 		while (rhs.left !== undefined && rhs.left.type == "BinaryExpression") {
-			rhs = rhs.left
+			rhs = rhs.left;
 		}
 
 		if (rhs.left !== undefined) {
@@ -487,19 +533,20 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 		} else {
 			token = (new Expr(lhs)).getToken(this._node);
 			rhs_left = lhs;
+			val = (new Expr(rhs)).getArg(this._node, identifier, varMap, false, verbose);
 		}
 
 		if (rhs_left.type == "Identifier") {
 			var ref_values = varMap.get(rhs_left.name, verbose);
 			if (ref_values) {
 				for (var i in ref_values) {
-
-					if (ref_values[i].type == "String" && rhs.operator == "+") {
+					if (ref_values[i].type == "String" && (rhs.operator == "+" || expression.operator == "+=")) {
 						if (val.length > 30) {
 							val = val.substring(1, 30) + "...";
 						}
-						result_types.push({ type: "String", value: val});
-					} else if (bitOperators.indexOf(rhs.operator) != -1) {
+
+						result_types.push({ type: "String", value: eval(ref_values[i].value+"+"+val)});
+					} else if (bitOperators.indexOf(rhs.operator) != -1 || bitOperators.indexOf(expression.operator) != -1) {
 						result_types.push({ type: "BitwiseOperationExpression", value: val});
 					} 
 				}
@@ -592,36 +639,45 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 // from static point of view, we can check for the following types as index
 // i.e. treat all complicated access like a[1+1], a[foo(bar(x))] as one type
 Expr.prototype.getPropertyValue=function(node, varMap, rhsExpr, verbose=false) {
+	// console.log(this._expr)
 	if (this._expr.type == "Literal") {
 		return [{type:"Numeric", value:this._expr.value}];
-	} else 
-	if (this._expr.type == "Identifier") {
+	} else  if (this._expr.type == "Identifier") {
 		var ref_values = varMap.get(this._expr.name);
 		return (ref_values !== undefined)? ref_values : [{ type: 'undefined', value: 'undefined' }];
-	} else 
-	if (this._expr.type == "MemberExpression") {
+	} else  if (this._expr.type == "MemberExpression") {
 		var object_index = this.getValueFromMemberExpression(node, "", varMap, false,verbose);
+		// console.log(object_index)
 		var indices = object_index[1];
-		var array_values = varMap.get(object_index[0]);
+		var array_values = varMap.get(object_index[0]);	
 		var types = [];
-		for (var i of indices){
-			var inx = (new Expr(i)).getArg(node, "", varMap, true, verbose);
-			for (var v of array_values) {
-				if (v.type == "ArrayExpression") {
-					types = types.concat(v.value[inx][1]);
-				}
-				if (v.type == "ObjectExpression") {
-					types = types.concat(v.value[inx]);
+		if (array_values !== undefined) {
+			for (var i of indices){
+				var inx = (new Expr(i)).getArg(node, "", varMap, true, verbose);
+				for (var v of array_values) {
+					if (v.type == "ArrayExpression") {
+						if (v.value[inx] !== undefined && v.value[inx][1] !== undefined) 
+							types = types.concat(v.value[inx][1]);
+					}
+					if (v.type == "ObjectExpression") {
+						if (v.value[inx] !== undefined)
+							types = types.concat(v.value[inx]);
+					}
 				}
 			}
 		}
+		
 		if (types.length > 0) {
 			return types;
 		} else {
 			return [{type:"undefined", value:"undefined"}];
 		}
-		
+	} else {
+		var astNode = new AST(node);
+		var type = astNode.getVariableInitValue("", this._expr, varMap, verbose);
+		return type[1]
 	}
+
 }
 
 
@@ -752,6 +808,9 @@ Expr.prototype.getToken=function(node, verbose=false){
 Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 	
 	var arg,elem_array;
+	if (this._expr === undefined) {
+		return "undefined";
+	}
 	if (this._expr.type == "Literal") {
 		var token = this.getToken(node, this._expr)
 		if (token.type == "String") {
@@ -793,7 +852,8 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 	} else if (this._expr.type == "MemberExpression") {
 		var expr = new Expr(this._expr);
 		var object_index = expr.getValueFromMemberExpression(node, identifier, varMap, inner, verbose);
-		if (object_index[1][0].type == "keyword") {
+
+		if (object_index[1][0] !== undefined && object_index[1][0].type == "keyword") {
 			var index = object_index[1][0].value;
 		} else {
 			var index = object_index[1];
@@ -915,13 +975,17 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, in
 
 Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, inner, verbose=false) {
 	// console.log(this._expr)
+	var identifier;
 	if (this._expr.object.type == "MemberExpression") {
 		var val = (new Expr(this._expr.object)).getValueFromMemberExpression(node, identifier, varMap, true, verbose);
-		var identifier = val;
+		identifier = val;
+	}  else if (this._expr.object.type == "ArrayExpression") {
+		var val = (new Expr(this._expr.object)).getValueFromArrayExpression(node, identifier, varMap, true, verbose);
+		identifier = val;
 	} else if (this._expr.object.type == "ThisExpression"){
-		var identifier = "this";
+		identifier = "this";
 	}else {
-		var identifier = this._expr.object.name;
+		identifier = this._expr.object.name;
 	}
 
 	if (this._expr.computed) {
@@ -1237,7 +1301,12 @@ Expr.prototype.getValueFromUnaryExpression=function(node, identifier, varMap, in
 
 Expr.prototype.getValueFromCallExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	if (verbose>1) console.log("CallExpression:\n", this._expr, "\n");
+	// console.log("CallExpression:\n", this._expr, "\n");
+
+
+	if (this._expr.value !== undefined) {
+		return this._expr.value;
+	}
 
 	var callee_expr = new Expr(this._expr.callee);
 	const funcName = callee_expr.getArg(node, identifier, varMap, true, verbose);

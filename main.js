@@ -11,7 +11,8 @@ const optionDefinitions = [
   { name: 'verbose',      	alias: 'v', type: Number },
   { name: 'weight',	 	  	alias: 'w', type: Boolean},
   { name: 'src', 		  	alias: 's', type: String },
-  { name: 'header',		   	alias: 'h', type: Boolean}
+  { name: 'header',		   	alias: 'h', type: Boolean},
+  { name: 'testMode',		alias: 't', type: Boolean}
 ]
 
 const options = commandLineArgs(optionDefinitions)
@@ -19,6 +20,7 @@ const calcualteWeight = options.weight;
 const verbose = (options.verbose === undefined) ? 0 : (options.verbose === null)? 1 : 2;
 const showHeader = options.header;
 const filePath = options.src;
+const testMode = options.testMode;
 
 //===============================MainProgram=================================
 var init_varMap = new Functions.VariableMap(new HashMap());
@@ -116,7 +118,9 @@ const FEATURES = [	"InitVariableWithFunctionExpression",
 					"ConditionalCompilationCode",
 					"DotNotationInFunctionName",
 					"LongArray",
-					"LongExpression"]
+					"LongExpression",
+					"Eval",
+					"UnfoldEvalSuccess"]
 
 const SCOPES = [	"in_test",
 					"in_main",
@@ -262,10 +266,23 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			}
 		}
 
+		// try to execute eval to get the hidden if possible
+		if (testMode === undefined) {
+			var hiddenStringFromEval = astNode.checkEvalCalls(i,varMap);
+			if (hiddenStringFromEval != "") {
+				if (verbose>0) console.log("FEATURE[Eval]");
+				updateResultMap(resultMap, "Eval", coefficient);
+				if (hiddenStringFromEval != "FAIL_TO_EXECUTE") {
+					if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess] hidden codes:\n" + hiddenStringFromEval);
+					updateResultMap(resultMap, "UnfoldEvalSuccess", coefficient);
+					parseProgram(hiddenStringFromEval, scope, coefficient, varMap, verbose);
+				}
+			}
+		}
 
 		var stringConcat = astNode.checkStringConcatnation(i,varMap);
 		if (stringConcat != "") {
-			if (verbose>0) console.log("FEATURE[StringConcatation] :" + stringConcat);
+			if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + ": " +stringConcat);
 			updateResultMap(resultMap, "StringConcatation", coefficient);
 		}
 
