@@ -216,9 +216,8 @@ for key, value in clustdict.items():
         
         c_df.loc[len(c_df)] = X[v]
         # Cluster Report DataFrames Processing
-        file_df = c_df[["TokenPerFile", "CommentPerFile"]]
-        averageCommentPercentage = file_df.mean().values[1] * 100
-        averageKeywordPercentage = file_df.mean().values[0] * 100
+        file_df = c_df[["CommentPerFile"]]
+        averageCommentPercentage = file_df.mean().values[0] * 100
 
 
     if FILE :
@@ -290,13 +289,10 @@ for key, value in clustdict.items():
 
     if (VERBOSE >= 0): 
         commentReport = ""
-        keywordReport = ""
-        if (averageKeywordPercentage > 40):
-            keywordReport = " => %.2f%% token/file " % averageKeywordPercentage 
         if (averageCommentPercentage > 40):
             commentReport = " => %.2f%% comment/file" % averageCommentPercentage
 
-        print("Cluster[{:>5}]".format(str(key))+"  #files:{:>5}".format(len(value)) + keywordReport + commentReport)
+        print("Cluster[{:>5}]".format(str(key))+"  #files:{:>5}".format(len(value)) + commentReport)
 
 if (VERBOSE >= 0): print("--------------------------------------------------\nTotal: ", TOTAL_FILES)
     

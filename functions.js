@@ -203,12 +203,12 @@ AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 	var parentNode = this._node;
 	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "BinaryExpression" && node.operator == "+" && longString == ""){
+
+		
 			var lhs = new Expr(node.left);
 			var token = lhs.getToken(parentNode);
-			if (node.left.type == "BinaryExpression") {
-				longString = ASTUtils.getCode(node);
-			}
-			else if (token.type == "String") {
+			
+			if (token.type == "String") {
 				longString = ASTUtils.getCode(node);
 			} else if (token.type == "Identifier") {
 				var types = varMap.get(token.value);
@@ -424,7 +424,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 				varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
 				return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 			}
-			
+
 			if (initExpr.type == "BinaryExpression") {
 				return [identifier, [{ type: 'BinaryExpression', value: args }]];
 			} else if (initExpr.type == "LogicalExpression") {
