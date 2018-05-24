@@ -275,7 +275,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				if (hiddenStringFromEval != "FAIL_TO_EXECUTE") {
 					if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess] hidden codes:\n" + hiddenStringFromEval);
 					updateResultMap(resultMap, "UnfoldEvalSuccess", coefficient);
-					parseProgram(hiddenStringFromEval, scope, coefficient, varMap, verbose);
+					try{
+						parseProgram(hiddenStringFromEval, scope, coefficient, varMap, verbose);
+					} catch(err){}
 				}
 			}
 		}
@@ -290,7 +292,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 		if (tokenLength > 5000) {
 			if (verbose>0) console.log("FEATURE[LongExpression] : Expression with " + tokenLength + " tokens.");
 			updateResultMap(resultMap, "LongExpression", coefficient);
-			continue;
+			// continue;
 		}
 
 

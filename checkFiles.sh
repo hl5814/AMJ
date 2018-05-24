@@ -110,5 +110,17 @@ fi
 
 
 
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201601 > Clustering/201601.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201602 > Clustering/201602.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201603 > Clustering/201603.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201604 > Clustering/201604.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201605 > Clustering/201605.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201606 > Clustering/201606.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201607 > Clustering/201607.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201608 > Clustering/201608.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201609 > Clustering/201609.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201610 > Clustering/201610.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201611 > Clustering/201611.csv &
+# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201612 > Clustering/201612.csv &
 
 
