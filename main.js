@@ -27,7 +27,7 @@ var init_varMap = new Functions.VariableMap(new HashMap());
 
 var funcNames = ["eval", "unescape", "replace", "write", "document.write", "document.writeln", "document.createElement",
 				 "atob", "btoa", "setTimeout", "setInterval", "toString", "String.fromCharCode", "fromCharCode",
-				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring", "concat","join"];
+				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring", "concat","join","split","reverse"];
 
 for (var f in funcNames) {
 	init_varMap.setVariable(funcNames[f], [{ type: 'pre_Function', value: funcNames[f] }] );
@@ -120,7 +120,9 @@ const FEATURES = [	"InitVariableWithFunctionExpression",
 					"LongArray",
 					"LongExpression",
 					"Eval",
-					"UnfoldEvalSuccess"]
+					"UnfoldEvalSuccess",
+					"Unescape",
+					"UnfoldUnescapeSuccess"]
 
 const SCOPES = [	"in_test",
 					"in_main",
@@ -264,28 +266,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
 				updateResultMap(resultMap, "ConditionalCompilationCode", coefficient);
 			}
-		}
-
-		// try to execute eval to get the hidden if possible
-		if (testMode === undefined) {
-			var hiddenStringFromEval = astNode.checkEvalCalls(i,varMap);
-			if (hiddenStringFromEval != "") {
-				if (verbose>0) console.log("FEATURE[Eval]");
-				updateResultMap(resultMap, "Eval", coefficient);
-				if (hiddenStringFromEval != "FAIL_TO_EXECUTE") {
-					if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess] hidden codes:\n" + hiddenStringFromEval);
-					updateResultMap(resultMap, "UnfoldEvalSuccess", coefficient);
-					try{
-						parseProgram(hiddenStringFromEval, scope, coefficient, varMap, verbose);
-					} catch(err){}
-				}
-			}
-		}
-
-		var stringConcat = astNode.checkStringConcatnation(i,varMap);
-		if (stringConcat != "") {
-			if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + ": " +stringConcat);
-			updateResultMap(resultMap, "StringConcatation", coefficient);
 		}
 
 		var tokenLength = astNode.getRangeLengthOfExpression(i, ast);
@@ -1051,6 +1031,55 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			}
 			diffMap.multipleUpdate(varMap);
 		}
+
+
+				// try to execute eval to get the hidden code if possible
+		if (testMode === undefined) {
+			var hiddenStringFromEval = astNode.checkEvalCalls(i,varMap);
+			if (hiddenStringFromEval != "") {
+				if (verbose>0) console.log("FEATURE[Eval]");
+				updateResultMap(resultMap, "Eval", coefficient);
+				if (hiddenStringFromEval[0] != "FAIL_TO_EXECUTE") {
+					if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess] hidden codes:\n" + hiddenStringFromEval[1]);
+					updateResultMap(resultMap, "UnfoldEvalSuccess", coefficient);
+					try{
+						parseProgram(hiddenStringFromEval[1], scope, coefficient, varMap, verbose);
+					} catch(err){}
+				} else {
+					try{
+						parseProgram(hiddenStringFromEval[1], scope, coefficient, varMap, verbose);
+					} catch(err){}
+				}
+			}
+		}
+		// try to decode unescape to get the hidden code if possible
+		if (testMode === undefined) {
+			var hiddenStringFromUnescape = astNode.checkUnescapeCalls(i,varMap);
+			if (hiddenStringFromUnescape != "") {
+				if (verbose>0) console.log("FEATURE[Unescape]");
+				updateResultMap(resultMap, "Unescape", coefficient);
+				if (hiddenStringFromUnescape != "FAIL_TO_EXECUTE") {
+					if (verbose>0) console.log("FEATURE[UnfoldUnescapeSuccess] hidden codes:\n" + hiddenStringFromEval);
+					updateResultMap(resultMap, "UnfoldUnescapeSuccess", coefficient);
+					try{
+						parseProgram(hiddenStringFromUnescape, scope, coefficient, varMap, verbose);
+					} catch(err){}
+				}
+			}
+		}
+
+		var stringConcat = astNode.checkStringConcatnation(i,varMap);
+		if (stringConcat != "") {
+			if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + ": " +stringConcat);
+			updateResultMap(resultMap, "StringConcatation", coefficient);
+		}
+
+
+
+
+
+
+
 	}
 
 	varMap.deleteObjects(local_variables);

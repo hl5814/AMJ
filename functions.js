@@ -153,8 +153,57 @@ AST.prototype.getFunctionName= function(index) {
 	}
 };
 
+AST.prototype.checkUnescapeCalls=function(index, varMap, verbose=false){
+var parentNode = this._node;
+	var HiddenString = "";
+	ASTUtils.traverse(this._node.body[index], function(node){
+		if (node.type == "CallExpression" && node.callee !== undefined && node.callee.type == "Identifier") {
+			var calleeName = node.callee.name;
+			if (calleeName != "unescape") {
+				var types = varMap.get(calleeName);
+				if (types !== undefined) {
+					for (var t of types) {
+						if (t.type == "pre_Function" && t.value == "unescape") {
+							calleeName = "unescape";
+						}
+					}
+				}
+			}
+
+			if (calleeName == "unescape") {
+				var rawCode = "";
+				if (node.arguments[0].type == "Identifier") {
+					var types = varMap.get(node.arguments[0].name);
+
+					if (types !== undefined) {
+						for (var t of types) {
+							if (t.type == "String") {
+								rawCode = t.value;
+							}
+						}
+					}
+				} 
+
+				if (rawCode == "") 
+					try {
+						rawCode = eval(ASTUtils.getCode(node.arguments[0]));
+					} catch(err) {}
+					
+
+				try {
+					HiddenString = unescape(rawCode);
+				} catch (err) {
+					HiddenString = "FAIL_TO_EXECUTE";
+				}
+			}
+		}
+	});
+	return HiddenString;
+}
+
 AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 	var parentNode = this._node;
+	var parent = this;
 	var HiddenString = "";
 	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "CallExpression" && node.callee !== undefined && node.callee.type == "Identifier") {
@@ -182,19 +231,34 @@ AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 							}
 						}
 					}
-				} 
+				} else if (node.arguments[0].type == "BinaryExpression") {
+					var values = parent.getVariableInitValue("", node.arguments[0], varMap, verbose)[1];
+					if (values !== undefined) {
+						for (var v of values) {
+							if (v.type == "String"){
+								rawCode = v.value;
+							}
+						}
+					}
+					
+				}
 
 				if (rawCode == "") 
 					rawCode = ASTUtils.getCode(node.arguments[0]);
 
+
+				rawCode= rawCode.slice(1, -1)
+
+
 				try {
-					HiddenString = eval("(" + rawCode + ")");
+					HiddenString = ["SUCCESS" ,eval("(" + rawCode + ")")];
 				} catch (err) {
-					HiddenString = "FAIL_TO_EXECUTE";
+					HiddenString = ["FAIL_TO_EXECUTE", rawCode];
 				}
 			}
 		}
 	});
+
 	return HiddenString;
 }
 
@@ -205,7 +269,7 @@ AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "BinaryExpression" && node.operator == "+" && longString == ""){
 			var result = parent.getBinaryExpressionValue(node, varMap, verbose);
-			if (result != "") longString = ASTUtils.getCode(node) + " ==> "  + result;
+			if (result !== undefined) longString = ASTUtils.getCode(node) + " ==> "  + result;
 		} else if (node.type == "AssignmentExpression" && node.operator == "+=" && longString == ""){
 			var lhs = new Expr(node.left)
 			var token = lhs.getToken(parentNode);
@@ -339,20 +403,23 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		var valType;
 		ASTUtils.traverse(initExpr, function(node){
 			if (node.type == "CallExpression" && trueVal === undefined){
-				// console.log(node)
+
 				var object;
 				var operation;
+
+
+
 				if (node.callee !== undefined && node.callee.type == "MemberExpression") {
 					object = node.callee.object;
 					try {
 						operation = eval(ASTUtils.getCode(node.callee.property));
-					} catch(err){}
-				} 
-
-				if (node.callee !== undefined && node.callee.property !== undefined && node.callee.property.type == "Identifier") {
+					} catch(err){
+						operation = (new Expr(node.callee.property)).getArg(parentNode, identifier, varMap, false, verbose); 
+					}
+				} else if (node.callee !== undefined && node.callee.property !== undefined && node.callee.property.type == "Identifier") {
 					object = node.callee.object;
 					operation = node.callee.property.name;
-				}
+				} 
 
 				if (operation == "reverse") {
 					// console.log("in reverse", node)
@@ -375,14 +442,14 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
 					// console.log("values:", values)
 					var val;
-					var joinBy = "";
+					var joinBy;
 					if (node.arguments !== undefined) {
 						var delimiter = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
-						if (delimiter.type == "String") {
+						if (delimiter !== undefined && delimiter.type == "String") {
 							joinBy = delimiter.value.replace(/"|'/g,"");
 						}
 					}
-					if (values !== undefined) {
+					if (values !== undefined && joinBy !== undefined) {
 						for (var v of values) {
 							if (v.type == "ArrayExpression") {
 								var array = [];
@@ -405,14 +472,14 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
 					// console.log("values:", values)
 					var val;
-					var splitBy = "";
+					var splitBy;
 					if (node.arguments !== undefined) {
 						var delimiter = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
-						if (delimiter.type == "String") {
+						if (delimiter !== undefined && delimiter.type == "String") {
 							splitBy = delimiter.value.replace(/"|'/g,"");
 						}
 					}
-					if (values !== undefined) {
+					if (values !== undefined && splitBy !== undefined) {
 						for (var v of values) {
 							if (v.type == "String") {
 								var array = [];
@@ -428,6 +495,24 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 							}
 						}
 					}	
+				} else if (operation == "fromCharCode") { 
+					// console.log("fromCharCode", node)
+					var obj = (new Expr(object)).getArg(parentNode, identifier, varMap, false, verbose)
+					if (obj == "String") {
+						var val;
+						if (node.arguments !== undefined) {
+							var code = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
+							if (code.type == "Numeric") {
+								val = code.value;
+							}
+						}
+						if (val !== undefined) {
+							try {
+								valType = "String";
+								trueVal = String.fromCharCode(val);
+							} catch(err){}
+						}
+					}
 				}
 
 			}
@@ -498,7 +583,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 			if (initExpr.type == "BinaryExpression") {
 				if (initExpr.operator == "+") {
 					var longStr = this.getBinaryExpressionValue(initExpr, varMap, verbose);
-					if (longStr != "") return [identifier, [{ type: 'String', value: '"' + longStr + '"' }]];
+					if (longStr !== undefined) return [identifier, [{ type: 'String', value: '"' + longStr + '"' }]];
 				} 
 				return [identifier, [{ type: 'BinaryExpression', value: args }]];
 			} else if (initExpr.type == "LogicalExpression") {
@@ -513,7 +598,6 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 
 AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 
-	var longString = "";
 	var nodesLeft = [];
 	while (expr.left.type == "BinaryExpression") {
 		nodesLeft.push(expr.right);
@@ -525,41 +609,42 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 	var lhs = new Expr(expr.left);
 	var token = lhs.getToken(this._node);
 
+	var ts = [];
 	if (token.type == "String") {
-		longString = ASTUtils.getCode(expr.left);
+		ts.push(ASTUtils.getCode(expr.left));
 	} else if (token.type == "Identifier") {
-		var types = varMap.get(token.value);
-		if (types !== undefined) {
-			for (var t of types) {
+		var ttt = varMap.get(token.value);
+		if (ttt !== undefined) {
+			for (var t of ttt) {
 				if (t.type == "String") {
-					longString = t.value;
+					ts.push(t.value);
 				}
 			}
 		}
 	}
 
-	for (var n of nodesLeft) {
-		var token = (new Expr(n)).getToken(this._node);
-
-		if (token.type == "String") {
-			try {
-				longString = '"' + eval(longString + "+" + ASTUtils.getCode(n)) + '"';
-			} catch(err) {}
-		} else if (token.type == "Identifier") {
-			var types = varMap.get(token.value);
-			if (types !== undefined) {
-				for (var t of types) {
-					if (t.type == "String") {
-						try{
-							longString = '"' + eval(longString + "+" +t.value) + '"';
-						} catch(err){}
+	if (ts.length == 1) {
+		for (var n of nodesLeft) {
+			var token = (new Expr(n)).getToken(this._node);
+			if (token.type == "String") {
+				ts.push(ASTUtils.getCode(n))
+			} else if (token.type == "Identifier") {
+				var types = varMap.get(token.value);
+				if (types !== undefined) {
+					for (var t of types) {
+						if (t.type == "String") {
+							ts.push(t.value);
+						}
 					}
 				}
 			}
 		}
-	}
 
-	return longString.replace(/"/g,"");
+		try {
+			var longString = eval(ts.join("+"));
+			return longString;
+		} catch(err) {}
+	}
 }
 
 
@@ -727,39 +812,12 @@ AST.prototype.getAssignmentLeftRight= function(index, varMap, verbose=false) {
 			}
 		}
 
-		var foundStringFunc = false;
-		var parentNode = this._node;
-		ASTUtils.traverse(rhs, function(node){
-			if (node.type == "CallExpression"){
-				if (node.callee.type == "MemberExpression") {
-					var callee = node.callee.property.name;
-				} else {
-					var callee = node.callee.name;
-				}
-
-				if (callee !== undefined ) {
-					var types = varMap.get(callee);
-					if (types !== undefined) {
-						for (var t of types) {
-							if (t.type == "pre_Function") {
-								var val = t.value;
-							} else {
-								var val = (new Expr(node)).getArg(parentNode, identifier, varMap, false, verbose);
-							}
-							var stringConvertFunctions = ["toString", "fromCharCode", "btoa"];
-							for (var f of stringConvertFunctions) {
-								if (val.indexOf(f) !== -1) {
-									foundStringFunc = true;
-								}
-							}
-							
-						}
-					}
-				}
+		var rhsType = this.getVariableInitValue(identifier, rhs, varMap, verbose);
+		if (rhsType !== undefined && rhsType[1] !== undefined) {
+			if (rhsType[1][0].type == "String") {
+				return [identifier, [{ type: "String", value: rhsType[1][0].value}]];
 			}
-		});
-
-		if (foundStringFunc) return [identifier, [{ type: "String", value: val}]];
+		}
 
 		return [identifier, [{ type: "Expression", value: val}]];
 	} else if (expression.right.type == "CallExpression"){
@@ -1529,7 +1587,6 @@ VariableMap.prototype.get = function(key) {
 VariableMap.prototype.printMap = function() {
 	this._varMap.forEach(function(value, key){
 		console.log(key, ":", value);
-		console.log(value[0].value)
 	});
 }
 

@@ -1,5 +1,5 @@
 var x;
-x += String.fromCharCode(0);
+x += String.fromCharCode(65);
 eval(x)
-// FEATURE[FunctionCall] : String.fromCharCode(0)
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval(String.fromCharCode(0))
+// FEATURE[DecodeString_OR_DOM_FunctionCall] : String.fromCharCode(65)
+// FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [x] ==> eval(A)

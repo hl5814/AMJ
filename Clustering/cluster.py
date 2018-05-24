@@ -162,7 +162,9 @@ FEATURE_LIST = [    "InitVariableWithFunctionExpression",
                     "LongArray",
                     "LongExpression",
                     "Eval",
-                    "UnfoldEvalSuccess"]
+                    "UnfoldEvalSuccess",
+                    "Unescape",
+                    "UnfoldUnescapeSuccess"]
 
 SCOPE_LIST = ["in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]
 
