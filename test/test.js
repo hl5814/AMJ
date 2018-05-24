@@ -62,7 +62,7 @@ describe('AST getVariableInitValue', function() {
         const program = `var a = 1,
                          b = "test",
                          c = 1+1+1,
-                         d = "1" + "STR",
+                         d = '1' + 'STR',
                          e=a+1,
                          f,
                          g='g',

@@ -204,7 +204,7 @@ AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 	var parent = this;
 	ASTUtils.traverse(this._node.body[index], function(node){
 		if (node.type == "BinaryExpression" && node.operator == "+" && longString == ""){
-			var result = parent.getBinaryExprssionValue(node, varMap, verbose);
+			var result = parent.getBinaryExpressionValue(node, varMap, verbose);
 			if (result != "") longString = ASTUtils.getCode(node) + " ==> "  + result;
 		} else if (node.type == "AssignmentExpression" && node.operator == "+=" && longString == ""){
 			var lhs = new Expr(node.left)
@@ -497,7 +497,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 
 			if (initExpr.type == "BinaryExpression") {
 				if (initExpr.operator == "+") {
-					var longStr = this.getBinaryExprssionValue(initExpr, varMap, verbose);
+					var longStr = this.getBinaryExpressionValue(initExpr, varMap, verbose);
 					if (longStr != "") return [identifier, [{ type: 'String', value: '"' + longStr + '"' }]];
 				} 
 				return [identifier, [{ type: 'BinaryExpression', value: args }]];
@@ -511,7 +511,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 }
 
 
-AST.prototype.getBinaryExprssionValue=function(expr,varMap,verbose=false) {
+AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 
 	var longString = "";
 	var nodesLeft = [];
@@ -543,7 +543,7 @@ AST.prototype.getBinaryExprssionValue=function(expr,varMap,verbose=false) {
 
 		if (token.type == "String") {
 			try {
-				longString = eval(longString + "+" + ASTUtils.getCode(n));
+				longString = '"' + eval(longString + "+" + ASTUtils.getCode(n)) + '"';
 			} catch(err) {}
 		} else if (token.type == "Identifier") {
 			var types = varMap.get(token.value);
@@ -551,7 +551,7 @@ AST.prototype.getBinaryExprssionValue=function(expr,varMap,verbose=false) {
 				for (var t of types) {
 					if (t.type == "String") {
 						try{
-							longString = eval(longString + "+" +t.value);
+							longString = '"' + eval(longString + "+" +t.value) + '"';
 						} catch(err){}
 					}
 				}
@@ -559,7 +559,7 @@ AST.prototype.getBinaryExprssionValue=function(expr,varMap,verbose=false) {
 		}
 	}
 
-	return longString;
+	return longString.replace(/"/g,"");
 }
 
 
