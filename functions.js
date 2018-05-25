@@ -399,7 +399,6 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		var trueVal;
 		var valType;
 		ASTUtils.traverse(initExpr, function(node){
-			// console.log(node)
 			if (node.type == "NewExpression" && trueVal === undefined){
 				if (node.callee !== undefined && node.callee.type == "Identifier" && node.callee.name == "RegExp") {
 					valType = "RegExp";
@@ -407,7 +406,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						trueVal = [];
 						for (var arg of node.arguments) {
 							var v = parentNode.getVariableInitValue(identifier, arg, varMap, verbose)[1][0];
-							trueVal.push(v);
+							if (v !== undefined) trueVal.push(v);
 						}
 						if (trueVal.length == 0) trueVal = undefined;
 					}
@@ -447,14 +446,13 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						trueVal = [];
 						for (var arg of node.arguments) {
 							var v = parentNode.getVariableInitValue(identifier, arg, varMap, verbose)[1][0];
-							trueVal.push(v);
+							if (v !== undefined) trueVal.push(v);
 						}
 						if (trueVal.length == 0) trueVal = undefined;
 					}
 				} 
 
 				if (operation == "reverse") {
-					// console.log("in reverse", node)
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
 					if (values !== undefined) {
 						for (var v of values) {
@@ -470,9 +468,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						}
 					}	
 				} else if (operation == "join") { 
-					// console.log("in join", node)
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
-					// console.log("values:", values)
 					var val;
 					var joinBy;
 					if (node.arguments !== undefined) {
@@ -498,9 +494,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						}
 					}	
 				} else if (operation == "split") { 
-					// console.log("in split", node)
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
-					// console.log("values:", values)
 					var val;
 					var splitBy;
 					if (node.arguments !== undefined) {
@@ -527,18 +521,14 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						}
 					}	
 				}  else if (operation == "replace") { 
-					// console.log("in replace", node)
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
-					// console.log("values:", values)
 					var val;
 					var regExpr;
 					if (node.arguments !== undefined) {
 						if (node.arguments.length == 2){
 							var exp = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
 							var rep = parentNode.getVariableInitValue(identifier, node.arguments[1], varMap, verbose)[1][0];
-							
-							// console.log(exp)
-							// console.log(rep)
+
 							regExpr = [];
 							if (exp !== undefined && exp.type == "RegularExpression") {
 								regExpr.push(exp.value);
@@ -571,7 +561,6 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						}
 					}	
 				} else if (operation == "fromCharCode") { 
-					// console.log("fromCharCode", node)
 					var obj = (new Expr(object)).getArg(parentNode, identifier, varMap, false, verbose)
 					if (obj == "String") {
 						var val;
@@ -589,7 +578,6 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						}
 					}
 				}
-
 			}
 		});
 
