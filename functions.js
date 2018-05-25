@@ -381,12 +381,11 @@ AST.prototype.checkStaticMemberFunctionCall=function(node, varMap, verbose=false
 
 AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbose=false) {
 	const expression = new Expr(initExpr);
-	// console.log(initExpr)
 	if (initExpr == null){
 		return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 	}
 	const args = expression.getArg(this._node, identifier, varMap, false, verbose); 
-	if  (initExpr.type == "Literal") {
+	if  (initExpr.type == "Literal" || initExpr.type == "String") {
 		var token = (new Expr(initExpr)).getToken(this._node);
 		return [identifier, [{ type: token.type, value: token.value }]];
 	} else if (initExpr.type == "ArrayExpression"){
@@ -396,6 +395,31 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 	} else if (initExpr.type == "UnaryExpression"){
 		return [identifier, [{ type: 'UnaryExpression', value: args }]];
 	} else if (initExpr.type == "NewExpression"){
+		var parentNode = this;
+		var trueVal;
+		var valType;
+		ASTUtils.traverse(initExpr, function(node){
+			// console.log(node)
+			if (node.type == "NewExpression" && trueVal === undefined){
+				if (node.callee !== undefined && node.callee.type == "Identifier" && node.callee.name == "RegExp") {
+					valType = "RegExp";
+					if (node.arguments !== undefined) {
+						trueVal = [];
+						for (var arg of node.arguments) {
+							var v = parentNode.getVariableInitValue(identifier, arg, varMap, verbose)[1][0];
+							trueVal.push(v);
+						}
+						if (trueVal.length == 0) trueVal = undefined;
+					}
+				} 
+			}
+		});
+
+		if (trueVal !== undefined && trueVal !== undefined) {
+			return [identifier, [{ type: valType, value: trueVal}]];
+		}
+
+
 		return [identifier, [{ type: 'NewExpression', value: args }]];
 	} else if (initExpr.type == "CallExpression"){
 		var parentNode = this;
@@ -407,8 +431,6 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 				var object;
 				var operation;
 
-
-
 				if (node.callee !== undefined && node.callee.type == "MemberExpression") {
 					object = node.callee.object;
 					try {
@@ -419,6 +441,16 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 				} else if (node.callee !== undefined && node.callee.property !== undefined && node.callee.property.type == "Identifier") {
 					object = node.callee.object;
 					operation = node.callee.property.name;
+				} else if (node.callee !== undefined && node.callee.type == "Identifier" && node.callee.name == "RegExp") {
+					valType = "RegExp";
+					if (node.arguments !== undefined) {
+						trueVal = [];
+						for (var arg of node.arguments) {
+							var v = parentNode.getVariableInitValue(identifier, arg, varMap, verbose)[1][0];
+							trueVal.push(v);
+						}
+						if (trueVal.length == 0) trueVal = undefined;
+					}
 				} 
 
 				if (operation == "reverse") {
@@ -459,10 +491,8 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 										var subStr = (new Expr(v.value[c][1][0])).getArg(node, "", varMap, true, verbose).replace(/"/g,"");
 										array.push(subStr);
 									}
-									// console.log(array)
 									valType = "String";
 									trueVal = '"'+array.join(joinBy)+'"';
-									// console.log(">>", trueVal)
 								} catch(err){}
 							}
 						}
@@ -491,6 +521,51 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 									for (var c = 0; c < splittedValues.length; c++) {
 										trueVal.push([c, [{type:"String", value:splittedValues[c]}]])
 									}
+									if (trueVal.length == 0) trueVal = undefined;
+								} catch(err){}
+							}
+						}
+					}	
+				}  else if (operation == "replace") { 
+					// console.log("in replace", node)
+					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
+					// console.log("values:", values)
+					var val;
+					var regExpr;
+					if (node.arguments !== undefined) {
+						if (node.arguments.length == 2){
+							var exp = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
+							var rep = parentNode.getVariableInitValue(identifier, node.arguments[1], varMap, verbose)[1][0];
+							
+							// console.log(exp)
+							// console.log(rep)
+							regExpr = [];
+							if (exp !== undefined && exp.type == "RegularExpression") {
+								regExpr.push(exp.value);
+							} else if (exp !== undefined && exp.type == "RegExp") {
+								try {
+									if (exp.value.length == 1) {
+										var regE = eval(new RegExp(eval(exp.value[0].value)));
+									} else if (exp.value.length == 2) {
+										var regE = eval(new RegExp(eval(exp.value[0].value), eval(exp.value[1].value)));
+									}
+									regExpr.push(regE)
+								} catch(err) {}
+								
+							} 
+							if (rep !== undefined && rep.type == "String") {
+								regExpr.push(rep.value)
+							}
+						}
+					}
+					if (values !== undefined && regExpr !== undefined && regExpr.length == 2) {
+						for (var v of values) {
+							if (v.type == "String") {
+								var array = [];
+								var result = "";
+								try {
+									valType = "String";;
+									trueVal = eval(v.value).replace(eval(regExpr[0]), eval(regExpr[1]))
 								} catch(err){}
 							}
 						}
@@ -502,14 +577,14 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						var val;
 						if (node.arguments !== undefined) {
 							var code = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
-							if (code.type == "Numeric") {
+							if (code !== undefined && code.type == "Numeric") {
 								val = code.value;
 							}
 						}
 						if (val !== undefined) {
 							try {
 								valType = "String";
-								trueVal = String.fromCharCode(val);
+								trueVal = '"' + String.fromCharCode(val) + '"';
 							} catch(err){}
 						}
 					}
@@ -517,8 +592,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 
 			}
 		});
-		// console.log(valType)
-		// console.log(trueVal)
+
 		if (trueVal !== undefined && trueVal !== undefined) {
 			return [identifier, [{ type: valType, value: trueVal}]];
 		}
@@ -871,7 +945,6 @@ Expr.prototype.getPropertyValue=function(node, varMap, rhsExpr, verbose=false) {
 
 }
 
-
 AST.prototype.isFunction= function(funcName, index) {
 	//assert isExpressionStatement()
 	const expression = this._node.body[index].expression;
@@ -992,7 +1065,13 @@ Expr.prototype.getIdentifier=function(varMap, verbose=false){
 
 Expr.prototype.getToken=function(node, verbose=false){
 	var range = this._expr.range;
-	var token = ASTUtils.getTokens(node,range[0],range[1])[0];
+	var token;
+	try {
+		token = ASTUtils.getTokens(node,range[0],range[1])[0];
+	} catch(err){
+		token = { type: 'undefined', value: 'undefined' };
+	}
+	
 	return  token;
 }
 
