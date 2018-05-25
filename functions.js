@@ -246,14 +246,15 @@ AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 				if (rawCode == "") 
 					rawCode = ASTUtils.getCode(node.arguments[0]);
 
-
-				rawCode= rawCode.slice(1, -1)
-
-
 				try {
-					HiddenString = ["SUCCESS" ,eval("(" + rawCode + ")")];
+					HiddenString = ["SUCCESS" ,ASTUtils.getCode(node), eval("(" + rawCode + ")")];
 				} catch (err) {
-					HiddenString = ["FAIL_TO_EXECUTE", rawCode];
+					try {
+						rawCode= rawCode.slice(1, -1);
+						HiddenString = ["SUCCESS" ,ASTUtils.getCode(node), eval("(" + rawCode + ")")];
+					} catch (err) {
+						HiddenString = ["FAIL_TO_EXECUTE", rawCode];
+					}
 				}
 			}
 		}

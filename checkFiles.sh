@@ -35,6 +35,10 @@ case $key in
     shift # past argument
     shift # past value
     ;;
+    -l|--payload)
+    PAYLOAD=" -l"
+    shift # past argument
+    ;;
     -v|--verbose)
     VERBOSE=" -v"
     shift # past argument
@@ -66,6 +70,12 @@ if [ -d $SOURCE ]; then
         total=$(find $SOURCE -name $PREFIX*  2>/dev/null| wc -l)
     fi
 
+    # Empty Payload Directory
+    if [ $PAYLOAD ]; then
+        rm -Rf Payloads
+        mkdir Payloads
+    fi
+
     curr=0
     # echo "$SOURCE is a directory"
     for filename in $SOURCE/"$PREFIX"*; do
@@ -95,6 +105,7 @@ if [ -d $SOURCE ]; then
         fi
         curr="$(($curr + 1))"
     done
+
 elif [ -f $SOURCE ]; then
     node main.js -s $SOURCE -w ${VERBOSE}
 else

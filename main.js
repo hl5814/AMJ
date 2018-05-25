@@ -218,7 +218,9 @@ function printHeader(resultMap) {
 }
 
 
-function parseProgram(program, scope, coefficient, varMap, verbose){
+
+function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
+	var NUMBER_OF_EVAL = 0;
 	// TODO: check program === null, program == undefined
 	if (program === null || program === undefined) {
 		console.log("!!!!!!!!!!!!! program null or undefined: ", program)
@@ -1034,16 +1036,45 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 
 
 				// try to execute eval to get the hidden code if possible
+		var inEval = false;
 		if (testMode === undefined) {
 			var hiddenStringFromEval = astNode.checkEvalCalls(i,varMap);
 			if (hiddenStringFromEval != "") {
+				inEval = true;
 				if (verbose>0) console.log("FEATURE[Eval]");
 				updateResultMap(resultMap, "Eval", coefficient);
 				if (hiddenStringFromEval[0] != "FAIL_TO_EXECUTE") {
-					if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess] hidden codes:\n" + hiddenStringFromEval[1]);
-					updateResultMap(resultMap, "UnfoldEvalSuccess", coefficient);
+					var raw_depth = depth;
+					var hidden_depth = depth+1;
+
+					if (scope == "User_Program") {
+						if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess] hidden codes:\n" + hiddenStringFromEval[2]);
+						updateResultMap(resultMap, "UnfoldEvalSuccess", coefficient);
+
+						var f_Name = filePath.split("/").slice(-1)[0];
+
+						if (NUMBER_OF_EVAL == 0) {
+							fs.writeFileSync('Payloads/'+f_Name, original_input, 'utf8', function (err, file) {
+								if (err) throw err;
+								console.log('Saved!');
+							});
+						}
+
+						fs.writeFileSync('Payloads/'+f_Name+"_"+NUMBER_OF_EVAL+"_"+raw_depth, hiddenStringFromEval[1], 'utf8', function (err, file) {
+							if (err) throw err;
+							console.log('Saved!');
+						});
+
+						fs.writeFileSync('Payloads/'+f_Name+"_"+NUMBER_OF_EVAL+"_"+hidden_depth, hiddenStringFromEval[2], 'utf8', function (err, file) {
+							if (err) throw err;
+							console.log('Saved!');
+						});
+
+						NUMBER_OF_EVAL++;
+					}
+					
 					try{
-						parseProgram(hiddenStringFromEval[1], scope, coefficient, varMap, verbose);
+						parseProgram(hiddenStringFromEval[2], scope, coefficient, varMap, verbose, hidden_depth);
 					} catch(err){}
 				} else {
 					try{
@@ -1053,7 +1084,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			}
 		}
 		// try to decode unescape to get the hidden code if possible
-		if (testMode === undefined) {
+		if (testMode === undefined && !inEval) {
 			var hiddenStringFromUnescape = astNode.checkUnescapeCalls(i,varMap);
 			if (hiddenStringFromUnescape != "") {
 				if (verbose>0) console.log("FEATURE[Unescape]");
@@ -1061,6 +1092,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 				if (hiddenStringFromUnescape != "FAIL_TO_EXECUTE") {
 					if (verbose>0) console.log("FEATURE[UnfoldUnescapeSuccess] hidden codes:\n" + hiddenStringFromEval);
 					updateResultMap(resultMap, "UnfoldUnescapeSuccess", coefficient);
+
 					try{
 						parseProgram(hiddenStringFromUnescape, scope, coefficient, varMap, verbose);
 					} catch(err){}
@@ -1073,13 +1105,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 			if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + ": " +stringConcat);
 			updateResultMap(resultMap, "StringConcatation", coefficient);
 		}
-
-
-
-
-
-
-
 	}
 
 	varMap.deleteObjects(local_variables);
@@ -1088,11 +1113,13 @@ function parseProgram(program, scope, coefficient, varMap, verbose){
 	return varMap.toList();
 }
 
+var original_input;
 //===================check input source============================
 if (showHeader) {
 	printHeader(resultMap)
 } else if (filePath !== undefined && filePath !== null) {
 	var sourcefile = fs.readFileSync(filePath, "utf8");
+	original_input = sourcefile;
 	FILE_LENGTH = sourcefile.length;
 	try {
 		// try to parse the program directly
@@ -1152,7 +1179,7 @@ if (showHeader) {
 			if (dotFuncName !== null){
 				if (verbose>0) console.log("FEATURE[DotNotationInFunctionName]");
 				updateResultMap(resultMap, "DotNotationInFunctionName", ["in_file"]);
-			
+
 				var nCodes = ""
 			    while (dotFuncName !== null){
 			    	var start = dotFuncName.index;
