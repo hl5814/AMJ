@@ -12,7 +12,8 @@ const optionDefinitions = [
   { name: 'weight',	 	  	alias: 'w', type: Boolean},
   { name: 'src', 		  	alias: 's', type: String },
   { name: 'header',		   	alias: 'h', type: Boolean},
-  { name: 'testMode',		alias: 't', type: Boolean}
+  { name: 'testMode',		alias: 't', type: Boolean},
+  { name: 'fastMode',		alias: 'f', type: Boolean}
 ]
 
 const options = commandLineArgs(optionDefinitions)
@@ -21,6 +22,7 @@ const verbose = (options.verbose === undefined) ? 0 : (options.verbose === null)
 const showHeader = options.header;
 const filePath = options.src;
 const testMode = options.testMode;
+const fastMode = options.fastMode;
 
 //===============================MainProgram=================================
 var init_varMap = new Functions.VariableMap(new HashMap());
@@ -173,6 +175,7 @@ var KEYWORD_TOTAL = 0;
 var PUNCTUATOR_TOTAL = 0;
 
 function updateResultMap(resultMap, featureType, scope, point=1) {
+	// console.log("featureType", featureType, scope)
 	var prevValue = resultMap.get(featureType);
 	resultMap.set(featureType, prevValue+point);
 	FEATURE_TOTAL++;
@@ -271,12 +274,11 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 		}
 
 		var tokenLength = astNode.getRangeLengthOfExpression(i, ast);
-		if (tokenLength > 5000) {
+		if (tokenLength > 1000) {
 			if (verbose>0) console.log("FEATURE[LongExpression] : Expression with " + tokenLength + " tokens.");
 			updateResultMap(resultMap, "LongExpression", coefficient);
-			// continue;
+			if (fastMode) continue;
 		}
-
 
 		/* Variable Declaration */
 		if (astNode.isVariableDeclaration(i)) {
@@ -318,7 +320,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						}
 					} else if (variableName_Types[v].type == "pre_Function"){
 						// e.g. var myVariable = eval;	
-						if (verbose>0) console.log("FEATURE[FunctionObfuscation] :[", variableName_Type[0], "] -> [", variableName_Types[v].value, "]")
+						if (verbose>0) console.log("FEATURE[FunctionObfuscation]:" + coefficient[coefficient.length-1] + ":[", variableName_Type[0], "] -> [", variableName_Types[v].value, "]")
 						updateResultMap(resultMap, "FunctionObfuscation", coefficient);
 					} else if (astNode.hasFunctionExpression(i)) {
 						//FunctionExpression
@@ -588,7 +590,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						// Attacker might add more unuse d parameters to confuse the detector
 						if (args.length >= 1) {
 							if (args[0].type == "String") {
-								if (verbose>0) console.log("FEATURE[FuncCallOnStringVariable] in :" + scope + ": " + funcNames[f].type + ":" + funcName + "(STRING) => " + funcNames[f].value + "(" + args[0].value + ")");
+								if (verbose>0) console.log("FEATURE[FuncCallOnStringVariable]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + funcName + "(STRING) => " + funcNames[f].value + "(" + args[0].value + ")");
 								updateResultMap(resultMap, "FuncCallOnStringVariable", coefficient);
 							} else if (args[0].type == "Identifier" ||
 									   args[0].type == "ArrayMemberExpression" || 
@@ -1034,76 +1036,82 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 			diffMap.multipleUpdate(varMap);
 		}
 
-
+		if (scope == "User_Program") {
 				// try to execute eval to get the hidden code if possible
-		var inEval = false;
-		if (testMode === undefined) {
-			var hiddenStringFromEval = astNode.checkEvalCalls(i,varMap);
-			if (hiddenStringFromEval != "") {
-				inEval = true;
-				if (verbose>0) console.log("FEATURE[Eval]");
-				updateResultMap(resultMap, "Eval", coefficient);
-				if (hiddenStringFromEval[0] != "FAIL_TO_EXECUTE") {
-					var raw_depth = depth;
-					var hidden_depth = depth+1;
+			var inEval = false;
+			if (testMode === undefined) {
+				var hiddenStringFromEvalList = astNode.checkEvalCalls(i,varMap);
+				if (hiddenStringFromEvalList.length != 0) {
+					inEval = true;
+					for (var hiddenStringFromEval of hiddenStringFromEvalList){
+						var featureContext = hiddenStringFromEval[1];
+						if (verbose>0) console.log("FEATURE[Eval]:" + featureContext[featureContext.length-1]);
+						updateResultMap(resultMap, "Eval", featureContext);
+						if (hiddenStringFromEval[0] != "FAIL_TO_EXECUTE") {
+							var raw_depth = depth;
+							var hidden_depth = depth+1;
 
-					if (scope == "User_Program") {
-						if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess] hidden codes:\n" + hiddenStringFromEval[2]);
-						updateResultMap(resultMap, "UnfoldEvalSuccess", coefficient);
+							if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess]:" + featureContext[featureContext.length-1] + ": hidden codes:\n" + hiddenStringFromEval[3]);
+							updateResultMap(resultMap, "UnfoldEvalSuccess", featureContext);
 
-						var f_Name = filePath.split("/").slice(-1)[0];
+							var f_Name = filePath.split("/").slice(-1)[0];
 
-						if (NUMBER_OF_EVAL == 0) {
-							fs.writeFileSync('Payloads/'+f_Name, original_input, 'utf8', function (err, file) {
+							
+							if (!fs.existsSync('Payloads/'+raw_depth)) {
+								fs.mkdirSync('Payloads/'+raw_depth); 
+							}
+							if (!fs.existsSync('Payloads/'+hidden_depth)) {
+								fs.mkdirSync('Payloads/'+hidden_depth); 
+							}
+
+							fs.writeFileSync('Payloads/'+raw_depth+'/'+f_Name+"_"+NUMBER_OF_EVAL, hiddenStringFromEval[2], 'utf8', function (err, file) {
 								if (err) throw err;
 								console.log('Saved!');
 							});
+
+							fs.writeFileSync('Payloads/'+hidden_depth+'/'+f_Name+"_"+NUMBER_OF_EVAL, hiddenStringFromEval[3], 'utf8', function (err, file) {
+								if (err) throw err;
+								console.log('Saved!');
+							});
+
+							NUMBER_OF_EVAL++;
+							
+							
+							try{
+								parseProgram(hiddenStringFromEval[3], scope, coefficient, varMap, verbose, hidden_depth);
+							} catch(err){}
+						} else {
+							try{
+								parseProgram(hiddenStringFromEval[2], scope, coefficient, varMap, verbose);
+							} catch(err){}
 						}
-
-						fs.writeFileSync('Payloads/'+f_Name+"_"+NUMBER_OF_EVAL+"_"+raw_depth, hiddenStringFromEval[1], 'utf8', function (err, file) {
-							if (err) throw err;
-							console.log('Saved!');
-						});
-
-						fs.writeFileSync('Payloads/'+f_Name+"_"+NUMBER_OF_EVAL+"_"+hidden_depth, hiddenStringFromEval[2], 'utf8', function (err, file) {
-							if (err) throw err;
-							console.log('Saved!');
-						});
-
-						NUMBER_OF_EVAL++;
 					}
-					
-					try{
-						parseProgram(hiddenStringFromEval[2], scope, coefficient, varMap, verbose, hidden_depth);
-					} catch(err){}
-				} else {
-					try{
-						parseProgram(hiddenStringFromEval[1], scope, coefficient, varMap, verbose);
-					} catch(err){}
 				}
 			}
-		}
-		// try to decode unescape to get the hidden code if possible
-		if (testMode === undefined && !inEval) {
-			var hiddenStringFromUnescape = astNode.checkUnescapeCalls(i,varMap);
-			if (hiddenStringFromUnescape != "") {
-				if (verbose>0) console.log("FEATURE[Unescape]");
-				updateResultMap(resultMap, "Unescape", coefficient);
-				if (hiddenStringFromUnescape != "FAIL_TO_EXECUTE") {
-					if (verbose>0) console.log("FEATURE[UnfoldUnescapeSuccess] hidden codes:\n" + hiddenStringFromEval);
-					updateResultMap(resultMap, "UnfoldUnescapeSuccess", coefficient);
-
-					try{
-						parseProgram(hiddenStringFromUnescape, scope, coefficient, varMap, verbose);
-					} catch(err){}
+			// try to decode unescape to get the hidden code if possible
+			if (testMode === undefined && !inEval) {
+				var hiddenStringFromUnescapeList = astNode.checkUnescapeCalls(i,varMap);
+				if (hiddenStringFromUnescapeList.length != 0) {
+					for (var hiddenStringFromUnescape of hiddenStringFromUnescapeList){
+						var featureContext = hiddenStringFromUnescape[1];
+						if (verbose>0) console.log("FEATURE[Unescape]:" + featureContext[featureContext.length-1]);
+						updateResultMap(resultMap, "Unescape", coefficient);
+						if (hiddenStringFromUnescape != "FAIL_TO_EXECUTE") {
+							if (verbose>0) console.log("FEATURE[UnfoldUnescapeSuccess]:" + featureContext[featureContext.length-1] + ":hidden codes:\n" + hiddenStringFromUnescape[2]);
+							updateResultMap(resultMap, "UnfoldUnescapeSuccess", coefficient);
+							try{
+								parseProgram(hiddenStringFromUnescape[2], scope, coefficient, varMap, verbose);
+							} catch(err){}
+						}
+					}
 				}
 			}
-		}
 
-		var stringConcat = astNode.checkStringConcatnation(i,varMap);
-		if (stringConcat != "") {
-			if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + ": " +stringConcat);
-			updateResultMap(resultMap, "StringConcatation", coefficient);
+			var stringConcat = astNode.checkStringConcatnation(i,varMap);
+			if (stringConcat != "") {
+				if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + ": " +stringConcat);
+				updateResultMap(resultMap, "StringConcatation", coefficient);
+			}
 		}
 	}
 

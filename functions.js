@@ -154,9 +154,33 @@ AST.prototype.getFunctionName= function(index) {
 };
 
 AST.prototype.checkUnescapeCalls=function(index, varMap, verbose=false){
-var parentNode = this._node;
-	var HiddenString = "";
+	var parentNode = this._node;
+	var HiddenString = [];
+	var CurrentContext = ["in_main"];
+	var ContextRange = [0,0];
 	ASTUtils.traverse(this._node.body[index], function(node){
+		if ((node.range[0] > ContextRange[1]) && (CurrentContext.length > 1)){
+			CurrentContext.pop();
+		}
+		if (node.type == "IfStatement") {
+			CurrentContext.push("in_if");
+			ContextRange = node.range;
+		} else if (node.type == "ForStatement" || node.type == "ForInStatement" ||
+				   node.type == "ForOfStatement" || node.type == "WhileStatement" ||
+				   node.tpye == "DoWhileStatement") {
+			CurrentContext.push("in_loop");
+			ContextRange = node.range;
+		} else if (node.type == "FunctionDeclaration" || node.type == "FunctionExpression"){
+			CurrentContext.push("in_function");
+			ContextRange = node.range;
+		} else if (node.type == "TryStatement") {
+			CurrentContext.push("in_try");
+			ContextRange = node.range;
+		} else if (node.type == "SwitchStatement") {
+			CurrentContext.push("in_switch");
+			ContextRange = node.range;
+		}
+
 		if (node.type == "CallExpression" && node.callee !== undefined && node.callee.type == "Identifier") {
 			var calleeName = node.callee.name;
 			if (calleeName != "unescape") {
@@ -188,12 +212,11 @@ var parentNode = this._node;
 					try {
 						rawCode = eval(ASTUtils.getCode(node.arguments[0]));
 					} catch(err) {}
-					
 
 				try {
-					HiddenString = unescape(rawCode);
+					HiddenString.push(["SUCCESS", CurrentContext, unescape(rawCode)]);
 				} catch (err) {
-					HiddenString = "FAIL_TO_EXECUTE";
+					HiddenString.push(["FAIL_TO_EXECUTE",CurrentContext]);
 				}
 			}
 		}
@@ -204,8 +227,32 @@ var parentNode = this._node;
 AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 	var parentNode = this._node;
 	var parent = this;
-	var HiddenString = "";
+	var HiddenString = [];
+	var CurrentContext = ["in_main"];
+	var ContextRange = [0,0];
 	ASTUtils.traverse(this._node.body[index], function(node){
+		if ((node.range[0] > ContextRange[1]) && (CurrentContext.length > 1)){
+			CurrentContext.pop();
+		}
+		if (node.type == "IfStatement") {
+			CurrentContext.push("in_if");
+			ContextRange = node.range;
+		} else if (node.type == "ForStatement" || node.type == "ForInStatement" ||
+				   node.type == "ForOfStatement" || node.type == "WhileStatement" ||
+				   node.tpye == "DoWhileStatement") {
+			CurrentContext.push("in_loop");
+			ContextRange = node.range;
+		} else if (node.type == "FunctionDeclaration" || node.type == "FunctionExpression"){
+			CurrentContext.push("in_function");
+			ContextRange = node.range;
+		} else if (node.type == "TryStatement") {
+			CurrentContext.push("in_try");
+			ContextRange = node.range;
+		} else if (node.type == "SwitchStatement") {
+			CurrentContext.push("in_switch");
+			ContextRange = node.range;
+		}
+
 		if (node.type == "CallExpression" && node.callee !== undefined && node.callee.type == "Identifier") {
 			var calleeName = node.callee.name;
 			if (calleeName != "eval") {
@@ -231,7 +278,7 @@ AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 							}
 						}
 					}
-				} else if (node.arguments[0].type == "BinaryExpression") {
+				} else {
 					var values = parent.getVariableInitValue("", node.arguments[0], varMap, verbose)[1];
 					if (values !== undefined) {
 						for (var v of values) {
@@ -240,20 +287,20 @@ AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 							}
 						}
 					}
-					
 				}
 
-				if (rawCode == "") 
+				if (rawCode == "") {
 					rawCode = ASTUtils.getCode(node.arguments[0]);
+				}
 
 				try {
-					HiddenString = ["SUCCESS" ,ASTUtils.getCode(node), eval("(" + rawCode + ")")];
+					HiddenString.push(["SUCCESS" ,CurrentContext, ASTUtils.getCode(node), eval("(" + rawCode + ")")]);
 				} catch (err) {
 					try {
 						rawCode= rawCode.slice(1, -1);
-						HiddenString = ["SUCCESS" ,ASTUtils.getCode(node), eval("(" + rawCode + ")")];
+						HiddenString.push(["SUCCESS" ,CurrentContext,ASTUtils.getCode(node), eval("(" + rawCode + ")")]);
 					} catch (err) {
-						HiddenString = ["FAIL_TO_EXECUTE", rawCode];
+						HiddenString.push(["FAIL_TO_EXECUTE", CurrentContext, rawCode]);
 					}
 				}
 			}
@@ -473,9 +520,13 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					var val;
 					var joinBy;
 					if (node.arguments !== undefined) {
-						var delimiter = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
-						if (delimiter !== undefined && delimiter.type == "String") {
-							joinBy = delimiter.value.replace(/"|'/g,"");
+						if (node.arguments.length == 0){
+							joinBy = ",";
+						} else {
+							var delimiter = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
+							if (delimiter !== undefined && delimiter.type == "String") {
+								joinBy = delimiter.value.replace(/"|'/g,"");
+							}
 						}
 					}
 					if (values !== undefined && joinBy !== undefined) {
@@ -1001,7 +1052,12 @@ AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
 				args.push({type: "UnaryExpression", value: exprArgs.getValueFromUnaryExpression(this._node, "", varMap,false,verbose)});
 			} else if (expression.arguments[i].type == "CallExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
-				args.push({type: "CallExpression", value: exprArgs.getValueFromCallExpression(this._node, "", varMap,false,verbose)});
+				var type1 = this.getVariableInitValue("", expression.arguments[i], varMap, verbose)[1];
+				if (type1 !== undefined) {
+					args.push(type1[0]);
+				} else {
+					args.push({type: "CallExpression", value: exprArgs.getValueFromCallExpression(this._node, "", varMap,false,verbose)});
+				}
 			} else if (expression.arguments[i].type == "MemberExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
 				var object_index = exprArgs.getValueFromMemberExpression(this._node, "", varMap, false,verbose);

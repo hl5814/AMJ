@@ -65,7 +65,7 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 if [ -d $SOURCE ]; then
     node main.js -h  2>/dev/null | grep -E "header"
     if [[ -z "${PREFIX}"  ]]; then
-        total=$(find $SOURCE/* 2>/dev/null| wc -l)
+        total=$(find $SOURCE -type f 2>/dev/null| wc -l)
     else
         total=$(find $SOURCE -name $PREFIX*  2>/dev/null| wc -l)
     fi
@@ -89,14 +89,14 @@ if [ -d $SOURCE ]; then
         fi
         if [ $DEBUG_MODE ]; then
         	# echo $filename
-            var=$(node main.js -s $filename ${VERBOSE}  -w   | grep -E "hongtao")
+            var=$(node main.js -s $filename ${VERBOSE}  -f -w   | grep -E "hongtao")
             ret_code=$?
             if [ $ret_code != 0 ]; then
                 printf "Error [$ret_code] at [$curr]: $filename \n" 
                 read -p "Press enter to continue"
             fi
         else
-            node main.js -s $filename ${VERBOSE}  -w  2>/dev/null | grep -E "hongtao"
+            node main.js -s $filename ${VERBOSE}  -f -w  2>/dev/null | grep -E "hongtao"
         fi
 
 
@@ -121,17 +121,17 @@ fi
 
 
 
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201601 > Clustering/201601.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201602 > Clustering/201602.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201603 > Clustering/201603.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201604 > Clustering/201604.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201605 > Clustering/201605.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201606 > Clustering/201606.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201607 > Clustering/201607.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201608 > Clustering/201608.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201609 > Clustering/201609.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201610 > Clustering/201610.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201611 > Clustering/201611.csv &
-# ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201612 > Clustering/201612.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201601 -l > Clustering/201601.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201602 > Clustering/201602.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201603 > Clustering/201603.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201604 > Clustering/201604.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201605 > Clustering/201605.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201606 > Clustering/201606.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201607 > Clustering/201607.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201608 > Clustering/201608.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201609 > Clustering/201609.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201610 > Clustering/201610.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201611 > Clustering/201611.csv &
+./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201612 > Clustering/201612.csv &
 
 
