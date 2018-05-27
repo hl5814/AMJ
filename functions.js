@@ -206,9 +206,9 @@ AST.prototype.checkUnescapeCalls=function(index, varMap, verbose=false){
 							}
 						}
 					}
-				} 
+				}
 
-				if (rawCode == "") 
+				if (rawCode == "")
 					try {
 						rawCode = eval(ASTUtils.getCode(node.arguments[0]));
 					} catch(err) {}
@@ -311,14 +311,25 @@ AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 }
 
 AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
-	var longString = "";
+	var longStringList = [];
 	var parentNode = this._node;
 	var parent = this;
 	ASTUtils.traverse(this._node.body[index], function(node){
-		if (node.type == "BinaryExpression" && node.operator == "+" && longString == ""){
+		if (node.type == "BinaryExpression" && node.operator == "+"){
 			var result = parent.getBinaryExpressionValue(node, varMap, verbose);
-			if (result !== undefined) longString = ASTUtils.getCode(node) + " ==> "  + result;
-		} else if (node.type == "AssignmentExpression" && node.operator == "+=" && longString == ""){
+			if (result !== undefined){
+				var rawCode = ASTUtils.getCode(node);
+				var found = false;
+				for (var lstr in longStringList) {
+					if (longStringList[lstr].indexOf(rawCode) != -1) {
+						found = true;
+					}
+				}
+				if (!found) longStringList.push(rawCode + " ==> "  + result);
+			} 
+		} else if (node.type == "AssignmentExpression" && node.operator == "+="){
+
+			var longString;
 			var lhs = new Expr(node.left)
 			var token = lhs.getToken(parentNode);
 			if (token.type == "String") {
@@ -353,9 +364,22 @@ AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 					longString = ASTUtils.getCode(node);
 				}
 			}
+
+			if (longString !== undefined) {
+				var found = false;
+				for (var lstr in longStringList) {
+					if (longStringList[lstr].indexOf(longString) != -1) {
+						found = true;
+					}
+				}
+				if (!found) longStringList.push(longString);
+			}
+
+
+
 		}
 	});
-	return longString;
+	return longStringList;
 }
 
 AST.prototype.getAllDeclarationBlocks=function(index, verbose=false) {
@@ -465,25 +489,41 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		if (trueVal !== undefined && trueVal !== undefined) {
 			return [identifier, [{ type: valType, value: trueVal}]];
 		}
-
-
 		return [identifier, [{ type: 'NewExpression', value: args }]];
+
 	} else if (initExpr.type == "CallExpression"){
 		var parentNode = this;
 		var trueVal;
 		var valType;
+		// if (initExpr.callee.type == "MemberExpression") {
+		// 	var object_v = this.getVariableInitValue(identifier, initExpr.callee.object, varMap, verbose)[1];
+		// 	var property_v = this.getVariableInitValue(identifier, initExpr.callee.property, varMap, verbose)[1];
+		// 	console.log("object_v: ",object_v);
+		// 	console.log("property_v: ",property_v);
+		// }
 		ASTUtils.traverse(initExpr, function(node){
 			if (node.type == "CallExpression" && trueVal === undefined){
-
 				var object;
 				var operation;
-
 				if (node.callee !== undefined && node.callee.type == "MemberExpression") {
 					object = node.callee.object;
 					try {
 						operation = eval(ASTUtils.getCode(node.callee.property));
 					} catch(err){
-						operation = (new Expr(node.callee.property)).getArg(parentNode, identifier, varMap, false, verbose); 
+						try {
+							var properties = parentNode.getVariableInitValue(identifier, node.callee.property, varMap, verbose)[1];
+							if (properties !== undefined) {
+								for (var p of properties) {
+									if (p.type == "String") {
+										operation = p.value.replace(/"|'/g,"");
+									} else if (p.type == "pre_Function"){
+										operation = p.value;
+									}
+								}
+							}
+						}catch(err){
+							operation = (new Expr(node.callee.property)).getArg(parentNode, identifier, varMap, false, verbose); 
+						}
 					}
 				} else if (node.callee !== undefined && node.callee.property !== undefined && node.callee.property.type == "Identifier") {
 					object = node.callee.object;
@@ -497,6 +537,20 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 							if (v !== undefined) trueVal.push(v);
 						}
 						if (trueVal.length == 0) trueVal = undefined;
+					}
+				} else if (node.callee !== undefined && node.callee.type == "Identifier" && node.callee.name == "unescape") {
+					valType = "String";
+					if (node.arguments !== undefined) {
+						var types = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1];
+						if (types !== undefined) {
+							for (var t of types) {
+								if (t.type == "String") {
+									try{
+										trueVal = unescape(t.value);
+									}catch(err){}
+								}
+							}
+						}
 					}
 				} 
 
@@ -517,7 +571,6 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					}	
 				} else if (operation == "join") { 
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
-					var val;
 					var joinBy;
 					if (node.arguments !== undefined) {
 						if (node.arguments.length == 0){
@@ -547,12 +600,18 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					}	
 				} else if (operation == "split") { 
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
-					var val;
 					var splitBy;
+					var limit;
 					if (node.arguments !== undefined) {
 						var delimiter = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
 						if (delimiter !== undefined && delimiter.type == "String") {
 							splitBy = delimiter.value.replace(/"|'/g,"");
+						}
+						if (node.arguments.length == 2){
+							var number = parentNode.getVariableInitValue(identifier, node.arguments[1], varMap, verbose)[1][0];
+							if (number !== undefined && number.type == "Numeric") {
+								limit = number.value;
+							}
 						}
 					}
 					if (values !== undefined && splitBy !== undefined) {
@@ -565,16 +624,18 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 									splittedValues = v.value.replace(/"|'/g,"").split(splitBy);
 									trueVal = [];
 									for (var c = 0; c < splittedValues.length; c++) {
-										trueVal.push([c, [{type:"String", value:splittedValues[c]}]])
+										if (limit !== undefined && limit-- == 0){
+											break;
+										}
+										trueVal.push([c, [{type:"String", value:'"'+splittedValues[c]+'"'}]])
 									}
-									if (trueVal.length == 0) trueVal = undefined;
+									if (trueVal.length == 0) trueVal = [];
 								} catch(err){}
 							}
 						}
 					}	
 				}  else if (operation == "replace") { 
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
-					var val;
 					var regExpr;
 					if (node.arguments !== undefined) {
 						if (node.arguments.length == 2){
@@ -607,7 +668,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 								var result = "";
 								try {
 									valType = "String";;
-									trueVal = eval(v.value).replace(eval(regExpr[0]), eval(regExpr[1]))
+									trueVal = '"'+eval(v.value).replace(eval(regExpr[0]), eval(regExpr[1]))+'"';
 								} catch(err){}
 							}
 						}
@@ -628,6 +689,41 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 								trueVal = '"' + String.fromCharCode(val) + '"';
 							} catch(err){}
 						}
+					}
+				} else if (operation == "concat") { 
+					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
+					var concatedArray =[];
+					if (values !== undefined) {
+						for (var v1 of values){
+							if (v1.type == "ArrayExpression") {
+								for (var vv of v1.value){
+									if (vv !== undefined && vv.length == 2){
+										concatedArray.push(vv[1]);
+									}
+								}
+							}
+						}
+					}
+					if (node.arguments !== undefined) {
+						for (var arg of node.arguments){
+							var arg_val = parentNode.getVariableInitValue(identifier, arg, varMap, verbose)[1];
+							if (arg_val !== undefined) {
+								for (var v of arg_val){
+									if (v.type == "ArrayExpression") {
+										for (var vv of v.value){
+											if (vv !== undefined && vv.length == 2){
+												concatedArray.push(vv[1]);
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					valType = "ArrayExpression";
+					trueVal = []
+					for (var cv in concatedArray) {
+						trueVal.push([cv, concatedArray[cv]])
 					}
 				}
 			}
@@ -720,40 +816,29 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 	nodesLeft.push(expr.right)
 	nodesLeft = nodesLeft.reverse()
 
-	var lhs = new Expr(expr.left);
-	var token = lhs.getToken(this._node);
-
 	var ts = [];
-	if (token.type == "String") {
-		ts.push(ASTUtils.getCode(expr.left));
-	} else if (token.type == "Identifier") {
-		var ttt = varMap.get(token.value);
-		if (ttt !== undefined) {
-			for (var t of ttt) {
-				if (t.type == "String") {
-					ts.push(t.value);
-				}
+
+	var firstExpr = this.getVariableInitValue("", expr.left, varMap, verbose)[1];
+	if (firstExpr !== undefined) {
+		for (var v of firstExpr){
+			if (v.type == "String") {
+				ts = ts.concat(v.value)
 			}
 		}
 	}
 
 	if (ts.length == 1) {
 		for (var n of nodesLeft) {
-			var token = (new Expr(n)).getToken(this._node);
-			if (token.type == "String") {
-				ts.push(ASTUtils.getCode(n))
-			} else if (token.type == "Identifier") {
-				var types = varMap.get(token.value);
-				if (types !== undefined) {
-					for (var t of types) {
-						if (t.type == "String") {
-							ts.push(t.value);
-						}
+			var nthExpr = this.getVariableInitValue("",n, varMap, verbose)[1];
+			if (nthExpr !== undefined) {
+				for (var v of nthExpr){
+					if (v.type == "String") {
+						ts = ts.concat(v.value)
 					}
 				}
 			}
-		}
 
+		}
 		try {
 			var longString = eval(ts.join("+"));
 			return longString;

