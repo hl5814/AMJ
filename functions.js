@@ -773,16 +773,14 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		// check if is pre-defined functions, e.g. eval, atob, etc.
 		var var_value = varMap.get(args, verbose);
 
+			// console.log(">>", var_value)
 		if (var_value != undefined){
 			return [identifier, var_value];
-		} else {
+		} 
+		// else {
 			var token = (new Expr(initExpr)).getToken(this._node);
 			//undefined variable, we set the init value to undefined and update varMap
-			if (token.type == "Identifier" && !varMap.get(token.value, verbose)){
-				varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
-				return [identifier, [{ type: 'undefined', value: 'undefined' }]];
-			}
-
+			
 			if (initExpr.type == "BinaryExpression") {
 				// if (initExpr.operator == "+") {
 					var result = this.getBinaryExpressionValue(initExpr, varMap, verbose);
@@ -798,9 +796,13 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 			} else if (initExpr.type == "LogicalExpression") {
 				return [identifier, [{ type: 'LogicalExpression', value: args }]];
 			} else {
+				if (token.type == "Identifier" && !varMap.get(token.value, verbose)){
+					varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
+					return [identifier, [{ type: 'undefined', value: 'undefined' }]];
+				}
 				return [identifier, [{ type: 'Expression', value: args }]];
 			}
-		}
+		// }
 	}
 }
 

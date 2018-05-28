@@ -1,10 +1,12 @@
+FEATURE[VariableWithFunctionExpression] in :User_Program :b=function a (){eval("str1.1");}
 FEATURE[FuncCallOnStringVariable]:in_function:function a (){eval("str1.1");}:eval(STRING) => eval("str1.1")
 FEATURE[DecodeString_OR_DOM_FunctionCall] : eval("str1.1")
-FEATURE[InitVariableWithFunctionExpression] in :User_Program :b=function a (){eval("str1.2");}
+FEATURE[VariableWithFunctionExpression] in :User_Program :b=function a (){eval("str1.2");}
 FEATURE[FuncCallOnStringVariable]:in_function:function a (){eval("str1.2");}:eval(STRING) => eval("str1.2")
+FEATURE[VariableWithFunctionExpression] in :User_Program :c=function(){eval("str2.1");}
 FEATURE[FuncCallOnStringVariable]:in_function:function(){eval("str2.1");}:eval(STRING) => eval("str2.1")
 FEATURE[DecodeString_OR_DOM_FunctionCall] : eval("str2.1")
-FEATURE[InitVariableWithFunctionExpression] in :User_Program :c=function(){eval("str2.2");}
+FEATURE[VariableWithFunctionExpression] in :User_Program :c=function(){eval("str2.2");}
 FEATURE[FuncCallOnStringVariable]:in_function:function(){eval("str2.2");}:eval(STRING) => eval("str2.2")
 FEATURE[FuncCallOnStringVariable] in :testScope2: eval(Object->STRING) => [test] ==> eval("inner2")
 FEATURE[FuncCallOnStringVariable] in :testScope1: eval(Object->STRING) => [test] ==> eval("inner1")
@@ -13,6 +15,9 @@ FEATURE[FuncCallOnStringVariable]:in_main:User_Program:b(STRING) => b("test2")
 FEATURE[FunctionObfuscation] :[ a ] -> [ eval ]
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => eval("test")
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => b("test")
+FEATURE[VariableWithFunctionExpression] in :User_Program :a.prototype.myFunc=function(x) {
+	return eval(x);
+}
 FEATURE[FuncCallOnStringVariable] in :ReturnStatement in function(x) {
 	return eval(x);
 }: eval(Object->STRING) => [x] ==> eval(STR)
