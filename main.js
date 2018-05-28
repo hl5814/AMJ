@@ -39,8 +39,6 @@ init_varMap.setVariable("document", [{ type: 'ObjectExpression', value: {"create
 																		 "write": [{type: 'pre_Function', value: "write"}],
 																		 "writeln": [{type: 'pre_Function', value: "writeln"}]} }] );
 
-
-
 function listEqual(list1, list2) {
 	if (list1.length != list2.length) return false;
 	for (var i in list1) {
@@ -148,22 +146,11 @@ const PUNCTUATORS = [	"!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+"
 
 const LENGTH = ["TokenPerFile", "CommentPerFile"]
 
-for (const k of KEYWORDS) {
-	resultMap.set(k, 0);
-}
-for (const p of PUNCTUATORS) {
-	resultMap.set(p, 0);
-}
-
-for (const f of FEATURES) {
-	resultMap.set(f, 0);
-}
-for (const s of SCOPES) {
-	resultMap.set(s, 0);
-}
-for (const l of LENGTH) {
-	resultMap.set(l, 0);
-}
+for (const k of KEYWORDS)  		resultMap.set(k, 0);
+for (const p of PUNCTUATORS) 	resultMap.set(p, 0);
+for (const f of FEATURES) 		resultMap.set(f, 0);
+for (const s of SCOPES) 		resultMap.set(s, 0);
+for (const l of LENGTH) 		resultMap.set(l, 0);
 
 
 var FILE_LENGTH = 0;
@@ -223,14 +210,11 @@ function printHeader(resultMap) {
 
 function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 	var NUMBER_OF_EVAL = 0;
-	// TODO: check program === null, program == undefined
-	if (program === null || program === undefined) {
-		console.log("!!!!!!!!!!!!! program null or undefined: ", program)
-	}
+
 	if (program === null || program === undefined || program.replace(/\s+/g, "") == "") return varMap.toList();
 	var ast = ASTUtils.parse(program);
-	// parse main program tokens
 
+	// parse main program tokens
 	if (scope == "User_Program") {
 		resultMap.set("TokenPerFile", (ast.tokens.length/FILE_LENGTH).toFixed(4));
 		for (const pt of ast.tokens) {
@@ -409,8 +393,89 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 							parseProgram(ASTUtils.getCode(exp), scope, coefficient, varMap, verbose);
 						}
 					} 
+					if (node.type == "ArrayExpression"){
+						if (node.elements.length > 1000){
+							if (verbose>0) console.log("FEATURE[LongArray] : " + var_values[0] + " contains " + node.elements.length + " objects");
+							updateResultMap(resultMap, "LongArray", coefficient);
+						}
+					}
+					if (node.type == "ThisExpression"){
+						if (verbose>0) console.log("FEATURE[AssignWithThisExpression] : " + ASTUtils.getCode(parent));
+						updateResultMap(resultMap, "AssignWithThisExpression", coefficient);
+					}
+					if (node.type == "LogicalExpression"){
+						if (verbose>0) console.log("FEATURE[AssignWithLogicalExpression] : " + ASTUtils.getCode(parent));
+						updateResultMap(resultMap, "AssignWithLogicalExpression", coefficient);
+					}
+					if (node.type == "AssignmentExpression") {
+						var var_value = astNode.checkStaticMemberFunctionCall(node, varMap);
+						if (var_value !== undefined) {
+							if (verbose>0) console.log("FEATURE[FunctionObfuscation] :[", var_value[0], "] -> [", var_value[1].value, "]")
+							updateResultMap(resultMap, "FunctionObfuscation", coefficient);
+						}
+					}
+					if (node.type == "CallExpression"){
+						var callee;
+						if (node.callee.type == "MemberExpression") {
+							callee = node.callee.property.name;
+						} else if (node.callee.type == "FunctionExpression") {
+							astNode.removeJumpInstructions(i, ast);
+							// e.g. x = a[...] + (function foo(){...}());
+							// remove the call bracket at the end of function expression
+							// i.e. function a(){...}()
+							var coef = coefficient.slice();
+							coef.push("in_function")
+							var funcBody = ASTUtils.getCode(node);
+							parseProgram(funcBody.slice(funcBody.indexOf("{"),funcBody.lastIndexOf("}")+1), "CallExpression", coef, varMap, verbose);
+							callee = node.callee.name;
+						} else {
+							callee = node.callee.name;
+						}
+						if (callee !== undefined ) {
+							var types = varMap.get(callee);
+							for (var t in types) {
+								if (types[t].type == "pre_Function") {
+									if (verbose>0) console.log("FEATURE[DecodeString_OR_DOM_FunctionCall] :", ASTUtils.getCode(node));
+									updateResultMap(resultMap, "DecodeString_OR_DOM_FunctionCall", coefficient);
+								}
+							}
+						}
+					}
 				});
-				var var_values = astNode.getAssignmentLeftRight(i, varMap, verbose);
+				var var_values = astNode.getAssignmentLeftRight(ast.body[i].expression, varMap, verbose);
+				ASTUtils.traverse(ast.body[i], function(node, parent){
+					if (node.type == "FunctionExpression"){
+						var emptyVarMap = new Functions.VariableMap(varMap._varMap);
+						// assume all function parameters might be String type when parsing function body
+						astNode.updateFunctionParams(i, emptyVarMap);
+						
+						var returnStatement = astNode.getReturnInstructions(i, emptyVarMap, ast);
+						var codeBody = ASTUtils.getCode(node);
+						astNode.removeJumpInstructions(i, ast);
+
+						// parse function body
+						var coef = coefficient.slice();
+						coef.push("in_function");
+						parseProgram(ASTUtils.getCode(node.body).slice(1,-1), codeBody, coef, emptyVarMap, verbose);
+						coef.push("in_return");
+						for (var returnS of returnStatement) {
+							// parse return statement
+							parseProgram(returnS, "ReturnStatement in " + codeBody, coef, emptyVarMap, verbose);
+						}
+					} else if (node.type == "BinaryExpression") {
+						var bitOperators = [">>", "<<", "|", "&", "^", "~", ">>>", ">>=", "<<=", "|=", "&=", "^=", "~=", ">>>="];
+						if (bitOperators.indexOf(node.operator) != -1) {
+							if (verbose>0) console.log("FEATURE[AssignWithBitOperation]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + ASTUtils.getCode(parent));
+							updateResultMap(resultMap, "AssignWithBitOperation", coefficient);
+						}
+					}
+				});
+
+				// MemberExperssion objects:
+				// varMap has already been updated in getAssignmentLeftRight()
+				if (var_values == "SKIP") continue;
+
+				// Checking if MY_MJSA_THIS variable is been used on left hand side
 				if (var_values[0] == "MY_MJSA_THIS") {
 					var prevValue = resultMap.get("MY_MJSA_THIS");
 					resultMap.set("MY_MJSA_THIS", prevValue+1);
@@ -419,140 +484,17 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					updateResultMap(resultMap, "AssigningToThis", coefficient);
 				}
 
-				for (var v in var_values[1]){
-					if (var_values[1][v].type == "BitwiseOperationExpression" ||
-						var_values[1][v].type == "FunctionCall") {
-						if (var_values[1][v].type == "BitwiseOperationExpression") {
-							if (verbose>0) console.log("FEATURE[AssignWithBitOperation] in :" + scope + ", "+var_values[1][v].type +":" + var_values[0] + "=" +var_values[1][v].value);
-							updateResultMap(resultMap, "AssignWithBitOperation", coefficient);
-						} else {
-							if (verbose>0) console.log("FEATURE[AssignWithFuncCall] in :" + scope + ", "+var_values[1][v].type +":" + var_values[0] + "=" +var_values[1][v].value);
-							updateResultMap(resultMap, "AssignWithFuncCall", coefficient);
-						}
-						ASTUtils.traverse(ast.body[i], function(node){
-							if (node.type == "CallExpression"){
-								if (node.callee.type == "MemberExpression") {
-									var callee = node.callee.property.name;
-								} else {
-									var callee = node.callee.name;
-								}
-								if (callee !== undefined ) {
-									var types = varMap.get(callee);
-									if (types !== undefined) {
-										for (var t in types) {
-											if (types[t].type == "pre_Function") {
-												if (types[t].value == "concat") {
-													var object = node.callee.object.name;
-													var obj_type = varMap.get(object);
-													if (obj_type !== undefined) {
-														for (var ot of obj_type) {
-															if (ot.type == "ArrayExpression") {
-																if (verbose>0) console.log("FEATURE[ArrayConcatation] in :" + scope + " :" + var_values[0] + "=" +var_values[1][v].value);
-																updateResultMap(resultMap, "ArrayConcatation", coefficient);
-															} else if (ot.type == "String") {
-																if (verbose>0) console.log("FEATURE[StringConcatation] in :" + scope + " :" + var_values[0] + "=" +var_values[1][v].value);
-																updateResultMap(resultMap, "StringConcatation", coefficient);
-															}
-														}
-													}
-												} else {
-													if (verbose>0) console.log("FEATURE[DecodeString_OR_DOM_FunctionCall] :", ASTUtils.getCode(node));
-													updateResultMap(resultMap, "DecodeString_OR_DOM_FunctionCall", coefficient);
-												}
-											}
-										}
-									}
-								}
-							}
-						});
+				// for (var v in var_values[1]){
+				// 	if (var_values[1][v].type == "BitwiseOperationExpression") {
 						
-					} else if (var_values[1][v].type == "FunctionExpression") {
-						ASTUtils.traverse(ast.body[i], function(node){
-							if (node.type == "FunctionExpression"){
-								var emptyVarMap = new Functions.VariableMap(varMap._varMap);
-								// assume all function parameters might be String type when parsing function body
-								astNode.updateFunctionParams(i, emptyVarMap);
-								
-								var returnStatement = astNode.getReturnInstructions(i, emptyVarMap, ast);
-								astNode.removeJumpInstructions(i, ast);
-
-								// parse function body
-								var coef = coefficient.slice();
-								coef.push("in_function");
-								parseProgram(ASTUtils.getCode(node.body).slice(1,-1), var_values[1][v].value, coef, emptyVarMap, verbose);
-								coef.push("in_return");
-								for (var returnS of returnStatement) {
-									// parse return statement
-									parseProgram(returnS, "ReturnStatement in " + var_values[1][v].value, coef, emptyVarMap, verbose);
-								}
-							} 
-						});
-					} else {
-						ASTUtils.traverse(ast.body[i], function(node, parent){
-							if (node.type == "ArrayExpression"){
-								if (node.elements.length > 1000){
-									if (verbose>0) console.log("FEATURE[LongArray] : " + var_values[0] + " contains " + node.elements.length + " objects");
-									updateResultMap(resultMap, "LongArray", coefficient);
-								}
-							}
-
-							if (node.type == "ThisExpression"){
-								if (verbose>0) console.log("FEATURE[AssignWithThisExpression] : " + ASTUtils.getCode(parent));
-								updateResultMap(resultMap, "AssignWithThisExpression", coefficient);
-							}
-
-							if (node.type == "LogicalExpression"){
-								if (verbose>0) console.log("FEATURE[AssignWithLogicalExpression] : " + ASTUtils.getCode(parent));
-								updateResultMap(resultMap, "AssignWithLogicalExpression", coefficient);
-							}
-							
-							if (node.type == "AssignmentExpression") {
-								var var_value = astNode.checkStaticMemberFunctionCall(node, varMap);
-								if (var_value !== undefined) {
-									if (verbose>0) console.log("FEATURE[FunctionObfuscation] :[", var_value[0], "] -> [", var_value[1].value, "]")
-									updateResultMap(resultMap, "FunctionObfuscation", coefficient);
-								}
-							}
-							if (node.type == "CallExpression"){
-								var callee;
-
-								if (node.callee.type == "MemberExpression") {
-									callee = node.callee.property.name;
-								} else if (node.callee.type == "FunctionExpression") {
-									astNode.removeJumpInstructions(i, ast);
-									// e.g. x = a[...] + (function foo(){...}());
-									// remove the call bracket at the end of function expression
-									// i.e. function a(){...}()
-									var coef = coefficient.slice();
-									coef.push("in_function")
-									var funcBody = ASTUtils.getCode(node);
-									parseProgram(funcBody.slice(funcBody.indexOf("{"),funcBody.lastIndexOf("}")+1), "CallExpression", coef, varMap, verbose);
-									callee = node.callee.name;
-								} else {
-									callee = node.callee.name;
-								}
-								if (callee !== undefined ) {
-									var types = varMap.get(callee);
-									for (var t in types) {
-										if (types[t].type == "pre_Function") {
-											if (verbose>0) console.log("FEATURE[DecodeString_OR_DOM_FunctionCall] :", ASTUtils.getCode(node));
-											updateResultMap(resultMap, "DecodeString_OR_DOM_FunctionCall", coefficient);
-										}
-									}
-								}
-								
-							}
-						});
-					}
-				}
-
+				// 	} 
+				// }
 				varMap.updateVariable(var_values[0], var_values[1], verbose);
 
 			} else if (astNode.isUpdateExpression(i)) {
 				var var_value = astNode.getUpdateExpression(i, varMap, verbose);
 				// ++, --, etc.
 			} else {
-
 				// single identifier expressions, (e.g. x;) skip to next expression
 				if (astNode._node.body[i].expression.type == "Identifier") {
 					var var_values = varMap.get(astNode._node.body[i].expression.name);
@@ -609,7 +551,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 										try {
 											for (var ii = indx.length-1; ii >=0;ii--){
 												var objIndex = indx[ii].value;
-												// console.log("objIndex:", objIndex)
 												if (obj !== undefined) {
 													if (obj[0].type == "ObjectExpression") {
 														objIndex = objIndex.replace(/"/g,"");

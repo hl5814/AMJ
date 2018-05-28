@@ -81,9 +81,9 @@ describe('AST getVariableInitValue', function() {
         varMap.setVariable("a", [{type: 'Numeric', value: "1" }] );
 
         expect(astNode.getVariableInitValue(declaration_blocks[1].id.name, declaration_blocks[1].init, varMap)).to.deep.equal(["b", [{type: "String",value: '"test"'}]]);
-        expect(astNode.getVariableInitValue(declaration_blocks[2].id.name, declaration_blocks[2].init, varMap)).to.deep.equal(["c", [{type: "BinaryExpression",value: "(1+1)+1"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[2].id.name, declaration_blocks[2].init, varMap)).to.deep.equal(["c", [{type: "Numeric",value: 3}]]);
         expect(astNode.getVariableInitValue(declaration_blocks[3].id.name, declaration_blocks[3].init, varMap)).to.deep.equal(["d", [{type: "String",value: "\"1STR\""}]]);
-        expect(astNode.getVariableInitValue(declaration_blocks[4].id.name, declaration_blocks[4].init, varMap)).to.deep.equal(["e", [{type: "BinaryExpression",value: "a+1"}]]);
+        expect(astNode.getVariableInitValue(declaration_blocks[4].id.name, declaration_blocks[4].init, varMap)).to.deep.equal(["e", [{type: "Numeric",value: 2}]]);
         expect(astNode.getVariableInitValue(declaration_blocks[5].id.name, declaration_blocks[5].init, varMap)).to.deep.equal(["f", [{type: "undefined",value: "undefined"}]]);
         expect(astNode.getVariableInitValue(declaration_blocks[6].id.name, declaration_blocks[6].init, varMap)).to.deep.equal(["g", [{type: "String",value: "\'g\'"}]]);
         expect(astNode.getVariableInitValue(declaration_blocks[7].id.name, declaration_blocks[7].init, varMap)).to.deep.equal(
@@ -199,11 +199,11 @@ describe('AST AssignmentExpression', function() {
     it(`getEqualAssignmentLeftRight()`, function() {
         var varMap = new Functions.VariableMap(new HashMap());
 
-        expect(block.getAssignmentLeftRight(0,varMap)).to.deep.equal(["a", [{type: 'Numeric', value: "1" }]]);
+        expect(block.getAssignmentLeftRight(block._node.body[0].expression,varMap)).to.deep.equal(["a", [{type: 'Numeric', value: "1" }]]);
 
         varMap.setVariable("a", [{type: 'Numeric', value: "1" }] );
 
-        expect(block.getAssignmentLeftRight(1,varMap)).to.deep.equal(["b", [{type: 'Numeric', value: '1' }]]);
+        expect(block.getAssignmentLeftRight(block._node.body[1].expression,varMap)).to.deep.equal(["b", [{type: 'Numeric', value: '1' }]]);
     });
 });
 

@@ -1,4 +1,4 @@
-var x;
+var x = "a";
 x += String.fromCharCode(65);
 eval(x)
 // FEATURE[DecodeString_OR_DOM_FunctionCall] : String.fromCharCode(65)
