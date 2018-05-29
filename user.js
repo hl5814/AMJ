@@ -1,2 +1,1 @@
-var a = x + y;
-b =z + d;
+document["write"]("xxx");

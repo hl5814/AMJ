@@ -267,14 +267,14 @@ AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 			}
 
 			if (calleeName == "eval") {
-				var rawCode = "";
+				var rawCodeList = [];
 				if (node.arguments[0].type == "Identifier") {
 					var types = varMap.get(node.arguments[0].name);
 
 					if (types !== undefined) {
 						for (var t of types) {
 							if (t.type == "String") {
-								rawCode = t.value;
+								rawCodeList.push(t.value);
 							}
 						}
 					}
@@ -283,24 +283,26 @@ AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 					if (values !== undefined) {
 						for (var v of values) {
 							if (v.type == "String"){
-								rawCode = v.value;
+								rawCodeList.push(v.value);
 							}
 						}
 					}
 				}
 
-				if (rawCode == "") {
-					rawCode = ASTUtils.getCode(node.arguments[0]);
+				if (rawCodeList.length == 0) {
+					rawCodeList.push(ASTUtils.getCode(node.arguments[0]));
 				}
 
-				try {
-					HiddenString.push(["SUCCESS" ,CurrentContext, ASTUtils.getCode(node), eval("(" + rawCode + ")")]);
-				} catch (err) {
+				for (var rawCode of rawCodeList) {
 					try {
-						rawCode= rawCode.slice(1, -1);
-						HiddenString.push(["SUCCESS" ,CurrentContext,ASTUtils.getCode(node), eval("(" + rawCode + ")")]);
+						HiddenString.push(["SUCCESS" ,CurrentContext, ASTUtils.getCode(node), eval("(" + rawCode + ")")]);
 					} catch (err) {
-						HiddenString.push(["FAIL_TO_EXECUTE", CurrentContext, rawCode]);
+						try {
+							rawCode= rawCode.slice(1, -1);
+							HiddenString.push(["SUCCESS" ,CurrentContext,ASTUtils.getCode(node), eval("(" + rawCode + ")")]);
+						} catch (err) {
+							HiddenString.push(["FAIL_TO_EXECUTE", CurrentContext, rawCode]);
+						}
 					}
 				}
 			}
@@ -314,18 +316,44 @@ AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 	var longStringList = [];
 	var parentNode = this._node;
 	var parent = this;
+	var CurrentContext = ["in_main"];
+	var ContextRange = [0,0];
 	ASTUtils.traverse(this._node.body[index], function(node){
+		if ((node.range[0] > ContextRange[1]) && (CurrentContext.length > 1)){
+			CurrentContext.pop();
+		}
+		if (node.type == "IfStatement") {
+			CurrentContext.push("in_if");
+			ContextRange = node.range;
+		} else if (node.type == "ForStatement" || node.type == "ForInStatement" ||
+				   node.type == "ForOfStatement" || node.type == "WhileStatement" ||
+				   node.tpye == "DoWhileStatement") {
+			CurrentContext.push("in_loop");
+			ContextRange = node.range;
+		} else if (node.type == "FunctionDeclaration" || node.type == "FunctionExpression"){
+			CurrentContext.push("in_function");
+			ContextRange = node.range;
+		} else if (node.type == "TryStatement") {
+			CurrentContext.push("in_try");
+			ContextRange = node.range;
+		} else if (node.type == "SwitchStatement") {
+			CurrentContext.push("in_switch");
+			ContextRange = node.range;
+		}
+
+
 		if (node.type == "BinaryExpression" && node.operator == "+"){
 			var result = parent.getBinaryExpressionValue(node, varMap, verbose);
 			if (result !== undefined && result.length == 2 && result[0] == "String"){
 				var rawCode = ASTUtils.getCode(node);
 				var found = false;
+
 				for (var lstr in longStringList) {
-					if (longStringList[lstr].indexOf(rawCode) != -1) {
+					if (longStringList[lstr][1].indexOf(rawCode) != -1) {
 						found = true;
 					}
 				}
-				if (!found) longStringList.push(rawCode + " ==> "  + result[1]);
+				if (!found) longStringList.push([CurrentContext, rawCode + " ==> "  + result[1]]);
 			} 
 		} else if (node.type == "AssignmentExpression" && node.operator == "+="){
 			var longString;
@@ -371,13 +399,14 @@ AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 						found = true;
 					}
 				}
-				if (!found) longStringList.push(longString);
+				if (!found) longStringList.push([CurrentContext, longString]);
 			}
 
 
 
 		}
 	});
+
 	return longStringList;
 }
 
@@ -741,7 +770,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		const object_name = object[0];
 		const field_name  = object[1];
 		if (object_name == "this") {
-			return [identifier, field_name];
+			return [identifier, [{ type: 'ThisExpression', value: "this" }]];
 		}
 		const field = varMap.get(object_name);
 		var values = [];
@@ -782,16 +811,14 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 			//undefined variable, we set the init value to undefined and update varMap
 			
 			if (initExpr.type == "BinaryExpression") {
-				// if (initExpr.operator == "+") {
-					var result = this.getBinaryExpressionValue(initExpr, varMap, verbose);
-					if (result !== undefined && result.length == 2){
-						if (result[0] == "String") {
-							return [identifier, [{ type: 'String', value: '"' + result[1] + '"' }]];
-						} else if (result[0] == "Numeric"){
-							return [identifier, [{ type: 'Numeric', value: result[1] }]];
-						}
-					} 
-				// } 
+				var result = this.getBinaryExpressionValue(initExpr, varMap, verbose);
+				if (result !== undefined && result.length == 2){
+					if (result[0] == "String") {
+						return [identifier, [{ type: 'String', value: '"' + result[1] + '"' }]];
+					} else if (result[0] == "Numeric"){
+						return [identifier, [{ type: 'Numeric', value: result[1] }]];
+					}
+				} 
 				return [identifier, [{ type: 'BinaryExpression', value: args }]];
 			} else if (initExpr.type == "LogicalExpression") {
 				return [identifier, [{ type: 'LogicalExpression', value: args }]];
@@ -846,9 +873,15 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 					if (v.type == "String"|| v.type == "Numeric") {
 						ts = ts.concat(v.value)
 					} else {
-						// console.log(v)
-						// type = "String";
-						ts = ts.concat(v.value)
+						if (type == "String" || type == "Numeric") {
+							if (v.type == "undefined") {
+								type = "BinaryExpression";
+							}
+							ts = ts.concat(v.value);
+						} else {
+							type = "UNKNOWN";
+							ts = ts.concat(v.value);
+						}
 					}
 				}
 			}
@@ -928,7 +961,7 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 				}
 				
 				if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
-					if (index !== undefined) {
+					if (index !== undefined && r_vs[r].value[index] !== undefined) {
 						r_vs[r].value[index][1] = [newValue];
 					} 
 				}
@@ -1023,7 +1056,7 @@ AST.prototype.getTrueValueFromMemberExpression=function(args, varMap, verbose=fa
 				}
 				
 				if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
-					if (index !== undefined) {
+					if (index !== undefined && r_vs[r].value[index]!== undefined) {
 						ref_values = ref_values.concat(r_vs[r].value[index][1]);
 					} 
 				}
