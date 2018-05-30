@@ -223,7 +223,65 @@ AST.prototype.checkUnescapeCalls=function(index, varMap, verbose=false){
 	});
 	return HiddenString;
 }
+AST.prototype.checkDOM_WINDOW_OPs=function(index, varMap, verbose=false) {
+	var parentNode = this._node;
+	var parent = this;
+	var DOM_OPs = [];
+	var CurrentContext = ["in_main"];
+	var ContextRange = [0,0];
+	ASTUtils.traverse(this._node.body[index], function(node, parent){
+		if ((node.range[0] > ContextRange[1]) && (CurrentContext.length > 1)){
+			CurrentContext.pop();
+		}
+		if (node.type == "IfStatement") {
+			CurrentContext.push("in_if");
+			ContextRange = node.range;
+		} else if (node.type == "ForStatement" || node.type == "ForInStatement" ||
+				   node.type == "ForOfStatement" || node.type == "WhileStatement" ||
+				   node.tpye == "DoWhileStatement") {
+			CurrentContext.push("in_loop");
+			ContextRange = node.range;
+		} else if (node.type == "FunctionDeclaration" || node.type == "FunctionExpression"){
+			CurrentContext.push("in_function");
+			ContextRange = node.range;
+		} else if (node.type == "TryStatement") {
+			CurrentContext.push("in_try");
+			ContextRange = node.range;
+		} else if (node.type == "SwitchStatement") {
+			CurrentContext.push("in_switch");
+			ContextRange = node.range;
+		}
 
+		if (node.type == "MemberExpression") {
+			var object = (new Expr(node.object)).getArg(parentNode, "", varMap, false, verbose);
+			var property;
+
+			try {
+				var properties = parent.getVariableInitValue("", node.property, varMap, verbose)[1];
+				if (properties !== undefined) {
+					for (var p of properties) {
+						if (p.type == "String") {
+							property = p.value.replace(/"|'/g,"");
+						} else if (p.type == "pre_Function"){
+							property = p.value;
+						}
+					}
+				}
+			}catch(err){
+				property = (new Expr(node.property)).getArg(parentNode, "", varMap, false, verbose); 
+			}
+
+			if (object == "document") {
+				DOM_OPs.push(["document", CurrentContext,ASTUtils.getCode(parent)]);
+			} else if (object == "window") {
+				DOM_OPs.push(["window", CurrentContext,ASTUtils.getCode(parent)]);
+			}
+
+		}
+	});
+
+	return DOM_OPs;
+}
 AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 	var parentNode = this._node;
 	var parent = this;
@@ -308,7 +366,6 @@ AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 			}
 		}
 	});
-
 	return HiddenString;
 }
 
@@ -577,7 +634,24 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					}
 				} 
 
-				if (operation == "reverse") {
+				if (operation == "btoa" || operation == "atob") {
+					var m_str;
+					if (node.arguments !== undefined) {
+						if (node.arguments.length == 0){
+							m_str = "";
+						} else {
+							var modifiedStr = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
+							if (modifiedStr !== undefined && modifiedStr.type == "String") {
+								m_str = modifiedStr.value;
+							}
+						}
+					}
+					if (m_str !== undefined) {
+						valType = "String";
+						if (operation == "btoa") trueVal = "btoa("+m_str+")";
+						if (operation == "atob") trueVal = "atob("+m_str+")";
+					}
+				} else if (operation == "reverse") {
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
 					if (values !== undefined) {
 						for (var v of values) {
@@ -1494,6 +1568,7 @@ Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inne
 
 Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
+	// TODO: fast mode
 	// only track for first 100 elements in array, prevent program hangs due to large size array
 	const elements = this._expr.elements;
 	var elem_array = [];

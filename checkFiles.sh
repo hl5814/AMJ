@@ -60,10 +60,9 @@ done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
 
-
 # check if the given source path is directory/file
 if [ -d $SOURCE ]; then
-    node main.js -h  2>/dev/null | grep -E "header"
+    node main.js -a 2>/dev/null | grep -E "header"
     if [[ -z "${PREFIX}"  ]]; then
         total=$(find $SOURCE -type f 2>/dev/null| wc -l)
     else
@@ -89,14 +88,14 @@ if [ -d $SOURCE ]; then
         fi
         if [ $DEBUG_MODE ]; then
         	# echo $filename
-            var=$(node main.js -s $filename ${VERBOSE}  -f -w   | grep -E "hongtao")
+            var=$(node main.js -s $filename ${VERBOSE} -f -w | grep -E "hongtao")
             ret_code=$?
             if [ $ret_code != 0 ]; then
                 printf "Error [$ret_code] at [$curr]: $filename \n" 
                 read -p "Press enter to continue"
             fi
         else
-            node main.js -s $filename ${VERBOSE}  -f -w  2>/dev/null | grep -E "hongtao"
+            node main.js -s $filename ${VERBOSE} -f -w 2>/dev/null | grep -E "hongtao"
         fi
 
 
@@ -114,12 +113,10 @@ else
 fi
 
 >&2 echo  "$((${curr}*100/${total})) % [ ${curr}/${total} ] $filename"
+
+
+
 # ./checkFiles.sh -s /Users/hongtao/Desktop/IndividualProject/jsob/samples/badstuff/javascript-malware-collection > Clustering/javascript-malware-collection.csv 
-
-
-
-
-
 # ----
 # ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201601 -l > Clustering/201601.csv &
 # ./checkFiles.sh -s /Users/hongtao/javascript-malware-collection/2016/ -p 201602 > Clustering/201602.csv &

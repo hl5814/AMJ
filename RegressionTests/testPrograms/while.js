@@ -3,13 +3,13 @@ var x = "main";
 while (i < 5) {
 	x = "while";
 }
-eval(x);
+MJSA_TEST(x);
 
 // variable created in while body
 while (i < 5) {
 	y = "while";
 }
-eval(y);
+MJSA_TEST(y);
 
 
 // main scope variable updated in do-while body 
@@ -18,11 +18,11 @@ do {
     i = "do-while"
 }
 while (i < 5);
-eval(i)
+MJSA_TEST(i)
 
 // variable created in do-while body
 do {
     j = "do-while"
 }
 while (j < 5);
-eval(j)
+MJSA_TEST(j)

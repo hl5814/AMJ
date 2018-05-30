@@ -13,11 +13,11 @@ switch (1) {
     default: 
         x = "default";
 }
-eval(x);
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("default")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("0")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("1")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("2")
+MJSA_TEST(x);
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("default")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("0")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("1")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("2")
 
 // switch without default cases
 var x = "main";
@@ -32,11 +32,11 @@ switch (1) {
         x = "2";
         break;
 }
-eval(x);
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("main")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("0")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("1")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("2")
+MJSA_TEST(x);
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("main")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("0")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("1")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("2")
 
 // switch with shared code in cases
 var x = "main";
@@ -51,10 +51,10 @@ switch (1) {
         x = "3";
         break;
 }
-eval(x);
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("main")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("1")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("3")
+MJSA_TEST(x);
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("main")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("1")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("3")
 
 // switch with default at the beginning with break
 var x = "main";
@@ -72,10 +72,10 @@ switch (1) {
         x = "3";
         break;
 }
-eval(x);
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("default")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("1")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("3")
+MJSA_TEST(x);
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("default")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("1")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("3")
 
 // switch with default at the beginning without break
 var x = "main";
@@ -92,9 +92,9 @@ switch (1) {
         x = "3";
         break;
 }
-eval(x);
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("1")
-// FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x] ==> eval("3")
+MJSA_TEST(x);
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("1")
+// FEATURE[StringOp] in :User_Program: MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST("3")
 
 
 

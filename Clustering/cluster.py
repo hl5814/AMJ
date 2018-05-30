@@ -14,16 +14,16 @@ from scipy.spatial.distance import pdist
 parser = argparse.ArgumentParser(description="Cluster Malicious JS files based on features")
 parser.add_argument("-d", "--dendrogram", action="store_true", help="draw dendrogram")
 parser.add_argument("-f", "--file", action="store_true", help="copy files into corresponding cluster")
-parser.add_argument("-l", dest='level',default=1,action='store',type=int, help="number of clusters")
+parser.add_argument("-n", dest='number',default=1,action='store',type=int, help="number of clusters")
 parser.add_argument('--verbose', '-v', action='count', default=-1,help="-v print file index for each cluster,-vv print top 3 features of each cluster")
-parser.add_argument("-p", dest='percentage', action='store',type=float, default=1, nargs='?', help="randomly pick p%  from samples")
+parser.add_argument("-p", dest='percentage', action='store',type=float, default=1, nargs='?', help="randomly pick p%%  from samples")
 parser.add_argument("-s", dest='source', required=True, action='store',type=str, help="input csv file path")
 parser.add_argument("-r", dest='result', action='store',type=str,default="cluster_result.csv", help="result file path, cluster_result.csv by default")
 
 
 
 args = parser.parse_args()
-NODES = args.level
+NODES = args.number
 VERBOSE = args.verbose
 FILE = args.file
 PERCENT = args.percentage
@@ -70,7 +70,7 @@ if (VERBOSE >= 0) : print("Using :[", L_MATRIX, "] as linkage matrix\nwith cophe
 
 # First define the leaf label function.
 def llf(id):
-    return str(id)
+    return str(id);
 
 def fancy_dendrogram(*args, **kwargs):
     max_d = kwargs.pop('max_d', None)
@@ -366,10 +366,10 @@ if (args.dendrogram):
     fig = plt.figure()
     plt.figure(figsize=(25, 10))
     sys.setrecursionlimit(1500)
-    max_d = 10  # max_d as in max_distance for colouring sub tree
+    max_d = 5  # max_d as in max_distance for colouring sub tree
     fancy_dendrogram(
         Z,
-        leaf_label_func=llf,
+        # leaf_label_func=llf,
         truncate_mode='lastp',
         p=NODES,
         # truncate_mode='level',

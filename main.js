@@ -4,16 +4,19 @@ const esprima = require('esprima');					  // load esprima
 const ASTUtils = require("esprima-ast-utils");		  // load esprima-ast-utils
 const Functions = require('./functions'); 			  // load helper functions
 const commandLineArgs = require('command-line-args'); // load command-line-args
+const commandLineUsage = require('command-line-usage')
 const fs = require('fs');
-
+const myHeader = require('./assets/header')
+const chalk = require('chalk')
 //===================parse command line arguments============================
 const optionDefinitions = [
   { name: 'verbose',      	alias: 'v', type: Number },
   { name: 'weight',	 	  	alias: 'w', type: Boolean},
   { name: 'src', 		  	alias: 's', type: String },
-  { name: 'header',		   	alias: 'h', type: Boolean},
+  { name: 'header',		   	alias: 'a', type: Boolean},
   { name: 'testMode',		alias: 't', type: Boolean},
-  { name: 'fastMode',		alias: 'f', type: Boolean}
+  { name: 'fastMode',		alias: 'f', type: Boolean},
+  { name: 'help',			alias: 'h', type: Boolean}
 ]
 
 const options = commandLineArgs(optionDefinitions)
@@ -23,21 +26,186 @@ const showHeader = options.header;
 const filePath = options.src;
 const testMode = options.testMode;
 const fastMode = options.fastMode;
-
+const sections = [
+  {
+    content: chalk.green(myHeader),
+    raw: true
+  },
+  {
+    header: 'MJSA',
+    content: 'Malicious JavaScript Analyser'
+  },
+  {
+    header: 'Options',
+    optionList: [
+      {
+        name: 'help', alias: 'h', description: 'Display this usage guide.'
+      },
+      {
+        name: 'src', alias: 's', description: 'The input files to process',
+      	typeLabel: '{underline file}'
+      },
+      {
+        name: 'header', alias: 'a', description: 'The input files to process',
+      },
+      {
+        name: 'vervise', alias: 'v', description: '-v Printout features captured, -v 2 Debug mode',
+      },
+      {
+        name: 'weight', alias: 'w', description: 'Print weighted feature arrays',
+      },
+      {
+        name: 'testMode', alias: 't', description: 'When this flag is set, MJSA will not try to unpack {underline eval()}',
+      },
+      {
+        name: 'fastMode', alias: 'f', description: 'When this flag is set, MJSA will only parse at most 100 elements any objects and skip long instructions',
+      }
+    ]
+  },
+  {
+    header: 'Examples',
+    content: [
+      {
+        desc: '1. Printout the capture features from {underline user.js}',
+        example: '$ node main.js -s user.js -v'
+      },
+      {
+        desc: '2. Printout the weighted feature array from {underline user.js} in fast mode',
+        example: '$ node main.js -s user.js -w -f'
+      }
+    ]
+  },
+  {
+    content: 'Project home: {underline https://github.com/hl5814/MJSA}'
+  }
+]
+const usage = commandLineUsage(sections)
+if (options.help) {
+	console.log(usage)
+}
 //===============================MainProgram=================================
 var init_varMap = new Functions.VariableMap(new HashMap());
 
-var pre_funcs = ["eval", "unescape", "replace", "write", "document.write", "document.writeln", "document.createElement",
-				 "atob", "btoa", "setTimeout", "setInterval", "toString", "String.fromCharCode", "fromCharCode",
+var pre_funcs = ["MJSA_TEST", "eval", "unescape", "replace", "write", "writeln", "atob", "btoa", "toString", "String.fromCharCode", "fromCharCode",
 				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring", "concat","join","split","reverse"];
 
 for (var f in pre_funcs) {
 	init_varMap.setVariable(pre_funcs[f], [{ type: 'pre_Function', value: pre_funcs[f] }] );
 }
 init_varMap.setVariable("String", [{ type: 'ObjectExpression', value: {"fromCharCode": [{type: 'pre_Function', value: "fromCharCode"}]} }] );
-init_varMap.setVariable("document", [{ type: 'ObjectExpression', value: {"createElement": [{type: 'pre_Function', value: "createElement"}],
-																		 "write": [{type: 'pre_Function', value: "write"}],
-																		 "writeln": [{type: 'pre_Function', value: "writeln"}]} }] );
+
+var resultMap = new HashMap();
+
+const FEATURES = [	"VariableWithFunctionExpression",	// x = function(){};
+					"VariableWithExpression",			
+					"VariableWithThisExpression",		// x = this;
+					"VariableWithUnaryExpression",		// x = -a;
+					"VariableWithBinaryExpression",		// x = a + b;
+					"VariableWithCallExpression",		// x = eval(xx)
+					"VariableWithLogicalExpression",	// x = 1^2;
+					"VariableWithBitOperation", 		// x = 0||1&&2;
+					"FunctionObfuscation",				// x = eval;
+					"StringConcatation",				// "a"+"b"
+					"PredefinedFuncCalls", 				// String.fromCharCode(65)
+					"DOM_Operations",					// document.write(..)
+					"WINDOW_Operations",				// window.btoa(..)
+					"FuncCallOnBinaryExpr",				// foo(x+y)
+					"FuncCallOnUnaryExpr",				// bar(-x)
+					"FuncCallOnStringVariable",			// foo("x") where function must be defined either by user or predefined
+					"FuncCallOnCallExpr",				// foo(var(x));
+					"FuncCallOnNonLocalArray",			// foo(x[2]) where x is not defined in scope
+					"FuncCallOnUnkonwnReference",		// foo(x.f) or foo(x[y]) where x is defiend but f and y not defeind in scope
+					"HtmlCommentInScriptBlock",			// <script> <!-- xxx //--> </script>
+					"AssigningToThis",					// this = 1;
+					"ConditionalCompilationCode",		// @cc_on|@if|@end|@_win32|@_win64
+					"DotNotationInFunctionName",		// function a.prototype(){}
+					"LongArray",						// array contains >1000 elements (e.g.var x = [1,2,3,...., 1000])
+					"LongExpression",					// expression > 1000 tokens (e.g. var x = 1+2+3+4+...+1000);
+					"Eval",								// ..eval(..)
+					"UnfoldEvalSuccess",				// extract payload from eval successfully
+					"Unescape",							// ..unescape(..)
+					"UnfoldUnescapeSuccess"]			// execute unescape successfully
+					
+
+const SCOPES = [	"in_test",
+					"in_main",
+					"in_if",
+					"in_loop",
+					"in_function",
+					"in_try",
+					"in_switch",
+					"in_return",
+					"in_file"];
+
+const KEYWORDS = [	"break", "case", "catch", "continue", "debugger", "default", 
+					"delete", "do", "else", "finally", "for", "function", "if", 
+					"in", "instanceof", "new", "return", "switch", "this", "throw",
+					"try", "typeof", "var", "const", "void", "while", "with","document","MY_MJSA_THIS"];
+
+const PUNCTUATORS = [	"!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+",
+						"++","+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=",
+						"<=","=","==","===",">",">=",">>",">>=",">>>",">>>=","?","[","]",
+						"^","^=","{","|","|=","||","}","~"];
+
+const LENGTH = ["TokenPerFile", "CommentPerFile"]
+
+for (const k of KEYWORDS)  		resultMap.set(k, 0);
+for (const p of PUNCTUATORS) 	resultMap.set(p, 0);
+for (const f of FEATURES) 		resultMap.set(f, 0);
+for (const s of SCOPES) 		resultMap.set(s, 0);
+for (const l of LENGTH) 		resultMap.set(l, 0);
+
+
+var FILE_LENGTH = 0;
+var COMMENT_LENGTH = 0;
+
+var FEATURE_TOTAL = 0;
+var SCOPE_TOTAL = 0;
+var KEYWORD_TOTAL = 0;
+var PUNCTUATOR_TOTAL = 0;
+
+function updateResultMap(resultMap, featureType, scope, point=1) {
+	var prevValue = resultMap.get(featureType);
+	resultMap.set(featureType, prevValue+point);
+	FEATURE_TOTAL++;
+
+	for (var s of scope) {
+		prevValue = resultMap.get(s);
+		resultMap.set(s, prevValue+point);
+		SCOPE_TOTAL++;
+	}
+}
+
+function showResult(resultMap) {
+	var resultArray = [];
+	if (FILE_LENGTH > 0) {
+		resultMap.set("CommentPerFile", (COMMENT_LENGTH/FILE_LENGTH).toFixed(4));
+	}
+	resultMap.forEach(function(value, key){
+		if (KEYWORDS.indexOf(key) > -1) {
+			var val = (value > 0) ? (value/KEYWORD_TOTAL).toFixed(4) : 0;
+		} else if (PUNCTUATORS.indexOf(key) > -1) {
+			var val = (value > 0) ? (value/PUNCTUATOR_TOTAL).toFixed(4)  : 0;
+		} else if (FEATURES.indexOf(key) > -1) {
+			var val = (value > 0) ? (value/FEATURE_TOTAL).toFixed(4)  : 0;
+		} else if (SCOPES.indexOf(key) > -1) {
+			var val = (value > 0) ? (value/SCOPE_TOTAL).toFixed(4)  : 0;
+		} else {
+			var val = value;
+		}
+		resultArray.push(val);
+	});
+
+	console.log(`"`+filePath+`",`+resultArray)
+}
+
+function printHeader(resultMap) {
+	var header = [];
+	resultMap.forEach(function(value, key){
+		header.push(`"`+key+`"`);
+	});
+	console.log("header,"+header);
+}
 
 function listEqual(list1, list2) {
 	if (list1.length != list2.length) return false;
@@ -89,120 +257,6 @@ Set.prototype.my_add=function(values){
 		}
 	}
 }
-
-var resultMap = new HashMap();
-
-const FEATURES = [	"VariableWithFunctionExpression",	// x = function(){};
-					"VariableWithExpression",			
-					"VariableWithThisExpression",		// x = this;
-					"VariableWithUnaryExpression",		// x = -a;
-					"VariableWithBinaryExpression",		// x = a + b;
-					"VariableWithCallExpression",		// x = eval(xx)
-					"VariableWithLogicalExpression",	// x = 1^2;
-					"VariableWithBitOperation", 		// x = 0||1&&2;
-					"FunctionObfuscation",				// x = eval;
-					"StringConcatation",				// "a"+"b"
-					"DecodeString_OR_DOM_FunctionCall", // TODO change to DOM related function call
-					"FuncCallOnBinaryExpr",				// foo(x+y)
-					"FuncCallOnUnaryExpr",				// bar(-x)
-					"FuncCallOnStringVariable",			// foo("x") where function must be defined either by user or predefined
-					"FuncCallOnCallExpr",				// foo(var(x));
-					"FuncCallOnNonLocalArray",			// foo(x[2]) where x is not defined in scope
-					"FuncCallOnUnkonwnReference",		// foo(x.f) or foo(x[y]) where x is defiend but f and y not defeind in scope
-					"HtmlCommentInScriptBlock",			// <script> <!-- xxx //--> </script>
-					"AssigningToThis",					// this = 1;
-					"ConditionalCompilationCode",		// @cc_on|@if|@end|@_win32|@_win64
-					"DotNotationInFunctionName",		// function a.prototype(){}
-					"LongArray",						// array contains >1000 elements (e.g.var x = [1,2,3,...., 1000])
-					"LongExpression",					// expression > 1000 tokens (e.g. var x = 1+2+3+4+...+1000);
-					"Eval",								// ..eval(..)
-					"UnfoldEvalSuccess",				// extract payload from eval successfully
-					"Unescape",							// ..unescape(..)
-					"UnfoldUnescapeSuccess"]			// execute unescape successfully
-
-const SCOPES = [	"in_test",
-					"in_main",
-					"in_if",
-					"in_loop",
-					"in_function",
-					"in_try",
-					"in_switch",
-					"in_return",
-					"in_file"];
-
-const KEYWORDS = [	"break", "case", "catch", "continue", "debugger", "default", 
-					"delete", "do", "else", "finally", "for", "function", "if", 
-					"in", "instanceof", "new", "return", "switch", "this", "throw",
-					"try", "typeof", "var", "const", "void", "while", "with","document","MY_MJSA_THIS"];
-
-const PUNCTUATORS = [	"!","!=","!==","%","%=","&","&&","&=","(",")","*","*=","+",
-						"++","+=",",","-","--","-=",".","/","/=",":",";","<","<<","<<=",
-						"<=","=","==","===",">",">=",">>",">>=",">>>",">>>=","?","[","]",
-						"^","^=","{","|","|=","||","}","~"];
-
-const LENGTH = ["TokenPerFile", "CommentPerFile"]
-
-for (const k of KEYWORDS)  		resultMap.set(k, 0);
-for (const p of PUNCTUATORS) 	resultMap.set(p, 0);
-for (const f of FEATURES) 		resultMap.set(f, 0);
-for (const s of SCOPES) 		resultMap.set(s, 0);
-for (const l of LENGTH) 		resultMap.set(l, 0);
-
-
-var FILE_LENGTH = 0;
-var COMMENT_LENGTH = 0;
-
-var FEATURE_TOTAL = 0;
-var SCOPE_TOTAL = 0;
-var KEYWORD_TOTAL = 0;
-var PUNCTUATOR_TOTAL = 0;
-
-function updateResultMap(resultMap, featureType, scope, point=1) {
-	// console.log("featureType", featureType, scope)
-	var prevValue = resultMap.get(featureType);
-	resultMap.set(featureType, prevValue+point);
-	FEATURE_TOTAL++;
-
-	for (var s of scope) {
-		prevValue = resultMap.get(s);
-		resultMap.set(s, prevValue+point);
-		SCOPE_TOTAL++;
-	}
-}
-
-function showResult(resultMap) {
-	var resultArray = [];
-	if (FILE_LENGTH > 0) {
-		resultMap.set("CommentPerFile", (COMMENT_LENGTH/FILE_LENGTH).toFixed(4));
-	}
-	resultMap.forEach(function(value, key){
-		if (value != 0) console.log(key, value)
-		if (KEYWORDS.indexOf(key) > -1) {
-			var val = (value > 0) ? (value/KEYWORD_TOTAL).toFixed(4) : 0;
-		} else if (PUNCTUATORS.indexOf(key) > -1) {
-			var val = (value > 0) ? (value/PUNCTUATOR_TOTAL).toFixed(4)  : 0;
-		} else if (FEATURES.indexOf(key) > -1) {
-			var val = (value > 0) ? (value/FEATURE_TOTAL).toFixed(4)  : 0;
-		} else if (SCOPES.indexOf(key) > -1) {
-			var val = (value > 0) ? (value/SCOPE_TOTAL).toFixed(4)  : 0;
-		} else {
-			var val = value;
-		}
-		resultArray.push(val);
-	});
-
-	console.log(`"`+filePath+`",`+resultArray)
-}
-
-function printHeader(resultMap) {
-	var header = [];
-	resultMap.forEach(function(value, key){
-		header.push(`"`+key+`"`);
-	});
-	console.log("header,"+header);
-}
-
-
 
 function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 	var NUMBER_OF_EVAL = 0;
@@ -327,14 +381,11 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 							updateResultMap(resultMap, "LongArray", coefficient);
 						}
 					} else if (variableName_Types[v].type == "pre_Function"){
-						// e.g. var myVariable = eval;	
 						if (verbose>0) console.log("FEATURE[FunctionObfuscation]:" + coefficient[coefficient.length-1] + ":" + scope + ":[", variableName_Type[0], "] -> [", variableName_Types[v].value, "]")
 						updateResultMap(resultMap, "FunctionObfuscation", coefficient);
 					} else if (variableName_Types[v].type == "BinaryExpression") {
 						if (verbose>0) console.log("FEATURE[VariableWithBinaryExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + variableName_Type[0] + " = " +variableName_Types[v].value);
 						updateResultMap(resultMap, "VariableWithBinaryExpression", coefficient);
-					} else if (variableName_Types[v].type == "ThisExpression") {
-						//here
 					} else if (variableName_Types[v].type == "UnaryExpression") {
 						if (verbose>0) console.log("FEATURE[VariableWithUnaryExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + variableName_Type[0] + " = " +variableName_Types[v].value);
 						updateResultMap(resultMap, "VariableWithUnaryExpression", coefficient);
@@ -403,8 +454,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 							var types = varMap.get(callee);
 							for (var t in types) {
 								if (types[t].type == "pre_Function") {
-									if (verbose>0) console.log("FEATURE[DecodeString_OR_DOM_FunctionCall]:" + coefficient[coefficient.length-1] + ":" + scope + ":", ASTUtils.getCode(node));
-									updateResultMap(resultMap, "DecodeString_OR_DOM_FunctionCall", coefficient);
+									if (verbose>0) console.log("FEATURE[PredefinedFuncCalls]:" + coefficient[coefficient.length-1] + ":" + scope + ":", ASTUtils.getCode(node));
+									updateResultMap(resultMap, "PredefinedFuncCalls", coefficient);
 								}
 							}
 						}
@@ -1030,6 +1081,21 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					updateResultMap(resultMap, "StringConcatation", coefficient);
 				}
 			}
+
+			var DOM_WINDOW_OPs = astNode.checkDOM_WINDOW_OPs(i,varMap);
+			if (DOM_WINDOW_OPs !== undefined && DOM_WINDOW_OPs.length > 0) {
+				for (var d of DOM_WINDOW_OPs) {
+					var type = d[0];
+					var featureContext = d[1];
+					if (type == "document") {
+						if (verbose>0) console.log("FEATURE[DOM_Operations]:" + featureContext[featureContext.length-1] + ":"+scope+":" +d[2]);
+						updateResultMap(resultMap, "DOM_Operations", coefficient);
+					} else if (type == "window") {
+						if (verbose>0) console.log("FEATURE[WINDOW_Operations]:" + featureContext[featureContext.length-1] + ":"+scope+":" +d[2]);
+						updateResultMap(resultMap, "WINDOW_Operations", coefficient);
+					}
+				}
+			}
 		}
 	}
 
@@ -1125,5 +1191,6 @@ if (showHeader) {
 	// ========================
 	if (calcualteWeight && resultMap.size > 0) showResult(resultMap);
 } 
+
 
 process.exit(0)

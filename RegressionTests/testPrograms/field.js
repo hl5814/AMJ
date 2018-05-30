@@ -1,16 +1,16 @@
 //regular field access
 var a = {"f":0, "test":1};
 a.f = "str";
-eval(a.f)
+MJSA_TEST(a.f)
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [a,[object Object]] ==> eval("str")
 
 //array index field access
-eval(a["f"])
+MJSA_TEST(a["f"])
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [a,[object Object]] ==> eval("str")
 
 //reference variable field access
 var b = "f";
-eval(a[b])
+MJSA_TEST(a[b])
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [a,[object Object]] ==> eval("str")
 
 //multiple values for object field
@@ -20,7 +20,7 @@ if (1>2){
 } else {
 	x.a = "c";
 }
-eval(x.a);
+MJSA_TEST(x.a);
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b")
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("c")
 
@@ -31,8 +31,8 @@ if (1>2) {
 } else {
 	x = {b:"b2"};
 }
-eval(x.a);
-eval(x.b);
+MJSA_TEST(x.a);
+MJSA_TEST(x.b);
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b1")
 // FEATURE[StringOp] in :User_Program: eval(Object->STRING) => [x,[object Object]] ==> eval("b2")
 
@@ -40,19 +40,19 @@ eval(x.b);
 var a = [1,"b",3];
 var f = {b:2};
 f[a[1]] = "str";
-eval(f[a[1]]);
+MJSA_TEST(f[a[1]]);
 // FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [f,[object Object]] ==> eval("str")
 
 // array in object field
 var f = {b:[1,"2"]};
-eval(f.b[1]);
+MJSA_TEST(f.b[1]);
 // FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [f,[object Object],[object Object]] ==> eval("2")
 
 // nested field objects
 var f = {b:{c:"nf"}};
-eval(f.b.c);
+MJSA_TEST(f.b.c);
 // FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [f,[object Object],[object Object]] ==> eval("nf")
 
 var f = {b:{c:{d:"d"}}, t:"c"};
-eval(f["b"][f.t]["d"]);
+MJSA_TEST(f["b"][f.t]["d"]);
 // FEATURE[FuncCallOnStringVariable] in :User_Program: eval(Object->STRING) => [f,[object Object],[object Object],[object Object]] ==> eval("d")

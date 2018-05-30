@@ -7,12 +7,13 @@ import argparse, subprocess, math
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description="Classifier Malicious JS Code based on Clusters")
-parser.add_argument("file", type=str, help="path of JS file to be classifier")
 parser.add_argument('--verbose', '-v', action='count', default=-1,help="verbose level")
-parser.add_argument("neighbours", type=int, nargs='?', default=-1, help="number of neighbors used for classifier")
-
+parser.add_argument("-n", dest='neighbours', action='store',type=float, default=1, nargs='?', help="number of neighbors used for classifier")
+parser.add_argument("-s", dest='source', required=True, action='store',type=str,nargs='?',default="Clustering/cluster_result.csv", help="labled cluster csv file")
+parser.add_argument("-f", dest='file', required=True, action='store',type=str, help="JS/HTML file to be classifier")
 args = parser.parse_args()
 PATH = args.file
+SOURCE = args.source
 VERBOSE = args.verbose
 NEIGHBORS = args.neighbours
 
@@ -20,25 +21,21 @@ if (VERBOSE >= 0) : print("Parsing input file [" + PATH + "] ...")
 PARSE_RESULT = subprocess.run(['node', 'main.js','-s', PATH, "-w"], stdout=subprocess.PIPE)
 INPUT_ARRAY = [float(x) for x in PARSE_RESULT.stdout.decode('utf-8')[:-1].split(",")[1:] ]
 
-# read input data csv file
-DATA_FILES = ["Clustering/cluster_result.csv"]
-DATA_FILE_INDEX = 0
-
 # if cluster_result.csv not exists, run the clustering script first
-if not os.path.exists(DATA_FILES[DATA_FILE_INDEX]) or NEIGHBORS == -1:
-	if (VERBOSE >= 0) : print("Clustering Sample Data ... ")
-	r = subprocess.run(['python3', 'Clustering/cluster.py','-f','-s','2016.csv','-l','30','-p','0.1'], stdout=subprocess.PIPE).stdout.decode('utf-8')[:-1]
-	NEIGHBORS = math.ceil(float(r))
+if not os.path.exists(SOURCE):
+	print("[ERROR] Please run Clustering Script first to get the labled data for classification.")
+	exit(-1)
+
 
 file_path = os.path.abspath(os.path.dirname(__file__))
 parent_path = Path(file_path).parent
-cluster_data = os.path.join(parent_path, DATA_FILES[DATA_FILE_INDEX])
+cluster_data = os.path.join(parent_path, SOURCE)
 
-# if (VERBOSE >= 0) : print("Reading data from: " + str(dataCSV))
+print("Reading data from: " + str(cluster_data))
 
 
 df = pd.read_csv(cluster_data)
-X = df.drop(['cluster'], axis=1).as_matrix()
+X = df.drop(['cluster','header'], axis=1).as_matrix()
 y = df['cluster'].values
 
 neigh = KNeighborsClassifier(n_neighbors=NEIGHBORS)

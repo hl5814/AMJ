@@ -376,3 +376,26 @@ Week 6 	(4	5	6	7	8 ) <- finish Draft Report & extensions
 //==> dynamically stage, profiling on the code
 // unsupervised clustering
 
+# Install Script
+1) download nodeJS
+2) update npm to the latest version
+	sudo npm i -g npm 
+3) install related nodeJS libraries
+	npm i hashmap
+	npm i esprima
+	npm i esprima-ast-utils
+	npm i command-line-args
+	npm i fs
+4) install python3
+5) install related python libraries
+	pip3 install scipy
+	pip3 install -U scikit-learn
+	pip3 install pandas
+	pip3 install matplotlib
+
+
+
+
+
+
+

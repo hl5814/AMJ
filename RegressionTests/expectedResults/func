@@ -1,24 +1,24 @@
-FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Assign Variable by:b=function a (){eval("str1.1");}
-FEATURE[FuncCallOnStringVariable]:in_function:function a (){eval("str1.1");}:eval(STRING) => eval("str1.1")
-FEATURE[DecodeString_OR_DOM_FunctionCall]:in_main:User_Program: eval("str1.1")
-FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Init Variable by:b=function a (){eval("str1.2");}
-FEATURE[FuncCallOnStringVariable]:in_function:function a (){eval("str1.2");}:eval(STRING) => eval("str1.2")
-FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Assign Variable by:c=function(){eval("str2.1");}
-FEATURE[FuncCallOnStringVariable]:in_function:function(){eval("str2.1");}:eval(STRING) => eval("str2.1")
-FEATURE[DecodeString_OR_DOM_FunctionCall]:in_main:User_Program: eval("str2.1")
-FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Init Variable by:c=function(){eval("str2.2");}
-FEATURE[FuncCallOnStringVariable]:in_function:function(){eval("str2.2");}:eval(STRING) => eval("str2.2")
-FEATURE[FuncCallOnStringVariable]:in_function:testScope2:eval(Object->STRING) => [test] ==> eval("inner2")
-FEATURE[FuncCallOnStringVariable]:in_function:testScope1:eval(Object->STRING) => [test] ==> eval("inner1")
-FEATURE[FunctionObfuscation]:in_main:User_Program:[ b ] -> [ eval ]
+FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Assign Variable by:b=function a (){MJSA_TEST("str1.1");}
+FEATURE[FuncCallOnStringVariable]:in_function:function a (){MJSA_TEST("str1.1");}:MJSA_TEST(STRING) => MJSA_TEST("str1.1")
+FEATURE[PredefinedFuncCalls]:in_main:User_Program: MJSA_TEST("str1.1")
+FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Init Variable by:b=function a (){MJSA_TEST("str1.2");}
+FEATURE[FuncCallOnStringVariable]:in_function:function a (){MJSA_TEST("str1.2");}:MJSA_TEST(STRING) => MJSA_TEST("str1.2")
+FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Assign Variable by:c=function(){MJSA_TEST("str2.1");}
+FEATURE[FuncCallOnStringVariable]:in_function:function(){MJSA_TEST("str2.1");}:MJSA_TEST(STRING) => MJSA_TEST("str2.1")
+FEATURE[PredefinedFuncCalls]:in_main:User_Program: MJSA_TEST("str2.1")
+FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Init Variable by:c=function(){MJSA_TEST("str2.2");}
+FEATURE[FuncCallOnStringVariable]:in_function:function(){MJSA_TEST("str2.2");}:MJSA_TEST(STRING) => MJSA_TEST("str2.2")
+FEATURE[FuncCallOnStringVariable]:in_function:testScope2:MJSA_TEST(Object->STRING) => [test] ==> MJSA_TEST("inner2")
+FEATURE[FuncCallOnStringVariable]:in_function:testScope1:MJSA_TEST(Object->STRING) => [test] ==> MJSA_TEST("inner1")
+FEATURE[FunctionObfuscation]:in_main:User_Program:[ b ] -> [ MJSA_TEST ]
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:b(STRING) => b("test2")
-FEATURE[FunctionObfuscation]:in_if:if_statements:[ a ] -> [ eval ]
-FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => eval("test")
+FEATURE[FunctionObfuscation]:in_if:if_statements:[ a ] -> [ MJSA_TEST ]
+FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => MJSA_TEST("test")
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => b("test")
 FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Assign Variable by:a.prototype.myFunc=function(x) {
-	return eval(x);
+	return MJSA_TEST(x);
 }
 FEATURE[FuncCallOnStringVariable]:in_return:ReturnStatement in function(x) {
-	return eval(x);
-}:eval(Object->STRING) => [x] ==> eval(STR)
-FEATURE[DecodeString_OR_DOM_FunctionCall]:in_main:User_Program:        
+	return MJSA_TEST(x);
+}:MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST(STR)
+FEATURE[PredefinedFuncCalls]:in_main:User_Program:             
