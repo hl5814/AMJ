@@ -53,18 +53,23 @@ X =df.as_matrix()
 HEADER = df.columns.values
 
 # generate the linkage matrix 
-LINKAGE_MATRIX = ['single', 'complete', 'average', 'ward', 'weighted', 'centroid', 'median']
-# TOP_COPHENET = 0
-L_MATRIX = "ward"
+LINKAGE_MATRIX = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']
+TOP_COPHENET = 0
+L_MATRIX = "average"
 # for L in LINKAGE_MATRIX:
 #     Z = linkage(X, L)
 #     c, coph_dists = cophenet(Z, pdist(X))
+#     print("linkage:", L)
+#     print("cophenet:", c)
 #     if c > TOP_COPHENET:
 #         TOP_COPHENET = c
 #         L_MATRIX = L
 # Z = linkage(X, L_MATRIX)
+
+# L_MATRIX = "single"
+# L_MATRIX = "ward"
 if (VERBOSE >= 0) : print("Clustering into " + str(NODES) + " clusters . . .\n")
-Z = linkage(X, 'ward')
+Z = linkage(X, L_MATRIX)
 c, coph_dists = cophenet(Z, pdist(X))
 if (VERBOSE >= 0) : print("Using :[", L_MATRIX, "] as linkage matrix\nwith cophenet value: ", c, "\n")
 
@@ -81,7 +86,8 @@ def fancy_dendrogram(*args, **kwargs):
 
     ddata = dendrogram(*args, **kwargs)
     if not kwargs.get('no_plot', False):
-        plt.title('Hierarchical Clustering Dendrogram (truncated)')
+        # plt.title('Hierarchical Clustering Dendrogram (truncated)')
+        plt.title('Hierarchical Clustering Dendrogram(' + L_MATRIX+")")
         plt.xlabel('cluster index')
         plt.ylabel('distance')
         for i, d, c in zip(ddata['icoord'], ddata['dcoord'], ddata['color_list']):
@@ -134,33 +140,35 @@ FINAL_REPORT = {    "number of files":"",
                     "topPunctuators": ""
                 }
 
-FEATURE_LIST = [    "VariableWithFunctionExpression",  
-                    "VariableWithExpression",          
-                    "VariableWithThisExpression",      
-                    "VariableWithUnaryExpression",     
-                    "VariableWithBinaryExpression",    
-                    "VariableWithCallExpression",      
-                    "VariableWithLogicalExpression",   
-                    "VariableWithBitOperation",        
-                    "FunctionObfuscation",             
-                    "StringConcatation",               
-                    "DecodeString_OR_DOM_FunctionCall",
-                    "FuncCallOnBinaryExpr",            
-                    "FuncCallOnUnaryExpr",            
-                    "FuncCallOnStringVariable",       
-                    "FuncCallOnCallExpr",             
-                    "FuncCallOnNonLocalArray",        
-                    "FuncCallOnUnkonwnReference",     
-                    "HtmlCommentInScriptBlock",       
-                    "AssigningToThis",                
-                    "ConditionalCompilationCode",     
-                    "DotNotationInFunctionName",      
-                    "LongArray",                      
-                    "LongExpression",                  
-                    "Eval",                            
-                    "UnfoldEvalSuccess",               
-                    "Unescape",                        
-                    "UnfoldUnescapeSuccess"]
+FEATURE_LIST = [    "VariableWithFunctionExpression",
+                    "VariableWithExpression",       
+                    "VariableWithThisExpression",   
+                    "VariableWithUnaryExpression",  
+                    "VariableWithBinaryExpression", 
+                    "VariableWithCallExpression",   
+                    "VariableWithLogicalExpression",
+                    "VariableWithBitOperation",     
+                    "FunctionObfuscation",          
+                    "StringConcatation",            
+                    "PredefinedFuncCalls",          
+                    "DOM_Operations",               
+                    "WINDOW_Operations",            
+                    "FuncCallOnBinaryExpr",         
+                    "FuncCallOnUnaryExpr",          
+                    "FuncCallOnStringVariable",     
+                    "FuncCallOnCallExpr",           
+                    "FuncCallOnNonLocalArray",      
+                    "FuncCallOnUnkonwnReference",   
+                    "HtmlCommentInScriptBlock",     
+                    "AssigningToThis",              
+                    "ConditionalCompilationCode",   
+                    "DotNotationInFunctionName",    
+                    "LongArray",                    
+                    "LongExpression",               
+                    "Eval",                         
+                    "UnfoldEvalSuccess",            
+                    "Unescape",                     
+                    "UnfoldUnescapeSuccess"]        
 
 SCOPE_LIST = ["in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]
 
@@ -364,25 +372,25 @@ else:
 # draw full dendrogram
 if (args.dendrogram):
     fig = plt.figure()
-    plt.figure(figsize=(25, 10))
+    plt.figure(figsize=(20, 8))
     sys.setrecursionlimit(1500)
-    max_d = 5  # max_d as in max_distance for colouring sub tree
+    max_d = 0.5  # max_d as in max_distance for colouring sub tree
     fancy_dendrogram(
         Z,
         # leaf_label_func=llf,
-        truncate_mode='lastp',
-        p=NODES,
+        # truncate_mode='lastp',
+        # p=NODES,
         # truncate_mode='level',
         # p=100,
         leaf_font_size=8.,
         show_contracted=True,
-        annotate_above=5,
+        annotate_above=2,
         max_d=max_d,  # plot a horizontal cut-off line
     )
     if RESULT_PATH != "cluster_result.csv":
         plt.savefig(os.path.join(file_path,'t_dendrogram.png'))
     else:
-        plt.savefig(os.path.join(file_path,'dendrogram.png'))
+        plt.savefig(os.path.join(file_path,'dendrogram('+L_MATRIX+').png'))
 
 
 

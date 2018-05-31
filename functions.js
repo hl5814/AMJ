@@ -538,6 +538,7 @@ AST.prototype.checkStaticMemberFunctionCall=function(node, varMap, verbose=false
 
 AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbose=false) {
 	const expression = new Expr(initExpr);
+	// console.log(initExpr)
 	if (initExpr == null){
 		return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 	}
@@ -550,7 +551,11 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 	} else if (initExpr.type == "ThisExpression"){
 		return [identifier, [{ type: 'ThisExpression', value: "this" }]];
 	} else if (initExpr.type == "UnaryExpression"){
-		return [identifier, [{ type: 'UnaryExpression', value: args }]];
+		if (initExpr.operator == "-") {
+			return [identifier, [{ type: 'Numeric', value: args }]];
+		} else {
+			return [identifier, [{ type: 'UnaryExpression', value: args }]];
+		}
 	} else if (initExpr.type == "NewExpression"){
 		var parentNode = this;
 		var trueVal;
@@ -681,12 +686,18 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					}
 					if (values !== undefined && joinBy !== undefined) {
 						for (var v of values) {
-							if (v.type == "ArrayExpression") {
+							if (v.type == "ArrayExpression" || v.type == "NewExpression") {
 								var array = [];
 								var result = "";
 								try {
 									for (var c = 0; c < v.value.length; c++) {
-										var subStr = (new Expr(v.value[c][1][0])).getArg(node, "", varMap, true, verbose).replace(/"/g,"");
+										if (v.value[c] === undefined) continue;
+										var subStr;
+										if (v.value[c][1][0].type == "String") {
+											subStr = v.value[c][1][0].value.slice(1,-1);
+										} else {
+											subStr = (new Expr(v.value[c][1][0])).getArg(node, "", varMap, true, verbose);
+										}
 										array.push(subStr);
 									}
 									valType = "String";
@@ -727,6 +738,29 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 										trueVal.push([c, [{type:"String", value:'"'+splittedValues[c]+'"'}]])
 									}
 									if (trueVal.length == 0) trueVal = [];
+								} catch(err){}
+							}
+						}
+					}	
+				}  else if (operation == "substr" || operation == "substring") { 
+					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
+					var arg1, arg2;
+					if (node.arguments !== undefined && node.arguments.length == 2) {
+						var v1 = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
+						if (v1 !== undefined && v1.type == "Numeric") {
+							arg1 = v1.value;
+						}
+						var v2 = parentNode.getVariableInitValue(identifier, node.arguments[1], varMap, verbose)[1][0];
+						if (v1 !== undefined && v2.type == "Numeric") {
+							arg2 = v2.value;
+						}
+					}
+					if (values !== undefined && arg1 !== undefined && arg2 !== undefined) {
+						for (var v of values) {
+							if (v.type == "String") {
+								try {
+									valType = "String";;
+									trueVal = "'" + v.value[operation](arg1, arg2) + "'";
 								} catch(err){}
 							}
 						}
@@ -843,8 +877,9 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		const object = (new Expr(initExpr)).getValueFromMemberExpression(this._node, identifier, varMap, false, verbose);
 		const object_name = object[0];
 		const field_name  = object[1];
+
 		if (object_name == "this") {
-			return [identifier, [{ type: 'ThisExpression', value: "this" }]];
+			return [identifier, field_name];
 		}
 		const field = varMap.get(object_name);
 		var values = [];
@@ -1033,10 +1068,14 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 					} 
 					continue;
 				}
-				
+
 				if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
-					if (index !== undefined && r_vs[r].value[index] !== undefined) {
-						r_vs[r].value[index][1] = [newValue];
+					if (index !== undefined) {
+						if (r_vs[r].value[index] === undefined){
+							r_vs[r].value[index] = [index, [newValue]];
+						} else {
+							r_vs[r].value[index][1] = [newValue];
+						}
 					} 
 				}
 			}
@@ -1208,18 +1247,16 @@ AST.prototype.getAssignmentLeftRight = function(expr, varMap, verbose=false) {
 	var binaryOPs = ["+=", "-=", "|=", "&=", "*=", "/=", "%=", ">>=", "<<=", "^=", "~=", ">>>="];
 	var trueResult = [];
 	if (binaryOPs.indexOf(expr.operator) != -1) {
-		try {
-			for (var lhs_value of lhsValues) {
-				if (lhs_value.type == "String" || lhs_value.type == "Numeric") {
-					trueResult.push({type:lhs_value.type ,value:eval(lhs_value.value + expr.operator.replace(/=/,"") + result[0].value)});
-				}
+		for (var lhs_value of lhsValues) {
+			if (lhs_value.type == "String" || lhs_value.type == "Numeric") {
+				trueResult.push({type:lhs_value.type ,value:("'"+lhs_value.value.slice(1,-1) + result[0].value.slice(1,-1) + "'")});
 			}
-			if (lhs.type != "MemberExpression") return [identifier, trueResult];
-		} catch(err){}
+		}
+
+		if (lhs.type != "MemberExpression") return [identifier, trueResult];
 	}
 
 	if (trueResult.length > 0) result = trueResult;
-
 	if (lhs.type == "MemberExpression" && result !== undefined && result.length > 0) {
 		var lhs_obj = (new Expr(lhs)).getValueFromMemberExpression(this._node, "", varMap, false,verbose);
 		var args;
@@ -1234,7 +1271,6 @@ AST.prototype.getAssignmentLeftRight = function(expr, varMap, verbose=false) {
 		}
 		return "SKIP";
 	}
-
 	return [identifier, result];
 };
 
@@ -1597,6 +1633,15 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 		identifier = val;
 	} else if (this._expr.object.type == "ThisExpression"){
 		identifier = "this";
+		var astNode = new AST(node);
+		var property = astNode.getVariableInitValue("", this._expr.property, varMap, verbose)[1][0];
+		var result;
+		if (property !== undefined && property.type == "String"){
+			var result = varMap.get(property.value.slice(1,-1));
+		}
+		if (result !== undefined) {
+			return ["this", result];
+		}
 	}else {
 		identifier = this._expr.object.name;
 	}

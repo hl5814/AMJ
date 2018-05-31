@@ -1,2 +1,2 @@
 FEATURE[PredefinedFuncCalls]:in_main:User_Program: String.fromCharCode(65)
-FEATURE[FuncCallOnStringVariable]:in_main:User_Program:MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST(aA)
+FEATURE[FuncCallOnStringVariable]:in_main:User_Program:MJSA_TEST(Object->STRING) => [x] ==> MJSA_TEST('aA')
