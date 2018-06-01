@@ -87,7 +87,7 @@ if (options.help) {
 var init_varMap = new Functions.VariableMap(new HashMap());
 
 var pre_funcs = ["MJSA_TEST", "eval", "unescape", "replace", "write", "writeln", "atob", "btoa", "toString", "String.fromCharCode", "fromCharCode",
-				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring", "concat","join","split","reverse"];
+				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring", "concat","join","split","reverse", "slice"];
 
 for (var f in pre_funcs) {
 	init_varMap.setVariable(pre_funcs[f], [{ type: 'pre_Function', value: pre_funcs[f] }] );

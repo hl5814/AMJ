@@ -594,6 +594,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					object = node.callee.object;
 					try {
 						operation = eval(ASTUtils.getCode(node.callee.property));
+
 					} catch(err){
 						try {
 							var properties = parentNode.getVariableInitValue(identifier, node.callee.property, varMap, verbose)[1];
@@ -742,25 +743,71 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 							}
 						}
 					}	
-				}  else if (operation == "substr" || operation == "substring") { 
+				}  else if (operation == "slice") { 
+					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
+					var start, end;
+					if (node.arguments !== undefined) {
+						var arg1 = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
+						if (arg1 !== undefined && arg1.type == "Numeric") {
+							start = arg1.value;
+						}
+						if (node.arguments.length == 2){
+							var arg2 = parentNode.getVariableInitValue(identifier, node.arguments[1], varMap, verbose)[1][0];
+							if (arg2 !== undefined && arg2.type == "Numeric") {
+								end = arg2.value;
+							}
+						}
+					}
+					
+					if (values !== undefined && start !== undefined) {
+						for (var v of values) {
+							if (v.type == "String") { // String.prototype.slice()
+								try {
+									valType = "String";
+									if (end !== undefined) {
+										trueVal = "'" + (v.value).slice(1, -1).slice(start, end) + "'";
+									} else {
+										trueVal = "'" + (v.value).slice(1, -1).slice(start) + "'";
+									}
+								} catch(err){}
+							} else if (v.type == "ArrayExpression" || v.type == "NewExpression") {
+								var arrayCopy = [];
+								var endIndex = v.value.length;
+								if (end !== undefined) endIndex = Math.min(end, endIndex);
+								var count = 0;
+								for (start; start < endIndex; start++) {
+									arrayCopy.push([count++, v.value[start][1]])
+								}
+								valType = "ArrayExpression";
+								trueVal = arrayCopy;
+							}
+						}
+					}	
+				} else if (operation == "substr" || operation == "substring") { 
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
 					var arg1, arg2;
-					if (node.arguments !== undefined && node.arguments.length == 2) {
+					if (node.arguments !== undefined) {
 						var v1 = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
 						if (v1 !== undefined && v1.type == "Numeric") {
 							arg1 = v1.value;
 						}
-						var v2 = parentNode.getVariableInitValue(identifier, node.arguments[1], varMap, verbose)[1][0];
-						if (v1 !== undefined && v2.type == "Numeric") {
-							arg2 = v2.value;
+						if (node.arguments.length == 2){
+							var v2 = parentNode.getVariableInitValue(identifier, node.arguments[1], varMap, verbose)[1][0];
+							if (v1 !== undefined && v2.type == "Numeric") {
+								arg2 = v2.value;
+							}
 						}
 					}
-					if (values !== undefined && arg1 !== undefined && arg2 !== undefined) {
+					if (values !== undefined && arg1 !== undefined) {
 						for (var v of values) {
 							if (v.type == "String") {
 								try {
 									valType = "String";;
-									trueVal = "'" + v.value[operation](arg1, arg2) + "'";
+									if (arg2 !== undefined) {
+										trueVal = "'" + (v.value).slice(1,-1)[operation](arg1, arg2) + "'";
+									} else {
+										trueVal = "'" + (v.value).slice(1,-1)[operation](arg1) + "'";
+									}
 								} catch(err){}
 							}
 						}
@@ -1001,15 +1048,23 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 			var i = 0;
 			var codeString = ts[i];
 			for (i; i < ts.length-1; i++){
-				if (operatorList[i])
 				codeString = "(" + codeString + operatorList[i] + ts[i+1] + ")"
 			}
-			// console.log("codeString:", codeString)
 			var result = eval(codeString);
 			return [type, result];
 		} catch(err) {
-			var result = "UNKONWN";
-			return ["UNKONWN", result];
+			try {
+				var i = 0;
+				var codeString = ts[i];
+				for (i; i < ts.length-1; i++){
+					codeString = codeString + operatorList[i] + ts[i+1];
+				}
+				var result = eval(codeString);
+				return [type, result];
+			} catch(err){
+				var result = "UNKONWN";
+				return ["UNKONWN", result];
+			}
 		}
 	}
 }
