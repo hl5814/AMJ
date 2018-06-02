@@ -11,10 +11,10 @@ FEATURE[FuncCallOnStringVariable]:in_function:function(){MJSA_TEST("str2.2");}:M
 FEATURE[FuncCallOnStringVariable]:in_function:testScope2:MJSA_TEST(Object->STRING) => [test] ==> MJSA_TEST("inner2")
 FEATURE[FuncCallOnStringVariable]:in_function:testScope1:MJSA_TEST(Object->STRING) => [test] ==> MJSA_TEST("inner1")
 FEATURE[FunctionObfuscation]:in_main:User_Program:[ b ] -> [ MJSA_TEST ]
-FEATURE[FuncCallOnStringVariable]:in_main:User_Program:b(STRING) => b("test2")
+FEATURE[FuncCallOnStringVariable]:in_main:User_Program:b(STRING) => [object Object]("test2")
 FEATURE[FunctionObfuscation]:in_if:if_statements:[ a ] -> [ MJSA_TEST ]
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => MJSA_TEST("test")
-FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => b("test")
+FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => [object Object]("test")
 FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Assign Variable by:a.prototype.myFunc=function(x) {
 	return MJSA_TEST(x);
 }

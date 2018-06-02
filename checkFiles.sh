@@ -86,8 +86,8 @@ if [ -d $SOURCE ]; then
                 continue
             fi
         fi
+        echo $filename
         if [ $DEBUG_MODE ]; then
-        	# echo $filename
             var=$(node main.js -s $filename ${VERBOSE} -f -w | grep -E "hongtao")
             ret_code=$?
             if [ $ret_code != 0 ]; then

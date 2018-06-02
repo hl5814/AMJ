@@ -1,5 +1,6 @@
 const ASTUtils = require("esprima-ast-utils");		  // load esprima-ast-utils
 const HashMap = require('hashmap');					  // load hashmap
+
 // *****************************
 // * AST Pattern Check Functions
 // *****************************
@@ -326,6 +327,8 @@ AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 
 			if (calleeName == "eval") {
 				var rawCodeList = [];
+
+					// console.log(node.arguments)
 				if (node.arguments[0].type == "Identifier") {
 					var types = varMap.get(node.arguments[0].name);
 
@@ -346,22 +349,12 @@ AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
 						}
 					}
 				}
-
 				if (rawCodeList.length == 0) {
 					rawCodeList.push(ASTUtils.getCode(node.arguments[0]));
 				}
 
 				for (var rawCode of rawCodeList) {
-					try {
-						HiddenString.push(["SUCCESS" ,CurrentContext, ASTUtils.getCode(node), eval("(" + rawCode + ")")]);
-					} catch (err) {
-						try {
-							rawCode= rawCode.slice(1, -1);
-							HiddenString.push(["SUCCESS" ,CurrentContext,ASTUtils.getCode(node), eval("(" + rawCode + ")")]);
-						} catch (err) {
-							HiddenString.push(["FAIL_TO_EXECUTE", CurrentContext, rawCode]);
-						}
-					}
+					HiddenString.push([CurrentContext, rawCode]);
 				}
 			}
 		}
@@ -458,9 +451,6 @@ AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 				}
 				if (!found) longStringList.push([CurrentContext, longString]);
 			}
-
-
-
 		}
 	});
 
@@ -538,7 +528,7 @@ AST.prototype.checkStaticMemberFunctionCall=function(node, varMap, verbose=false
 
 AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbose=false) {
 	const expression = new Expr(initExpr);
-	// console.log(initExpr)
+	// console.log("initExpr>", initExpr)
 	if (initExpr == null){
 		return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 	}
@@ -614,31 +604,43 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 				} else if (node.callee !== undefined && node.callee.property !== undefined && node.callee.property.type == "Identifier") {
 					object = node.callee.object;
 					operation = node.callee.property.name;
-				} else if (node.callee !== undefined && node.callee.type == "Identifier" && node.callee.name == "RegExp") {
-					valType = "RegExp";
-					if (node.arguments !== undefined) {
-						trueVal = [];
-						for (var arg of node.arguments) {
-							var v = parentNode.getVariableInitValue(identifier, arg, varMap, verbose)[1][0];
-							if (v !== undefined) trueVal.push(v);
+				} else if (node.callee !== undefined && node.callee.type == "Identifier"){
+					if(node.callee.name == "RegExp") {
+						valType = "RegExp";
+						if (node.arguments !== undefined) {
+							trueVal = [];
+							for (var arg of node.arguments) {
+								var v = parentNode.getVariableInitValue(identifier, arg, varMap, verbose)[1][0];
+								if (v !== undefined) trueVal.push(v);
+							}
+							if (trueVal.length == 0) trueVal = undefined;
 						}
-						if (trueVal.length == 0) trueVal = undefined;
-					}
-				} else if (node.callee !== undefined && node.callee.type == "Identifier" && node.callee.name == "unescape") {
-					valType = "String";
-					if (node.arguments !== undefined) {
-						var types = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1];
-						if (types !== undefined) {
-							for (var t of types) {
-								if (t.type == "String") {
-									try{
-										trueVal = unescape(t.value);
-									}catch(err){}
+					} else if (node.callee.name == "unescape") {
+						valType = "String";
+						if (node.arguments !== undefined) {
+							var types = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1];
+							if (types !== undefined) {
+								for (var t of types) {
+									if (t.type == "String") {
+										try{
+											trueVal = unescape(t.value);
+										}catch(err){}
+									}
 								}
 							}
 						}
+					} else if (node.callee.name == "Array") {
+						valType = "ArrayExpression";
+						if (node.arguments !== undefined) {
+							trueVal = [];
+							for (var arg in node.arguments) {
+								var v = parentNode.getVariableInitValue(identifier, node.arguments[arg], varMap, verbose)[1];
+								if (v !== undefined) trueVal.push([arg, v]);
+							}
+							if (trueVal.length == 0) trueVal = undefined;
+						}
 					}
-				} 
+				}
 
 				if (operation == "btoa" || operation == "atob") {
 					var m_str;
@@ -758,7 +760,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 							}
 						}
 					}
-					
+
 					if (values !== undefined && start !== undefined) {
 						for (var v of values) {
 							if (v.type == "String") { // String.prototype.slice()
@@ -869,8 +871,10 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						}
 					}
 				} else if (operation == "concat") { 
+					//TODO: concat for string
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
-					var concatedArray =[];
+					var concatedArray = [];
+					var concatedString = "";
 					if (values !== undefined) {
 						for (var v1 of values){
 							if (v1.type == "ArrayExpression") {
@@ -879,30 +883,58 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 										concatedArray.push(vv[1]);
 									}
 								}
+								valType = "ArrayExpression";
+							} else if (v1.type == "String") {
+								concatedString=concatedString.concat(v1.value.slice(1,-1));
+								valType = "String";
 							}
 						}
 					}
-					if (node.arguments !== undefined) {
+					if (node.arguments !== undefined && valType !== undefined) {
 						for (var arg of node.arguments){
 							var arg_val = parentNode.getVariableInitValue(identifier, arg, varMap, verbose)[1];
 							if (arg_val !== undefined) {
 								for (var v of arg_val){
-									if (v.type == "ArrayExpression") {
-										for (var vv of v.value){
-											if (vv !== undefined && vv.length == 2){
-												concatedArray.push(vv[1]);
+									if (valType == "String"){
+										if (v.type == "ArrayExpression") {
+											var tempArray = [];
+											for (var vv of v.value){
+												if (vv !== undefined && vv.length == 2){
+													if (vv[1] !== undefined && vv[1][0] !== undefined && vv[1][0].value !== undefined){
+														tempArray.push(vv[1][0].value);
+													}
+													
+												}
 											}
+											concatedString=concatedString.concat(tempArray);
+										} else if (v.type == "String") {
+											concatedString=concatedString.concat(v.value.slice(1,-1));
+										}
+									} else if (valType == "ArrayExpression") {
+										if (v.type == "ArrayExpression") {
+											for (var vv of v.value){
+												if (vv !== undefined && vv.length == 2){
+													concatedArray.push(vv[1]);
+												}
+											}
+										} else if (v.type == "String") {
+											concatedArray.push([{type:"String", value:v.value}]);
 										}
 									}
 								}
 							}
 						}
 					}
-					valType = "ArrayExpression";
+					
 					trueVal = []
-					for (var cv in concatedArray) {
-						trueVal.push([cv, concatedArray[cv]])
+					if (valType == "ArrayExpression"){
+						for (var cv in concatedArray) {
+							trueVal.push([cv, concatedArray[cv]])
+						}
+					} else if (valType == "String") {
+						trueVal = concatedString;
 					}
+					
 				}
 			}
 		});
@@ -910,8 +942,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		if (trueVal !== undefined && trueVal !== undefined) {
 			return [identifier, [{ type: valType, value: trueVal}]];
 		}
-
-		return [identifier, [{ type: 'CallExpression', value: args }]];
+		return [identifier, [{ type: 'CallExpression', value: initExpr }]];
 	} else if (initExpr.type == "ConditionalExpression"){
 		return [identifier, args];
 	} else if (initExpr.type == "SequenceExpression"){
@@ -944,6 +975,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 								values.concat([{ type: 'Numeric', value: f.value.length }]);
 							} else {
 								var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
+
 								if (f.value[f_name] !== undefined && f.value[f_name][1] !== undefined) values = values.concat(f.value[f_name][1]);
 							}
 						}
@@ -1303,8 +1335,17 @@ AST.prototype.getAssignmentLeftRight = function(expr, varMap, verbose=false) {
 	var trueResult = [];
 	if (binaryOPs.indexOf(expr.operator) != -1) {
 		for (var lhs_value of lhsValues) {
-			if (lhs_value.type == "String" || lhs_value.type == "Numeric") {
-				trueResult.push({type:lhs_value.type ,value:("'"+lhs_value.value.slice(1,-1) + result[0].value.slice(1,-1) + "'")});
+			if (lhs_value.type == "String") {
+				// console.log("lhs_value.value", lhs_value.value)
+				// console.log("result[0].value", result[0].value)
+				if (result[0].value.type == "String"){
+					trueResult.push({type:lhs_value.type ,value:("'"+lhs_value.value.slice(1,-1) + result[0].value.slice(1,-1) + "'")});
+				} else {
+					//TODO: result[0].value-> call expression (e.g.  x+=gh())
+					trueResult.push({type:lhs_value.type ,value:("'"+lhs_value.value.slice(1,-1) + result[0].value + "'")});
+				}
+			} else if (lhs_value.type == "Numeric"){
+				trueResult.push({type:lhs_value.type ,value:(parseInt(lhs_value.value) + parseInt(result[0].value))});
 			}
 		}
 
@@ -1421,9 +1462,9 @@ AST.prototype.updateFunctionParams= function(index, varMap, verbose=false) {
 	
 }
 
-AST.prototype.getFunctionArguments= function(index, varMap, verbose=false) {
+AST.prototype.getFunctionArguments= function(expr, varMap, verbose=false) {
 	//assert isExpressionStatement()
-	const expression = this._node.body[index].expression;
+	const expression = expr;
 	var args = [];
 	if (expression.arguments.length > 0) {
 		for (var i in expression.arguments) {
@@ -2064,6 +2105,10 @@ function VariableMap(varMap) {
 			} else if (value[v].type == "ArrayExpression" || value[v].type == "NewExpression") {
 				var newList = [];
 				for (const l of value[v].value) {
+					if (l === undefined) {
+						newList.push(undefined);
+						continue;
+					}
 					var index = l[0];
 					var values = l[1];
 					newList.push([index, values]);
@@ -2145,11 +2190,6 @@ VariableMap.prototype.deleteObjects = function(objectNameList) {
 }
 
 module.exports = {AST, Expr, VariableMap};
-
-
-
-
-
 
 
 

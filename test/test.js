@@ -103,7 +103,6 @@ describe('AST getVariableInitValue', function() {
                         ]}
                    ]
             ]);
-        expect(astNode.getVariableInitValue(declaration_blocks[9].id.name, declaration_blocks[9].init, varMap)).to.deep.equal(["j", [{type: "CallExpression",value: "eval(\"test\")"}]]);
         expect(astNode.getVariableInitValue(declaration_blocks[10].id.name, declaration_blocks[10].init, varMap)).to.deep.equal(["k", [{type: "FunctionExpression",value: "function(){var a=1;}"}]]);
         expect(astNode.getVariableInitValue(declaration_blocks[11].id.name, declaration_blocks[11].init, varMap)).to.deep.equal(["l", [{type: "FunctionExpression",value: "function a (){var a=1;}"}]]);
     
@@ -260,10 +259,9 @@ describe('Get Function Arguments', function() {
         const program = `eval();eval(a);
                          eval("test")`;
         const block = new Functions.AST(ASTUtils.parse(program));
-
-        expect(block.getFunctionArguments(0)).to.deep.equal([]);
-        expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'Identifier', value: 'a' }]);
-        expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'String', value: '"test"' }]);
+        expect(block.getFunctionArguments(block._node.body[0].expression)).to.deep.equal([]);
+        expect(block.getFunctionArguments(block._node.body[1].expression)).to.deep.equal([{type: 'Identifier', value: 'a' }]);
+        expect(block.getFunctionArguments(block._node.body[2].expression)).to.deep.equal([{type: 'String', value: '"test"' }]);
     });
 
     it(`getFunctionArguments() for multiple arguments`, function() {
@@ -271,12 +269,12 @@ describe('Get Function Arguments', function() {
                          eval("test1", "test2")`;
         const block = new Functions.AST(ASTUtils.parse(program));
 
-        expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'Numeric', value: '1'},
+        expect(block.getFunctionArguments(block._node.body[0].expression)).to.deep.equal([{type: 'Numeric', value: '1'},
                                                              {type: 'Numeric', value: '2'}]);
 
-        expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'Identifier', value: 'a' },
+        expect(block.getFunctionArguments(block._node.body[1].expression)).to.deep.equal([{type: 'Identifier', value: 'a' },
                                                              {type: 'Identifier', value: 'b' }]);
-        expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'String', value: '"test1"' },
+        expect(block.getFunctionArguments(block._node.body[2].expression)).to.deep.equal([{type: 'String', value: '"test1"' },
                                                              {type: 'String', value: '"test2"' }]);
     });
 
@@ -286,9 +284,9 @@ describe('Get Function Arguments', function() {
                          eval(1+a,"test"-a-1)`;
         const block = new Functions.AST(ASTUtils.parse(program));
 
-        expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'BinaryExpression', value: '1+1'}]);
-        expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'BinaryExpression', value: '(1+a)+\"test\"'}]);
-        expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'BinaryExpression', value: '1+a'},
+        expect(block.getFunctionArguments(block._node.body[0].expression)).to.deep.equal([{type: 'BinaryExpression', value: '1+1'}]);
+        expect(block.getFunctionArguments(block._node.body[1].expression)).to.deep.equal([{type: 'BinaryExpression', value: '(1+a)+\"test\"'}]);
+        expect(block.getFunctionArguments(block._node.body[2].expression)).to.deep.equal([{type: 'BinaryExpression', value: '1+a'},
                                                              {type: 'String', value: '(\"test\"-a)-1'}]);
     });
 
@@ -298,9 +296,9 @@ describe('Get Function Arguments', function() {
                          eval(-(1+a))`;
         const block = new Functions.AST(ASTUtils.parse(program));
 
-        expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'UnaryExpression', value: '-a'}]);
-        expect(block.getFunctionArguments(1)).to.deep.equal([{type: 'UnaryExpression', value: '-(-a)'}]);
-        expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'UnaryExpression', value: '-(1+a)'}]);
+        expect(block.getFunctionArguments(block._node.body[0].expression)).to.deep.equal([{type: 'UnaryExpression', value: '-a'}]);
+        expect(block.getFunctionArguments(block._node.body[1].expression)).to.deep.equal([{type: 'UnaryExpression', value: '-(-a)'}]);
+        expect(block.getFunctionArguments(block._node.body[2].expression)).to.deep.equal([{type: 'UnaryExpression', value: '-(1+a)'}]);
     });
     
     it(`getFunctionArguments() for FunctionCall arguments`, function() {
@@ -310,10 +308,10 @@ describe('Get Function Arguments', function() {
                          eval(foo(1+bar(a)))`;
         const block = new Functions.AST(ASTUtils.parse(program));
 
-        expect(block.getFunctionArguments(0)).to.deep.equal([{type: 'CallExpression', value: 'foo(a)'}]);
-        expect(block.getFunctionArguments(1)).to.deep.equal([]);
-        expect(block.getFunctionArguments(2)).to.deep.equal([{type: 'CallExpression', value: 'eval((eval(a)))'}]);
-        expect(block.getFunctionArguments(3)).to.deep.equal([{type: 'CallExpression', value: 'foo((1+(bar(a))))'}]);
+        expect(block.getFunctionArguments(block._node.body[0].expression)).to.deep.equal([{type: 'CallExpression', value: block._node.body[0].expression.arguments}]);
+        expect(block.getFunctionArguments(block._node.body[1].expression)).to.deep.equal([]);
+        expect(block.getFunctionArguments(block._node.body[2].expression)).to.deep.equal([{type: 'CallExpression', value: 'eval((eval(a)))'}]);
+        expect(block.getFunctionArguments(block._node.body[3].expression)).to.deep.equal([{type: 'CallExpression', value: 'foo((1+(bar(a))))'}]);
     });
 
     it(`getCalleeName() for FunctionCall arguments`, function() {

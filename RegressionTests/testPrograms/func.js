@@ -16,11 +16,12 @@ function testScope1() {
 	var test = "inner1";
 	function testScope2() {
 		var test = "inner2";
-		MJSA_TEST(test);     
+		MJSA_TEST(test);
 	}
 	MJSA_TEST(test);
 }
 MJSA_TEST(test);
+
 // FEATURE[StringOp] in :testScope2: MJSA_TEST(Object->STRING) => [test] ==> MJSA_TEST("inner2")
 // FEATURE[StringOp] in :testScope1: MJSA_TEST(Object->STRING) => [test] ==> MJSA_TEST("inner1")
 

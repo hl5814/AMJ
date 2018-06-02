@@ -121,8 +121,7 @@ const FEATURES = [	"VariableWithFunctionExpression",	// x = function(){};
 					"DotNotationInFunctionName",		// function a.prototype(){}
 					"LongArray",						// array contains >1000 elements (e.g.var x = [1,2,3,...., 1000])
 					"LongExpression",					// expression > 1000 tokens (e.g. var x = 1+2+3+4+...+1000);
-					"Eval",								// ..eval(..)
-					"UnfoldEvalSuccess",				// extract payload from eval successfully
+					"UnfoldEvalSuccess",				// eval(..)
 					"Unescape",							// ..unescape(..)
 					"UnfoldUnescapeSuccess"]			// execute unescape successfully
 					
@@ -553,11 +552,108 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					var user_defined_funName = "";
 
 					if (funcNames[f] != undefined && funcNames[f].value != funcName && funcNames[f].type == "pre_Function"){
-						user_defined_funName = funcNames[f].value;
+						user_defined_funName = funcName;
 					}
 
+					// try to execute the function call with user defined functions
+					if (funcNames[f].type == "user_Function" && !fastMode && funcName != scope){
+						console.log(funcName, scope)
+						var args = astNode.getFunctionArguments(astNode._node.body[i].expression, varMap);
+						// console.log(astNode._node.body[i].expression.arguments)
+						var trueArgs = [];
+						// console.log("\n>>", funcName, "\n")
+						if (args !== undefined) {
+							for (var a of args) {
+								if (a.type == "CallExpression") {
+									var fName = a.value.callee.name;
+									if (fName === undefined) {
+										// TODO:
+									}
+									var rValue;
+									try {
+										parseProgram(ASTUtils.getCode(a.value), fName, coefficient, varMap, verbose);
+										var returnValue;
+										var innerFunc = varMap.get(fName)[0];
+										if (innerFunc.type == "user_Function") {
+											ASTUtils.traverse(innerFunc.value, function(node){
+												if (node.type == "ReturnStatement" && node.argument !== null){
+													rValue = astNode.getVariableInitValue("", node.argument, varMap, verbose)[1];
+												}
+											});
+										}
+									} catch(err){}
+									if (rValue !== undefined) {
+										trueArgs = trueArgs.concat(rValue);
+									} else {
+										trueArgs.push(a)
+									}
+								} else {
+									trueArgs.push(a)
+								}
+							}
+						}
+
+						var parameters = funcNames[f].value.params; 
+						var codeBody = ASTUtils.getCode(funcNames[f].value.body).slice(1, -1);
+						var assignString = "";
+						if (parameters !== undefined && trueArgs !== undefined && codeBody !== undefined) {
+							// var funcArguments = astNode._node.body[i].expression.arguments;
+							// console.log(astNode._node.body[i].expression.arguments)
+							var funcArguments = trueArgs;
+							if (funcArguments !== undefined) {
+								for (var a in funcArguments) {
+									var arg = funcArguments[a];
+									// console.log("arg,",arg)
+									if (arg !== undefined && arg.type == "Numeric" || arg.type == "String") {
+										if (parameters[a] !== undefined) {
+											if (parameters[a].type == "Identifier") {
+												assignString += ("var " + parameters[a].name + " = " + arg.value + ";"); 
+											} else if (parameters[a].type == "AssignmentPattern") {
+												// TODO:  parameter with default value
+											}
+										}
+									}
+									
+								}
+							}
+							// var eVarMap = new Functions.VariableMap(varMap._varMap);
+							// var diffMap = new Functions.VariableMap(new HashMap());
+
+							codeBody = assignString + codeBody;
+
+
+							try {
+								const funcBodyVarMapList = parseProgram(codeBody, funcName, coefficient, varMap, verbose);
+								// get the return statement;
+								var returnValue;
+								ASTUtils.traverse(funcNames[f].value, function(node){
+									if (node.type == "ReturnStatement" && node.argument !== null){
+										var returnStatement = astNode.getVariableInitValue("", node.argument, varMap, verbose)[1][0];
+										// console.log(">", node.argument)
+										if (returnStatement !== undefined){
+											returnValue = returnStatement.value;
+											// console.log(">>>>return value:  ", returnValue)
+										}
+									}
+								});
+
+								// funcBodyVarMapList.forEach(function(val1) {
+								// 	// variable in @varMap
+								// 	var var_values = varMap.get(val1.key);
+								// 	if (var_values !== undefined) {
+								// 		diffMap.setVariable(val1.key, val1.value);
+								// 	}
+								// });
+								// diffMap.copyTo(varMap);
+							} catch(err){}
+						}
+						if (returnValue !== undefined) continue;
+					}
+
+
+
 					if (funcNames[f].type == "pre_Function" || funcNames[f].type == "user_Function") {
-						var args = astNode.getFunctionArguments(i, varMap);
+						var args = astNode.getFunctionArguments(astNode._node.body[i].expression, varMap);
 
 
 						// JS will ignore extra parameters, if function is defined with only one parameter
@@ -723,8 +819,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 			} 
 		} else if (astNode.isFunctionDeclaration(i)) {
 			// if node type is FunctionDeclaration, it must has function Name
-			funcName = astNode.getFunctionName(i);
-			varMap.setVariable(funcName, [{ type: 'user_Function', value: funcName }]);
+			var funcName = astNode.getFunctionName(i);
+			var funcBody = ASTUtils.getCode(ast.body[i]);
+			varMap.setVariable(funcName, [{ type: 'user_Function', value: ast.body[i] }]);
+
 			var emptyVarMap = new Functions.VariableMap(varMap._varMap);
 
 			// assume all function parameters might be String type when parsing function body
@@ -740,7 +838,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 			coef.push("in_return")
 			for (var returnS of returnStatement) {
 				// parse return statement
-				parseProgram(returnS, "ReturnStatement in " + funcName, coef, emptyVarMap, verbose);
+				parseProgram(returnS, funcName, coef, emptyVarMap, verbose);
 			}
 		} else if (astNode.isIfElseStatement(i)) {
 			astNode.removeJumpInstructions(i, ast);
@@ -752,7 +850,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 				var eVarMap = new Functions.VariableMap(varMap._varMap);
 				var coef = coefficient.slice();
 				coef.push("in_if")
-				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", coef, eVarMap, verbose);
+				const ifbranchVarMapList = parseProgram(branchExprs[b], scope, coef, eVarMap, verbose);
 
 				ifbranchVarMapList.forEach(function(val1) {
 					// variable in @varMap
@@ -790,7 +888,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 				var eVarMap = new Functions.VariableMap(varMap._varMap);
 				var coef = coefficient.slice();
 				coef.push("in_if")
-				const ifbranchVarMapList = parseProgram(branchExprs[b], "if_statements", coef, eVarMap, verbose);
+				const ifbranchVarMapList = parseProgram(branchExprs[b], scope, coef, eVarMap, verbose);
 
 				ifbranchVarMapList.forEach(function(val1) {
 					var prevBranch = diffMap.get(val1.key);
@@ -844,7 +942,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 
 			var coef = coefficient.slice();
 			coef.push("in_loop")
-			const subVarMapList2 = parseProgram(bodyExprs[bodyExprs.length-1], "for_statements", coef, eVarMap, verbose);
+			const subVarMapList2 = parseProgram(bodyExprs[bodyExprs.length-1], scope, coef, eVarMap, verbose);
 			subVarMapList2.forEach(function(val1) {
 				var prevValues = varMap.get(val1.key);
 				var typeSet = new Set();
@@ -866,7 +964,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 
 			var coef = coefficient.slice();
 			coef.push("in_loop")
-			const subVarMapList = parseProgram(bodyExprs[0], "while_statements", coef, eVarMap, verbose);
+			const subVarMapList = parseProgram(bodyExprs[0], scope, coef, eVarMap, verbose);
 			subVarMapList.forEach(function(val1) {
 				const prevValues = varMap.get(val1.key);
 				var typeSet = new Set();
@@ -886,7 +984,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 			// update varMap directly since the body code will always be executed at least once in do-while
 			var coef = coefficient.slice();
 			coef.push("in_loop")
-			parseProgram(bodyExprs[0], "while_statements", coef, varMap, verbose);
+			parseProgram(bodyExprs[0], scope, coef, varMap, verbose);
 		} else if (astNode.isTryStatement(i)) {
 			astNode.removeJumpInstructions(i, ast);
 
@@ -897,8 +995,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 
 			var coef = coefficient.slice();
 			coef.push("in_try")
-			const tryVarMapList   = parseProgram(bodyExprs[0], "Try_statements",   coef, eVarMap1, verbose);
-			const catchVarMapList = parseProgram(bodyExprs[1], "Catch_statements", coef, eVarMap2, verbose);
+			const tryVarMapList   = parseProgram(bodyExprs[0], scope, coef, eVarMap1, verbose);
+			const catchVarMapList = parseProgram(bodyExprs[1], scope, coef, eVarMap2, verbose);
 			
 			var diffMap = new Functions.VariableMap(new HashMap());
 
@@ -958,7 +1056,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 				diffMap.multipleUpdate(eVarMap3);
 				var coef = coefficient.slice();
 				coef.push("in_try")
-				parseProgram(bodyExprs[2], "Finally_statements", coef, eVarMap3, verbose);
+				parseProgram(bodyExprs[2], scope, coef, eVarMap3, verbose);
 
 				// for all @val in @finallyVarMapList, added to @diffMap regradless their previous value
 				finallyVarMapList.forEach(function(val1){
@@ -986,7 +1084,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 			if (default_case != -1) {
 				// parse default case first, this case will be executed if non-of the cases matched,
 				// i.e. will override main scope values anyway
-				parseProgram(bodyExprs[default_case], "switch_statements", coef, varMap, false);
+				parseProgram(bodyExprs[default_case], scope, coef, varMap, false);
 			}
 
 			for (var b = 0; b < bodyExprs.length; b++){
@@ -994,7 +1092,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 				if (b == default_case) continue;
 
 				var eVarMap = new Functions.VariableMap(varMap._varMap);
-				const switchBranchVarMapList = parseProgram(bodyExprs[b], "switch_statements", coef, eVarMap, verbose);
+				const switchBranchVarMapList = parseProgram(bodyExprs[b], scope, coef, eVarMap, verbose);
 
 				switchBranchVarMapList.forEach(function(val1) {
 					var prevBranch = diffMap.get(val1.key);
@@ -1026,32 +1124,25 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 				if (hiddenStringFromEvalList.length != 0) {
 					inEval = true;
 					for (var hiddenStringFromEval of hiddenStringFromEvalList){
-						var featureContext = hiddenStringFromEval[1];
-						if (verbose>0) console.log("FEATURE[Eval]:" + featureContext[featureContext.length-1]);
-						updateResultMap(resultMap, "Eval", featureContext);
-						if (hiddenStringFromEval[0] != "FAIL_TO_EXECUTE") {
-							var raw_depth = depth;
-							var hidden_depth = depth+1;
+						var featureContext = hiddenStringFromEval[0];
+						var raw_depth = depth;
+						var hidden_depth = depth+1;
 
-							if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess]:" + featureContext[featureContext.length-1] + ": hidden codes:\n" + hiddenStringFromEval[3]);
-							updateResultMap(resultMap, "UnfoldEvalSuccess", featureContext);
+						if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess]:" + featureContext[featureContext.length-1] + ": hidden codes:\n" + hiddenStringFromEval[1]);
+						updateResultMap(resultMap, "UnfoldEvalSuccess", featureContext);
 
-							var f_Name = filePath.split("/").slice(-1)[0];
+						var f_Name = filePath.split("/").slice(-1)[0];
 
-							if (!fs.existsSync('Payloads/'+raw_depth)) fs.mkdirSync('Payloads/'+raw_depth); 
-							if (!fs.existsSync('Payloads/'+hidden_depth)) fs.mkdirSync('Payloads/'+hidden_depth); 
+						if (!fs.existsSync('Payloads/'+raw_depth)) fs.mkdirSync('Payloads/'+raw_depth); 
+						fs.writeFileSync('Payloads/'+raw_depth+'/'+f_Name+"_"+NUMBER_OF_EVAL, hiddenStringFromEval[1], 'utf8', function (err, file) {if (err) throw err;});
 
-							fs.writeFileSync('Payloads/'+raw_depth+'/'+f_Name+"_"+NUMBER_OF_EVAL, hiddenStringFromEval[2], 'utf8', function (err, file) {if (err) throw err;});
-							fs.writeFileSync('Payloads/'+hidden_depth+'/'+f_Name+"_"+NUMBER_OF_EVAL, hiddenStringFromEval[3], 'utf8', function (err, file) {if (err) throw err;});
-
-							NUMBER_OF_EVAL++;
-							
+						NUMBER_OF_EVAL++;
+						
+						try{
+							parseProgram(hiddenStringFromEval[1].slice(1,-1), scope, coefficient, varMap, verbose, hidden_depth);
+						} catch(err){
 							try{
-								parseProgram(hiddenStringFromEval[3], scope, coefficient, varMap, verbose, hidden_depth);
-							} catch(err){}
-						} else {
-							try{
-								parseProgram(hiddenStringFromEval[2], scope, coefficient, varMap, verbose);
+								parseProgram(hiddenStringFromEval[1], scope, coefficient, varMap, verbose, hidden_depth);
 							} catch(err){}
 						}
 					}
