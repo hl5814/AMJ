@@ -283,84 +283,7 @@ AST.prototype.checkDOM_WINDOW_OPs=function(index, varMap, verbose=false) {
 
 	return DOM_OPs;
 }
-AST.prototype.checkEvalCalls=function(index, varMap, verbose=false) {
-	var parentNode = this._node;
-	var parent = this;
-	var HiddenString = [];
-	var CurrentContext = ["in_main"];
-	var ContextRange = [0,0];
-	ASTUtils.traverse(this._node.body[index], function(node){
-		if ((node.range[0] > ContextRange[1]) && (CurrentContext.length > 1)){
-			CurrentContext.pop();
-		}
-		if (node.type == "IfStatement") {
-			CurrentContext.push("in_if");
-			ContextRange = node.range;
-		} else if (node.type == "ForStatement" || node.type == "ForInStatement" ||
-				   node.type == "ForOfStatement" || node.type == "WhileStatement" ||
-				   node.tpye == "DoWhileStatement") {
-			CurrentContext.push("in_loop");
-			ContextRange = node.range;
-		} else if (node.type == "FunctionDeclaration" || node.type == "FunctionExpression"){
-			CurrentContext.push("in_function");
-			ContextRange = node.range;
-		} else if (node.type == "TryStatement") {
-			CurrentContext.push("in_try");
-			ContextRange = node.range;
-		} else if (node.type == "SwitchStatement") {
-			CurrentContext.push("in_switch");
-			ContextRange = node.range;
-		}
 
-		if (node.type == "CallExpression" && node.callee !== undefined && node.callee.type == "Identifier") {
-			var calleeName = node.callee.name;
-			if (calleeName != "eval") {
-				var types = varMap.get(calleeName);
-				if (types !== undefined) {
-					for (var t of types) {
-						if (t.type == "pre_Function" && t.value == "eval") {
-							calleeName = "eval";
-						}
-					}
-				}
-			}
-
-			if (calleeName == "eval") {
-				var rawCodeList = [];
-
-					// console.log(node.arguments)
-				if (node.arguments[0].type == "Identifier") {
-					var types = varMap.get(node.arguments[0].name);
-
-					if (types !== undefined) {
-						for (var t of types) {
-							if (t.type == "String") {
-								rawCodeList.push(t.value);
-							}
-						}
-					}
-				} else {
-					var values = parent.getVariableInitValue("", node.arguments[0], varMap, verbose)[1];
-					if (values !== undefined) {
-						for (var v of values) {
-							if (v.type == "String"){
-								rawCodeList.push(v.value);
-							}
-						}
-					}
-				}
-				if (rawCodeList.length == 0) {
-					rawCodeList.push(ASTUtils.getCode(node.arguments[0]));
-				}
-
-				for (var rawCode of rawCodeList) {
-					HiddenString.push([CurrentContext, rawCode]);
-				}
-			}
-		}
-	});
-	return HiddenString;
-}
 
 AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 	var longStringList = [];
@@ -540,6 +463,12 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		return [identifier, [{ type: 'ArrayExpression', value: args }]];
 	} else if (initExpr.type == "ThisExpression"){
 		return [identifier, [{ type: 'ThisExpression', value: "this" }]];
+	} else if (initExpr.type == "SpreadElement") {
+		if (args[0].type == "ArrayExpression") {
+			return [identifier, args];
+		} else {
+			return [identifier, [{ type: 'SpreadElement', value: args }]];
+		}
 	} else if (initExpr.type == "UnaryExpression"){
 		if (initExpr.operator == "-") {
 			return [identifier, [{ type: 'Numeric', value: args }]];
@@ -623,7 +552,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 								for (var t of types) {
 									if (t.type == "String") {
 										try{
-											trueVal = unescape(t.value);
+											trueVal = unescape(t.value.slice(1,-1));
 										}catch(err){}
 									}
 								}
@@ -656,6 +585,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					}
 					if (m_str !== undefined) {
 						valType = "String";
+
 						if (operation == "btoa") trueVal = "btoa("+m_str+")";
 						if (operation == "atob") trueVal = "atob("+m_str+")";
 					}
@@ -671,6 +601,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 								}
 								valType = "ArrayExpression";
 								trueVal = arrayCopy;
+								v.value = arrayCopy;
 							}
 						}
 					}	
@@ -713,11 +644,25 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
 					var splitBy;
 					var limit;
-					if (node.arguments !== undefined) {
+					if (node.arguments !== undefined && node.arguments.length > 0) {
 						var delimiter = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
 						if (delimiter !== undefined && delimiter.type == "String") {
 							splitBy = delimiter.value.replace(/"|'/g,"");
-						}
+						} else if (delimiter !== undefined && delimiter.type == "RegularExpression") {
+								try{
+									splitBy = eval(delimiter.value);
+								} catch(err) {}
+							} else if (delimiter !== undefined && delimiter.type == "RegExp") {
+								try {
+									if (delimiter.value.length == 1) {
+										var regE = eval(new RegExp(eval(delimiter.value[0].value)));
+									} else if (exp.value.length == 2) {
+										var regE = eval(new RegExp(eval(delimiter.value[0].value), eval(delimiter.value[1].value)));
+									}
+									splitBy = regE;
+								} catch(err) {}
+								
+							} 
 						if (node.arguments.length == 2){
 							var number = parentNode.getVariableInitValue(identifier, node.arguments[1], varMap, verbose)[1][0];
 							if (number !== undefined && number.type == "Numeric") {
@@ -732,7 +677,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 								var result = "";
 								try {
 									valType = "ArrayExpression";
-									splittedValues = v.value.replace(/"|'/g,"").split(splitBy);
+									splittedValues = v.value.slice(1,-1).split(splitBy);
 									trueVal = [];
 									for (var c = 0; c < splittedValues.length; c++) {
 										if (limit !== undefined && limit-- == 0){
@@ -744,7 +689,26 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 								} catch(err){}
 							}
 						}
-					}	
+					} else if (values !== undefined && node.arguments !== undefined && node.arguments.length == 0) {
+						for (var v of values) {
+							if (v.type == "String") {
+								var array = [];
+								var result = "";
+								try {
+									valType = "ArrayExpression";
+									splittedValues = v.value.replace(/"|'/g,"").split();
+									trueVal = [];
+									for (var c = 0; c < splittedValues.length; c++) {
+										if (limit !== undefined && limit-- == 0){
+											break;
+										}
+										trueVal.push([c, [{type:"String", value:'"'+splittedValues[c]+'"'}]])
+									}
+									if (trueVal.length == 0) trueVal = [];
+								} catch(err){}
+							}
+						}
+					}
 				}  else if (operation == "slice") { 
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
 					var start, end;
@@ -785,6 +749,30 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 							}
 						}
 					}	
+				}   else if (operation == "push") { 
+					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
+					var newElements = [];
+					if (node.arguments !== undefined) {
+						for (var na of node.arguments) {
+							var arg = parentNode.getVariableInitValue(identifier, na, varMap, verbose)[1];
+							if (arg !== undefined) {
+								newElements.push(arg);
+							}
+						}
+					}
+
+					if (values !== undefined && newElements.length > 0) {
+						for (var v of values) {
+							if (v.type == "ArrayExpression" || v.type == "NewExpression") {
+								var currentLength = v.value.lengt
+								for (var i=0; i < newElements.length; i++) {
+									v.value.push([currentLength+i, newElements[i]])
+								}
+								valType = "ArrayExpression";
+								trueVal = v.value;
+							}
+						}
+					}	
 				} else if (operation == "substr" || operation == "substring") { 
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
 					var arg1, arg2;
@@ -821,7 +809,6 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						if (node.arguments.length == 2){
 							var exp = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
 							var rep = parentNode.getVariableInitValue(identifier, node.arguments[1], varMap, verbose)[1][0];
-
 							regExpr = [];
 							if (exp !== undefined && exp.type == "RegularExpression") {
 								regExpr.push(exp.value);
@@ -835,7 +822,9 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 									regExpr.push(regE)
 								} catch(err) {}
 								
-							} 
+							} else if (exp !== undefined && exp.type == "String") {
+								regExpr.push(rep.value)
+							}
 							if (rep !== undefined && rep.type == "String") {
 								regExpr.push(rep.value)
 							}
@@ -856,22 +845,27 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 				} else if (operation == "fromCharCode") { 
 					var obj = (new Expr(object)).getArg(parentNode, identifier, varMap, false, verbose)
 					if (obj == "String") {
-						var val;
+						var val = [];
 						if (node.arguments !== undefined) {
-							var code = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1][0];
-							if (code !== undefined && code.type == "Numeric") {
-								val = code.value;
+							for (var i=0; i<node.arguments.length;i++){
+								var code = parentNode.getVariableInitValue(identifier, node.arguments[i], varMap, verbose)[1][0];
+								if (code !== undefined && code.type == "Numeric") {
+									val.push(code.value);
+								}
 							}
 						}
 						if (val !== undefined) {
 							try {
 								valType = "String";
-								trueVal = '"' + String.fromCharCode(val) + '"';
+								trueVal = "";
+								for (var i=0; i<val.length;i++){
+									trueVal += String.fromCharCode(val[i]);
+								}
+								trueVal = '"' + trueVal + '"';
 							} catch(err){}
 						}
 					}
 				} else if (operation == "concat") { 
-					//TODO: concat for string
 					var values = parentNode.getVariableInitValue(identifier, object, varMap, verbose)[1];
 					var concatedArray = [];
 					var concatedString = "";
@@ -896,19 +890,25 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 							if (arg_val !== undefined) {
 								for (var v of arg_val){
 									if (valType == "String"){
-										if (v.type == "ArrayExpression") {
+										if (v.type == "ArrayExpression" || v.type == "SpreadElement") {
 											var tempArray = [];
 											for (var vv of v.value){
 												if (vv !== undefined && vv.length == 2){
 													if (vv[1] !== undefined && vv[1][0] !== undefined && vv[1][0].value !== undefined){
-														tempArray.push(vv[1][0].value);
+														if (vv[1][0].type == "String") {
+															tempArray.push(vv[1][0].value.slice(1,-1));
+														} else {
+															tempArray.push(vv[1][0].value);
+														}
 													}
 													
 												}
 											}
-											concatedString=concatedString.concat(tempArray);
+											concatedString=concatedString.concat(...tempArray);
 										} else if (v.type == "String") {
 											concatedString=concatedString.concat(v.value.slice(1,-1));
+										} else {
+											concatedString=concatedString.concat(v.value);
 										}
 									} else if (valType == "ArrayExpression") {
 										if (v.type == "ArrayExpression") {
@@ -917,8 +917,8 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 													concatedArray.push(vv[1]);
 												}
 											}
-										} else if (v.type == "String") {
-											concatedArray.push([{type:"String", value:v.value}]);
+										} else {
+											concatedArray.push([v]);
 										}
 									}
 								}
@@ -932,7 +932,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 							trueVal.push([cv, concatedArray[cv]])
 						}
 					} else if (valType == "String") {
-						trueVal = concatedString;
+						trueVal = '"'+concatedString+'"';
 					}
 					
 				}
@@ -948,7 +948,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 	} else if (initExpr.type == "SequenceExpression"){
 		return [identifier, args[1]];
 	} else if (initExpr.type == "FunctionExpression"){ 
-		return [identifier, [{ type: 'FunctionExpression', value: ASTUtils.getCode(initExpr) }]];
+		return [identifier, [{ type: 'user_Function', value: initExpr }]];
 	} else if (initExpr.type == "ObjectExpression") {
 		return [identifier, [{type:"ObjectExpression", value:args}]];
 	} else if (initExpr.type == "MemberExpression") {
@@ -1593,6 +1593,18 @@ Expr.prototype.getArg=function(node, identifier, varMap, inner, verbose=false) {
 		var expr = new Expr(this._expr);
 		elem_array = expr.getValueFromArrayExpression(node, identifier, varMap, inner, verbose);
 		return elem_array;
+	}  else if (this._expr.type == "SpreadElement") {
+		var expr = new Expr(this._expr);
+		var argument;
+		if (this._expr.argument.type == "Identifier") {
+			argument = this._expr.argument.name;
+			var elementObj = varMap.get(argument);
+			return elementObj;
+		} else if (this._expr.argument.type == "ArrayExpression") {
+			var arrayElement = (new Expr(this._expr.argument)).getValueFromArrayExpression(node, identifier, varMap, inner, verbose);
+			return [{type:"ArrayExpression", value: arrayElement}];
+		}
+		
 	} else if (this._expr.type == "MemberExpression") {
 		var expr = new Expr(this._expr);
 		var object_index = expr.getValueFromMemberExpression(node, identifier, varMap, inner, verbose);
@@ -2182,12 +2194,21 @@ VariableMap.prototype.copyTo = function(destinationVarMap) {
 }
 
 VariableMap.prototype.deleteObjects = function(objectNameList) {
+	// var deleteList = objectNameList;
+	// this._varMap.forEach(function(value, key){
+	// 	if (key.endsWith("_return")){
+	// 		deleteList.push(key);
+	// 	}
+	// });
+
 	for (var objectName of objectNameList) {
 		if (this._varMap.has(objectName)) {
 			this._varMap.remove(objectName); 
 		}
 	}
+
 }
+
 
 module.exports = {AST, Expr, VariableMap};
 

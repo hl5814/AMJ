@@ -87,7 +87,7 @@ if (options.help) {
 var init_varMap = new Functions.VariableMap(new HashMap());
 
 var pre_funcs = ["MJSA_TEST", "eval", "unescape", "replace", "write", "writeln", "atob", "btoa", "toString", "String.fromCharCode", "fromCharCode",
-				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring", "concat","join","split","reverse", "slice"];
+				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring", "concat","join","split","reverse", "slice", "push"];
 
 for (var f in pre_funcs) {
 	init_varMap.setVariable(pre_funcs[f], [{ type: 'pre_Function', value: pre_funcs[f] }] );
@@ -257,6 +257,125 @@ Set.prototype.my_add=function(values){
 	}
 }
 
+function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap, verbose=false){
+	// console.log("!! in !!")
+	var eVarMap = new Functions.VariableMap(varMap._varMap);
+	var diffMap = new Functions.VariableMap(new HashMap());
+	var trueArgs = [];
+	if (args !== undefined) {
+		for (var a of args) {
+			if (a.type == "CallExpression") {
+				// console.log("arg is CallExpression:")
+				var fName = a.value.callee.name;
+				if (fName === undefined) {
+					// TODO:
+				}
+				var rValue;
+				try {
+					const funcBodyVarMapList = parseProgram(ASTUtils.getCode(a.value), fName, coefficient, eVarMap, verbose);
+					var hasReturnValue = eVarMap.get(fName+"_return");
+					if (hasReturnValue !== undefined && hasReturnValue.length >0) {
+						rValue = hasReturnValue.pop();
+					} else {
+						var returnValue;
+						var innerFunc = eVarMap.get(fName)[0];
+						if (innerFunc.type == "user_Function") {
+							ASTUtils.traverse(innerFunc.value, function(node){
+								if (node.type == "ReturnStatement" && node.argument !== null){
+									// console.log(node.argument)
+									rValue = thisAST.getVariableInitValue("", node.argument, eVarMap, verbose)[1];
+								}
+							});
+
+							funcBodyVarMapList.forEach(function(val1) {
+								var prevVal = varMap.get(val1.key);
+								if (prevVal !== undefined) {
+									var typeSet = new Set();
+									typeSet.my_add(val1.value);
+									diffMap.setVariable(val1.key, typeSet);
+								}
+							});
+							diffMap.multipleUpdate(varMap);
+						}
+					}
+				} catch(err){}
+
+				if (rValue !== undefined) {
+					trueArgs = trueArgs.concat(rValue);
+				} else {
+
+					trueArgs.push(a)
+				}
+			} else {
+				trueArgs.push(a)
+			}
+		}
+	}
+	// console.log("trueArgs", trueArgs)
+
+
+
+
+	var parameters = func.value.params; 
+	var parameterList = [];
+	var codeBody = ASTUtils.getCode(func.value.body).slice(1, -1);
+	var assignString = "";
+	if (parameters !== undefined && codeBody !== undefined) {
+		var funcArguments = trueArgs;
+		if (funcArguments !== undefined) {
+			for (var a in funcArguments) {
+				var arg = funcArguments[a];
+				if (arg !== undefined && arg.type == "Numeric" || arg.type == "String") {
+					if (parameters[a] !== undefined) {
+						if (parameters[a].type == "Identifier") {
+							parameterList.push(parameters[a].name);
+							assignString += ("var " + parameters[a].name + " = " + arg.value + ";"); 
+						} else if (parameters[a].type == "AssignmentPattern") {
+							// TODO:  parameter with default value
+						}
+					}
+				}
+				
+			}
+		}
+
+		codeBody = assignString + codeBody;
+		const funcBodyVarMapList = parseProgram(codeBody, funcName, coefficient, eVarMap, verbose);
+		var rVal; 
+					// console.log(">", funcName)
+		var hasReturnValue = eVarMap.get(funcName+"_return");
+		if (hasReturnValue !== undefined && hasReturnValue.length >0) {
+			rVal = hasReturnValue.pop();
+		} else {
+
+			ASTUtils.traverse(func.value, function(node){
+				if (node.type == "ReturnStatement" && node.argument !== null){					
+					rVal = thisAST.getVariableInitValue("", node.argument, eVarMap, verbose)[1];
+					// console.log("!!", rVal)
+				}
+			});
+			funcBodyVarMapList.forEach(function(val1) {
+				var prevVal = varMap.get(val1.key);
+				if (prevVal !== undefined && (parameterList.indexOf(val1.key) == -1)) {
+					// console.log(val1)
+					var typeSet = new Set();
+					typeSet.my_add(val1.value);
+					diffMap.setVariable(val1.key, typeSet);
+				} else {
+					// console.log(val1)
+				}
+			});
+			diffMap.multipleUpdate(varMap);
+		}
+	
+	}
+	// console.log("rVal:", rVal);
+	// console.log("!! out !!")
+	if (rVal !== undefined) return rVal;
+}
+
+
+
 function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 	var NUMBER_OF_EVAL = 0;
 
@@ -287,6 +406,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 
 	var local_variables = [];
 	// iterate through each AST node
+	var funcReturnValueAndType;
 	for (var i in ast.body){
 		var astNode = new Functions.AST(ast);
 
@@ -336,7 +456,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					local_variables.push(variableName_Type[0]);
 				}
 				varMap.setVariable(variableName_Type[0], variableName_Types, verbose)
-
 				var lastDeclaratorNode;
 				ASTUtils.traverse(ast.body[i], function(node, parent){
 					if (node.type == "VariableDeclarator") lastDeclaratorNode = node;
@@ -368,6 +487,36 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					} else if (node.type == "ThisExpression") {
 						if (verbose>0) console.log("FEATURE[VariableWithThisExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + ASTUtils.getCode(lastDeclaratorNode));
 						updateResultMap(resultMap, "VariableWithThisExpression", coefficient);
+					} else if (node.type == "CallExpression") {
+						var callee;
+						if (node.callee.type == "MemberExpression") {
+							callee = node.callee.property.name;
+						} else if (node.callee.type == "FunctionExpression") {
+							astNode.removeJumpInstructions(i, ast);
+							var coef = coefficient.slice();
+							coef.push("in_function")
+							var funcBody = ASTUtils.getCode(node);
+							parseProgram(funcBody.slice(funcBody.indexOf("{"),funcBody.lastIndexOf("}")+1), "CallExpression", coef, varMap, verbose);
+							callee = node.callee.name;
+						} else {
+							callee = node.callee.name;
+						}
+						if (callee !== undefined ) {
+							var funcNames = varMap.get(callee);
+							if (funcNames !== undefined) {
+								for (var func of funcNames) {
+									if (func.type == "user_Function" && !fastMode){
+										var returnVal;
+										var args = astNode.getFunctionArguments(node, varMap);
+										var rVal = parseFuncBody(astNode, func, args, funcName, scope, coefficient, varMap, verbose);
+										if (rVal !== undefined) {
+											varMap.setVariable(variableName_Type[0], rVal, verbose)
+											varMap.setVariable(funcName+"_return_"+variableName_Type[0], rVal, verbose);
+										}
+									}
+								}
+							}
+						}
 					}
 				});
 
@@ -389,7 +538,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						if (verbose>0) console.log("FEATURE[VariableWithUnaryExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + variableName_Type[0] + " = " +variableName_Types[v].value);
 						updateResultMap(resultMap, "VariableWithUnaryExpression", coefficient);
 					} else if (variableName_Types[v].type == "CallExpression"){
-						if (verbose>0) console.log("FEATURE[VariableWithCallExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + variableName_Type[0] + " = " +variableName_Types[v].value);
+						if (verbose>0) console.log("FEATURE[VariableWithCallExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:"  + ASTUtils.getCode(ast.body[i]));
 						updateResultMap(resultMap, "VariableWithCallExpression", coefficient);
 					} else if (variableName_Types[v].type == "LogicalExpression"){
 						if (verbose>0) console.log("FEATURE[VariableWithLogicalExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + variableName_Type[0] + " = " +variableName_Types[v].value);
@@ -405,6 +554,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 		}
 		else if (astNode.isExpressionStatement(i)) {
 			if (astNode.isAssignmentExpression(i)) {
+				var var_values = astNode.getAssignmentLeftRight(ast.body[i].expression, varMap, verbose);
 				var lastAssignmentNode;
 				ASTUtils.traverse(ast.body[i], function(node, parent){
 					if (node.type == "AssignmentExpression") lastAssignmentNode = node;
@@ -450,11 +600,21 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 							callee = node.callee.name;
 						}
 						if (callee !== undefined ) {
-							var types = varMap.get(callee);
-							for (var t in types) {
-								if (types[t].type == "pre_Function") {
-									if (verbose>0) console.log("FEATURE[PredefinedFuncCalls]:" + coefficient[coefficient.length-1] + ":" + scope + ":", ASTUtils.getCode(node));
-									updateResultMap(resultMap, "PredefinedFuncCalls", coefficient);
+							var funcNames = varMap.get(callee);
+							if (funcNames !== undefined) {
+								for (var func of funcNames) {
+									if (func.type == "user_Function" && !fastMode){
+										var returnVal;
+										var args = astNode.getFunctionArguments(node, varMap);
+										var rVal = parseFuncBody(astNode, func, args, funcName, scope, coefficient, varMap, verbose);
+										if (rVal !== undefined) {
+											var_values[1] = rVal;
+											varMap.setVariable(funcName+"_return_"+var_values[0], rVal);
+										}
+									} else if (func.type == "pre_Function") {
+										if (verbose>0) console.log("FEATURE[PredefinedFuncCalls]:" + coefficient[coefficient.length-1] + ":" + scope + ":", ASTUtils.getCode(node));
+										updateResultMap(resultMap, "PredefinedFuncCalls", coefficient);
+									}
 								}
 							}
 						}
@@ -488,7 +648,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						}
 					}
 				});
-				var var_values = astNode.getAssignmentLeftRight(ast.body[i].expression, varMap, verbose);
 
 				// MemberExperssion objects:
 				// varMap has already been updated in getAssignmentLeftRight()
@@ -513,7 +672,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						if (verbose>0) console.log("FEATURE[VariableWithUnaryExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + var_values[0] + " = " +variableName_Types[v].value);
 						updateResultMap(resultMap, "VariableWithUnaryExpression", coefficient);
 					} else if (variableName_Types[v].type == "CallExpression"){
-						if (verbose>0) console.log("FEATURE[VariableWithCallExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + var_values[0] + " = " +variableName_Types[v].value);
+						if (verbose>0) console.log("FEATURE[VariableWithCallExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + ASTUtils.getCode(ast.body[i]));
 						updateResultMap(resultMap, "VariableWithCallExpression", coefficient);
 					} else if (variableName_Types[v].type == "Expression"){
 						if (verbose>0) console.log("FEATURE[VariableWithExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + var_values[0] + " = " +variableName_Types[v].value);
@@ -538,8 +697,9 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 
 				var funcName = "";
 				// if expression is function call
-				if (astNode._node.body[i].expression.callee) {
+				if (astNode._node.body[i].expression.callee !== undefined) {
 					funcName = astNode.getCalleeName(i, varMap);
+					var callee = astNode.getVariableInitValue("", astNode._node.body[i].expression, varMap, verbose)[1];
 				}
 
 				var funcNames = varMap.get(funcName);
@@ -556,98 +716,23 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					}
 
 					// try to execute the function call with user defined functions
-					if (funcNames[f].type == "user_Function" && !fastMode && funcName != scope){
-						console.log(funcName, scope)
-						var args = astNode.getFunctionArguments(astNode._node.body[i].expression, varMap);
-						// console.log(astNode._node.body[i].expression.arguments)
-						var trueArgs = [];
-						// console.log("\n>>", funcName, "\n")
-						if (args !== undefined) {
-							for (var a of args) {
-								if (a.type == "CallExpression") {
-									var fName = a.value.callee.name;
-									if (fName === undefined) {
-										// TODO:
-									}
-									var rValue;
-									try {
-										parseProgram(ASTUtils.getCode(a.value), fName, coefficient, varMap, verbose);
-										var returnValue;
-										var innerFunc = varMap.get(fName)[0];
-										if (innerFunc.type == "user_Function") {
-											ASTUtils.traverse(innerFunc.value, function(node){
-												if (node.type == "ReturnStatement" && node.argument !== null){
-													rValue = astNode.getVariableInitValue("", node.argument, varMap, verbose)[1];
-												}
-											});
-										}
-									} catch(err){}
-									if (rValue !== undefined) {
-										trueArgs = trueArgs.concat(rValue);
-									} else {
-										trueArgs.push(a)
-									}
-								} else {
-									trueArgs.push(a)
-								}
+					if (funcNames[f].type == "user_Function" && !fastMode){
+						// console.log("==> here")
+						var returnVal;
+						var args = astNode.getFunctionArguments(astNode._node.body[i].expression, varMap);						
+						var rVal = parseFuncBody(astNode, funcNames[f], args, funcName, scope, coefficient, varMap, verbose);
+						if (rVal !== undefined) {
+							funcReturnValueAndType = rVal;
+							var prevReturn = varMap.get(funcName+"_return");
+							if (prevReturn === undefined){
+								varMap.setVariable(funcName+"_return", [rVal]);
+							} else {
+								prevReturn.push(rVal);
+								varMap.setVariable(funcName+"_return", prevReturn);
 							}
+							
+							continue;
 						}
-
-						var parameters = funcNames[f].value.params; 
-						var codeBody = ASTUtils.getCode(funcNames[f].value.body).slice(1, -1);
-						var assignString = "";
-						if (parameters !== undefined && trueArgs !== undefined && codeBody !== undefined) {
-							// var funcArguments = astNode._node.body[i].expression.arguments;
-							// console.log(astNode._node.body[i].expression.arguments)
-							var funcArguments = trueArgs;
-							if (funcArguments !== undefined) {
-								for (var a in funcArguments) {
-									var arg = funcArguments[a];
-									// console.log("arg,",arg)
-									if (arg !== undefined && arg.type == "Numeric" || arg.type == "String") {
-										if (parameters[a] !== undefined) {
-											if (parameters[a].type == "Identifier") {
-												assignString += ("var " + parameters[a].name + " = " + arg.value + ";"); 
-											} else if (parameters[a].type == "AssignmentPattern") {
-												// TODO:  parameter with default value
-											}
-										}
-									}
-									
-								}
-							}
-							// var eVarMap = new Functions.VariableMap(varMap._varMap);
-							// var diffMap = new Functions.VariableMap(new HashMap());
-
-							codeBody = assignString + codeBody;
-
-
-							try {
-								const funcBodyVarMapList = parseProgram(codeBody, funcName, coefficient, varMap, verbose);
-								// get the return statement;
-								var returnValue;
-								ASTUtils.traverse(funcNames[f].value, function(node){
-									if (node.type == "ReturnStatement" && node.argument !== null){
-										var returnStatement = astNode.getVariableInitValue("", node.argument, varMap, verbose)[1][0];
-										// console.log(">", node.argument)
-										if (returnStatement !== undefined){
-											returnValue = returnStatement.value;
-											// console.log(">>>>return value:  ", returnValue)
-										}
-									}
-								});
-
-								// funcBodyVarMapList.forEach(function(val1) {
-								// 	// variable in @varMap
-								// 	var var_values = varMap.get(val1.key);
-								// 	if (var_values !== undefined) {
-								// 		diffMap.setVariable(val1.key, val1.value);
-								// 	}
-								// });
-								// diffMap.copyTo(varMap);
-							} catch(err){}
-						}
-						if (returnValue !== undefined) continue;
 					}
 
 
@@ -807,7 +892,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 								if (verbose>0) console.log("FEATURE[FuncCallOnUnaryExpr]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(" + args[0].type + ") => "+funcName+"(" + args[0].value + ")");
 								updateResultMap(resultMap, "FuncCallOnUnaryExpr", coefficient);
 							} else if (args[0].type == "CallExpression") {
-								if (verbose>0) console.log("FEATURE[FuncCallOnCallExpr]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(" + args[0].type + ") => "+funcName+"(" + args[0].value + ")");
+								if (verbose>0) console.log("FEATURE[FuncCallOnCallExpr]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(" + args[0].type + ") => "+ ASTUtils.getCode(astNode._node.body[i]));
 								updateResultMap(resultMap, "FuncCallOnCallExpr", coefficient);
 							} else {
 								// args[0].type == "Numeric"
@@ -1116,11 +1201,131 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 			diffMap.multipleUpdate(varMap);
 		}
 
-		if (scope == "User_Program") {
+		if (coefficient.length == 1) {
 			// try to execute eval to get the hidden code if possible
 			var inEval = false;
 			if (testMode === undefined) {
-				var hiddenStringFromEvalList = astNode.checkEvalCalls(i,varMap);
+				// var hiddenStringFromEvalList = astNode.checkEvalCalls(i,varMap);
+
+
+				var parentNode = astNode._node;
+				var parent = astNode;
+				var HiddenString = [];
+				var CurrentContext = ["in_main"];
+				var ContextRange = [0,0];
+				ASTUtils.traverse(astNode._node.body[i], function(node){
+					if ((node.range[0] > ContextRange[1]) && (CurrentContext.length > 1)){
+						CurrentContext.pop();
+					}
+					if (node.type == "IfStatement") {
+						CurrentContext.push("in_if");
+						ContextRange = node.range;
+					} else if (node.type == "ForStatement" || node.type == "ForInStatement" ||
+							   node.type == "ForOfStatement" || node.type == "WhileStatement" ||
+							   node.tpye == "DoWhileStatement") {
+						CurrentContext.push("in_loop");
+						ContextRange = node.range;
+					} else if (node.type == "FunctionDeclaration" || node.type == "FunctionExpression"){
+						CurrentContext.push("in_function");
+						ContextRange = node.range;
+					} else if (node.type == "TryStatement") {
+						CurrentContext.push("in_try");
+						ContextRange = node.range;
+					} else if (node.type == "SwitchStatement") {
+						CurrentContext.push("in_switch");
+						ContextRange = node.range;
+					}
+
+					if (node.type == "CallExpression" && node.callee !== undefined && node.callee.type == "Identifier") {
+						var calleeName = node.callee.name;
+						if (calleeName != "eval") {
+							var types = varMap.get(calleeName);
+							if (types !== undefined) {
+								for (var t of types) {
+									if (t.type == "pre_Function" && t.value == "eval") {
+										calleeName = "eval";
+									}
+								}
+							}
+						}
+
+						if (calleeName == "eval") {
+							var rawCodeList = [];
+
+								// console.log(node.arguments)
+							if (node.arguments[0].type == "Identifier") {
+								var types = varMap.get(node.arguments[0].name);
+								if (types !== undefined) {
+									for (var t of types) {
+										if (t.type == "String") {
+											rawCodeList.push(t.value);
+										}
+									}
+								}
+							} else if (node.arguments[0].type == "CallExpression"){
+								var calleeResult = parent.getVariableInitValue("", node.arguments[0], varMap, verbose)[1];
+								if (calleeResult !== undefined) {
+									for (var v of calleeResult) {
+										if (v.type == "String"){
+											rawCodeList.push(v.value);
+										} else if (v.type == "CallExpression") {
+											var callee;
+											if (v.value.callee.type == "MemberExpression") {
+												callee = v.value.callee.property.name;
+											} else if (v.value.callee.type == "FunctionExpression") {
+												astNode.removeJumpInstructions(i, ast);
+												var coef = coefficient.slice();
+												coef.push("in_function")
+												var funcBody = ASTUtils.getCode(v.value);
+												parseProgram(funcBody.slice(funcBody.indexOf("{"),funcBody.lastIndexOf("}")+1), "CallExpression", coef, varMap, verbose);
+												callee = v.value.callee.name;
+											} else {
+												callee = v.value.callee.name;
+											}
+											if (callee !== undefined ) {
+												var funcNames = varMap.get(callee);
+												if (funcNames !== undefined) {
+													for (var func of funcNames) {
+														if (func.type == "user_Function" && !fastMode){
+															var returnVal;
+															var args = astNode.getFunctionArguments(v.value, varMap);
+															var rVal = parseFuncBody(astNode, func, args, funcName, scope, coefficient, varMap, verbose);
+															if (rVal !== undefined) {
+																for (var v of rVal) {
+																	if (v.type == "String" || v.type == "Numeric"){
+																		rawCodeList.push(v.value);
+																	}
+																}
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							} else {
+								var values = parent.getVariableInitValue("", node.arguments[0], varMap, verbose)[1];
+								if (values !== undefined) {
+									for (var v of values) {
+										if (v.type == "String"){
+											rawCodeList.push(v.value);
+										}
+									}
+								}
+							}
+
+							if (rawCodeList.length == 0) {
+								rawCodeList.push(ASTUtils.getCode(node.arguments[0]));
+							}
+							for (var rawCode of rawCodeList) {
+								HiddenString.push([CurrentContext, rawCode]);
+							}
+						}
+					}
+				});
+				hiddenStringFromEvalList = HiddenString;
+
 				if (hiddenStringFromEvalList.length != 0) {
 					inEval = true;
 					for (var hiddenStringFromEval of hiddenStringFromEvalList){
@@ -1139,10 +1344,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						NUMBER_OF_EVAL++;
 						
 						try{
-							parseProgram(hiddenStringFromEval[1].slice(1,-1), scope, coefficient, varMap, verbose, hidden_depth);
+							parseProgram(hiddenStringFromEval[1].slice(1,-1), "Payload", coefficient, varMap, verbose, hidden_depth);
 						} catch(err){
 							try{
-								parseProgram(hiddenStringFromEval[1], scope, coefficient, varMap, verbose, hidden_depth);
+								parseProgram(hiddenStringFromEval[1], "Payload", coefficient, varMap, verbose, hidden_depth);
 							} catch(err){}
 						}
 					}
