@@ -86,7 +86,7 @@ if (options.help) {
 //===============================MainProgram=================================
 var init_varMap = new Functions.VariableMap(new HashMap());
 
-var pre_funcs = ["MJSA_TEST", "eval", "unescape", "replace", "write", "writeln", "atob", "btoa", "toString", "String.fromCharCode", "fromCharCode",
+var pre_funcs = ["MJSA_TEST", "document", "eval", "unescape", "replace", "write", "writeln", "atob", "btoa", "toString", "String.fromCharCode", "fromCharCode",
 				 "parseInt", "alert", "Array","charCodeAt" , "substr", "substring", "concat","join","split","reverse", "slice", "push"];
 
 for (var f in pre_funcs) {
@@ -105,7 +105,7 @@ const FEATURES = [	"VariableWithFunctionExpression",	// x = function(){};
 					"VariableWithLogicalExpression",	// x = 1^2;
 					"VariableWithBitOperation", 		// x = 0||1&&2;
 					"FunctionObfuscation",				// x = eval;
-					"StringConcatation",				// "a"+"b"
+					"StringConcatenation",				// "a"+"b"
 					"PredefinedFuncCalls", 				// String.fromCharCode(65)
 					"DOM_Operations",					// document.write(..)
 					"WINDOW_Operations",				// window.btoa(..)
@@ -256,9 +256,9 @@ Set.prototype.my_add=function(values){
 		}
 	}
 }
-
+var FuncDepthCount = 0;
 function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap, verbose=false){
-	// console.log("!! in !!")
+	if (FuncDepthCount++ > 200) return;
 	var eVarMap = new Functions.VariableMap(varMap._varMap);
 	var diffMap = new Functions.VariableMap(new HashMap());
 	var trueArgs = [];
@@ -303,7 +303,6 @@ function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap
 				if (rValue !== undefined) {
 					trueArgs = trueArgs.concat(rValue);
 				} else {
-
 					trueArgs.push(a)
 				}
 			} else {
@@ -311,13 +310,10 @@ function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap
 			}
 		}
 	}
-	// console.log("trueArgs", trueArgs)
-
-
-
 
 	var parameters = func.value.params; 
 	var parameterList = [];
+	var argMap = {};
 	var codeBody = ASTUtils.getCode(func.value.body).slice(1, -1);
 	var assignString = "";
 	if (parameters !== undefined && codeBody !== undefined) {
@@ -329,7 +325,23 @@ function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap
 					if (parameters[a] !== undefined) {
 						if (parameters[a].type == "Identifier") {
 							parameterList.push(parameters[a].name);
-							assignString += ("var " + parameters[a].name + " = " + arg.value + ";"); 
+							assignString += (parameters[a].name + " = " + arg.value + ";"); 
+						} else if (parameters[a].type == "AssignmentPattern") {
+							// TODO:  parameter with default value
+						}
+					}
+				} else if (arg !== undefined && arg.type == "Identifier") {
+					var globalValue = varMap.get(arg.value);
+					if (parameters[a] !== undefined) {
+						if (parameters[a].type == "Identifier") {
+							
+							parameterList.push(parameters[a].name);
+							if (globalValue !== undefined) {
+								argMap[parameters[a].name] = arg.value;
+								eVarMap.setVariable(parameters[a].name, globalValue);
+							} else {
+								assignString += (parameters[a].name + " = " + arg.value + ";"); 
+							}
 						} else if (parameters[a].type == "AssignmentPattern") {
 							// TODO:  parameter with default value
 						}
@@ -338,31 +350,31 @@ function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap
 				
 			}
 		}
-
+		// console.log(argMap)
 		codeBody = assignString + codeBody;
 		const funcBodyVarMapList = parseProgram(codeBody, funcName, coefficient, eVarMap, verbose);
-		var rVal; 
-					// console.log(">", funcName)
+		var rVal = []; 
 		var hasReturnValue = eVarMap.get(funcName+"_return");
 		if (hasReturnValue !== undefined && hasReturnValue.length >0) {
 			rVal = hasReturnValue.pop();
 		} else {
-
 			ASTUtils.traverse(func.value, function(node){
-				if (node.type == "ReturnStatement" && node.argument !== null){					
-					rVal = thisAST.getVariableInitValue("", node.argument, eVarMap, verbose)[1];
-					// console.log("!!", rVal)
+				if (node.type == "ReturnStatement" && node.argument !== null){		
+					rVal.push(thisAST.getVariableInitValue("", node.argument, eVarMap, verbose)[1]);
 				}
 			});
 			funcBodyVarMapList.forEach(function(val1) {
 				var prevVal = varMap.get(val1.key);
 				if (prevVal !== undefined && (parameterList.indexOf(val1.key) == -1)) {
-					// console.log(val1)
 					var typeSet = new Set();
 					typeSet.my_add(val1.value);
 					diffMap.setVariable(val1.key, typeSet);
 				} else {
-					// console.log(val1)
+					if (argMap.hasOwnProperty(val1.key)) {
+						var typeSet = new Set();
+						typeSet.my_add(val1.value);
+						diffMap.setVariable(argMap[val1.key], typeSet);
+					}
 				}
 			});
 			diffMap.multipleUpdate(varMap);
@@ -371,7 +383,17 @@ function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap
 	}
 	// console.log("rVal:", rVal);
 	// console.log("!! out !!")
-	if (rVal !== undefined) return rVal;
+	var validReturn = [];
+	if (rVal !== undefined && rVal.length >0) {
+		for (var r of rVal){
+			if (r.type != "undefined" && r.value != "undefined") {
+				validReturn.push(r);
+			}
+		}
+	}
+	if (validReturn.length > 0) {
+		return validReturn;
+	}
 }
 
 
@@ -406,7 +428,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 
 	var local_variables = [];
 	// iterate through each AST node
-	var funcReturnValueAndType;
+	
 	for (var i in ast.body){
 		var astNode = new Functions.AST(ast);
 
@@ -457,6 +479,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 				}
 				varMap.setVariable(variableName_Type[0], variableName_Types, verbose)
 				var lastDeclaratorNode;
+				var found = false;
 				ASTUtils.traverse(ast.body[i], function(node, parent){
 					if (node.type == "VariableDeclarator") lastDeclaratorNode = node;
 					if (node.type == "FunctionExpression"){
@@ -484,10 +507,15 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 							if (verbose>0) console.log("FEATURE[VariableWithBitOperation]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + ASTUtils.getCode(lastDeclaratorNode));
 							updateResultMap(resultMap, "VariableWithBitOperation", coefficient);
 						}
+					} else if (node.type == "UnaryExpression" && parent.type == "VariableDeclarator") {
+						if (node.operator == "~") {
+							if (verbose>0) console.log("FEATURE[VariableWithBitOperation]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + ASTUtils.getCode(lastDeclaratorNode));
+							updateResultMap(resultMap, "VariableWithBitOperation", coefficient);
+						}
 					} else if (node.type == "ThisExpression") {
 						if (verbose>0) console.log("FEATURE[VariableWithThisExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + ASTUtils.getCode(lastDeclaratorNode));
 						updateResultMap(resultMap, "VariableWithThisExpression", coefficient);
-					} else if (node.type == "CallExpression") {
+					} else if (node.type == "CallExpression" && !found) {
 						var callee;
 						if (node.callee.type == "MemberExpression") {
 							callee = node.callee.property.name;
@@ -508,8 +536,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 									if (func.type == "user_Function" && !fastMode){
 										var returnVal;
 										var args = astNode.getFunctionArguments(node, varMap);
+
 										var rVal = parseFuncBody(astNode, func, args, funcName, scope, coefficient, varMap, verbose);
 										if (rVal !== undefined) {
+											found = true;
 											varMap.setVariable(variableName_Type[0], rVal, verbose)
 											varMap.setVariable(funcName+"_return_"+variableName_Type[0], rVal, verbose);
 										}
@@ -556,6 +586,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 			if (astNode.isAssignmentExpression(i)) {
 				var var_values = astNode.getAssignmentLeftRight(ast.body[i].expression, varMap, verbose);
 				var lastAssignmentNode;
+				var found = false;
 				ASTUtils.traverse(ast.body[i], function(node, parent){
 					if (node.type == "AssignmentExpression") lastAssignmentNode = node;
 					if (node.type == "SequenceExpression" && parent.type == "AssignmentExpression") {
@@ -582,7 +613,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 							if (verbose>0) console.log("FEATURE[FunctionObfuscation]:" + coefficient[coefficient.length-1] + ":" + scope + ":[", var_value[0], "] -> [", var_value[1].value, "]")
 							updateResultMap(resultMap, "FunctionObfuscation", coefficient);
 						}
-					} else if (node.type == "CallExpression"){
+					} else if (node.type == "CallExpression" && !found){
 						var callee;
 						if (node.callee.type == "MemberExpression") {
 							callee = node.callee.property.name;
@@ -609,6 +640,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 										var rVal = parseFuncBody(astNode, func, args, funcName, scope, coefficient, varMap, verbose);
 										if (rVal !== undefined) {
 											var_values[1] = rVal;
+											found = true;
 											varMap.setVariable(funcName+"_return_"+var_values[0], rVal);
 										}
 									} else if (func.type == "pre_Function") {
@@ -641,8 +673,13 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						updateResultMap(resultMap, "VariableWithFunctionExpression", coefficient);
 							
 					} else if (node.type == "BinaryExpression" && parent.type == "AssignmentExpression") {
-						var bitOperators = [">>", "<<", "|", "&", "^", "~", ">>>", ">>=", "<<=", "|=", "&=", "^=", "~=", ">>>="];
+						var bitOperators = [">>", "<<", "|", "&", "^", ">>>", ">>=", "<<=", "|=", "&=", "^=", "~=", ">>>="];
 						if (bitOperators.indexOf(node.operator) != -1) {
+							if (verbose>0) console.log("FEATURE[VariableWithBitOperation]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + ASTUtils.getCode(parent));
+							updateResultMap(resultMap, "VariableWithBitOperation", coefficient);
+						}
+					} else if (node.type == "UnaryExpression" && parent.type == "AssignmentExpression") {
+						if (node.operator == "~") {
 							if (verbose>0) console.log("FEATURE[VariableWithBitOperation]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + ASTUtils.getCode(parent));
 							updateResultMap(resultMap, "VariableWithBitOperation", coefficient);
 						}
@@ -722,15 +759,14 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						var args = astNode.getFunctionArguments(astNode._node.body[i].expression, varMap);						
 						var rVal = parseFuncBody(astNode, funcNames[f], args, funcName, scope, coefficient, varMap, verbose);
 						if (rVal !== undefined) {
-							funcReturnValueAndType = rVal;
 							var prevReturn = varMap.get(funcName+"_return");
+
 							if (prevReturn === undefined){
 								varMap.setVariable(funcName+"_return", [rVal]);
 							} else {
 								prevReturn.push(rVal);
 								varMap.setVariable(funcName+"_return", prevReturn);
 							}
-							
 							continue;
 						}
 					}
@@ -744,158 +780,160 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						// JS will ignore extra parameters, if function is defined with only one parameter
 						// Attacker might add more unuse d parameters to confuse the detector
 						if (args.length >= 1) {
-							if (args[0].type == "String") {
-								if (verbose>0) console.log("FEATURE[FuncCallOnStringVariable]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + funcName + "(STRING) => " + funcNames[f].value + "(" + args[0].value + ")");
-								updateResultMap(resultMap, "FuncCallOnStringVariable", coefficient);
-							} else if (args[0].type == "Identifier" ||
-									   args[0].type == "ArrayMemberExpression" || 
-									   args[0].type == "FieldMemberExpression" ) {
-								// pre-processing 
-								if (args[0].type == "ArrayMemberExpression") {
-									var object  = args[0].value[0];
-									var indices = args[0].value[1];
-									var r_vs;
-									if (object instanceof Array) {
-										var indx = [];
-										while (object instanceof Array) {
-											var obj = varMap.get(object[0]);
-											indx = indx.concat(object[1]);
-											object = object[0];
-										}
-										try {
-											for (var ii = indx.length-1; ii >=0;ii--){
-												var objIndex = indx[ii].value;
-												if (obj !== undefined) {
-													if (obj[0].type == "ObjectExpression") {
-														objIndex = objIndex.replace(/"/g,"");
-														obj = obj[0].value[objIndex];
-													} else {
-														obj = obj[0].value[objIndex][1];
+							for (var arg of args) {
+								if (arg.type == "String") {
+									if (verbose>0) console.log("FEATURE[FuncCallOnStringVariable]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + funcName + "(STRING) => " + funcNames[f].value + "(" + arg.value + ")");
+									updateResultMap(resultMap, "FuncCallOnStringVariable", coefficient);
+								} else if (arg.type == "Identifier" ||
+										   arg.type == "ArrayMemberExpression" || 
+										   arg.type == "FieldMemberExpression" ) {
+									// pre-processing 
+									if (arg.type == "ArrayMemberExpression") {
+										var object  = arg.value[0];
+										var indices = arg.value[1];
+										var r_vs;
+										if (object instanceof Array) {
+											var indx = [];
+											while (object instanceof Array) {
+												var obj = varMap.get(object[0]);
+												indx = indx.concat(object[1]);
+												object = object[0];
+											}
+											try {
+												for (var ii = indx.length-1; ii >=0;ii--){
+													var objIndex = indx[ii].value;
+													if (obj !== undefined) {
+														if (obj[0].type == "ObjectExpression") {
+															objIndex = objIndex.replace(/"/g,"");
+															obj = obj[0].value[objIndex];
+														} else {
+															obj = obj[0].value[objIndex][1];
+														}
 													}
 												}
+											} catch (err) {
+												if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnReference]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + ASTUtils.getCode(astNode._node.body[i]));
+												updateResultMap(resultMap, "FuncCallOnUnkonwnReference", coefficient);
 											}
-										} catch (err) {
-											if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnReference]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + ASTUtils.getCode(astNode._node.body[i]));
-											updateResultMap(resultMap, "FuncCallOnUnkonwnReference", coefficient);
+											r_vs = obj;
+										} else {
+											r_vs = varMap.get(object);
+											if (r_vs === undefined) { 
+												if (verbose>0) console.log("FEATURE[FuncCallOnNonLocalArray]:" + coefficient[coefficient.length-1] + ":" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
+												updateResultMap(resultMap, "FuncCallOnNonLocalArray", coefficient);
+											}
 										}
-										r_vs = obj;
-									} else {
-										r_vs = varMap.get(object);
-										if (r_vs === undefined) { 
-											if (verbose>0) console.log("FEATURE[FuncCallOnNonLocalArray]:" + coefficient[coefficient.length-1] + ":" + scope + ": Accessing non-local array object: " + ASTUtils.getCode(astNode._node.body[i]));
-											updateResultMap(resultMap, "FuncCallOnNonLocalArray", coefficient);
-										}
-									}
 
-									var ref_values = [];
-									for (var inx in indices){
-										// skip " when handling object field access aka o["f"] => o.f
-										// indices will be `"f"` instead of [{type:"Numeric", value:2}]
-										if (indices[inx] == "") continue;
-										index = indices[inx].value;
-										for (var r in r_vs){
-											var array_values = r_vs[r];
-											if (r_vs[r].type == "ObjectExpression") {
-												const field = r_vs[r].value[index.replace(/"/g,"")];
-												if (field !== undefined) {
-													ref_values = ref_values.concat(field);
-												} 
-												continue;
+										var ref_values = [];
+										for (var inx in indices){
+											// skip " when handling object field access aka o["f"] => o.f
+											// indices will be `"f"` instead of [{type:"Numeric", value:2}]
+											if (indices[inx] == "") continue;
+											index = indices[inx].value;
+											for (var r in r_vs){
+												var array_values = r_vs[r];
+												if (r_vs[r].type == "ObjectExpression") {
+													const field = r_vs[r].value[index.replace(/"/g,"")];
+													if (field !== undefined) {
+														ref_values = ref_values.concat(field);
+													} 
+													continue;
+												}
+												
+												if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
+													if (index !== undefined) {
+														try{
+															ref_values = ref_values.concat(r_vs[r].value[index][1]);
+														}catch (err) {
+															if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnReference]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + ASTUtils.getCode(astNode._node.body[i]));
+															updateResultMap(resultMap, "FuncCallOnUnkonwnReference", coefficient);
+														}
+													} 
+												}
 											}
-											
-											if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
-												if (index !== undefined) {
-													try{
-														ref_values = ref_values.concat(r_vs[r].value[index][1]);
-													}catch (err) {
+										}
+
+									} else if (arg.type == "FieldMemberExpression") {
+										var object = arg.value[0];
+										var fields = arg.value[1];
+										var r_vs = varMap.get(object);
+
+										if (object instanceof Array) {
+											var field = [];
+											while (object instanceof Array) {
+												var obj = varMap.get(object[0]);
+												field = field.concat(object[1]);
+												object = object[0];
+											}
+											try {
+												for (var ii = field.length-1; ii >=0;ii--){
+													var objIndex = field[ii].value;
+													if (obj !== undefined) {
+														if (obj[0].type == "ObjectExpression") {
+															obj = obj[0].value[objIndex];
+														} else {
+															obj = obj[0].value[objIndex][1];
+														}
+													}
+												}
+											} catch (err) {
+												if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnReference]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + ASTUtils.getCode(astNode._node.body[i]));
+												updateResultMap(resultMap, "FuncCallOnUnkonwnReference", coefficient);
+											}
+											r_vs = obj;
+										} 
+
+										var ref_values = [];
+										for (var f in fields) {
+											const field = fields[f];
+											for (var r in r_vs){
+												if (r_vs[r].type == "ObjectExpression" && field !== undefined) {
+													if (r_vs[r].value[field.value] === undefined) {
 														if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnReference]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + ASTUtils.getCode(astNode._node.body[i]));
 														updateResultMap(resultMap, "FuncCallOnUnkonwnReference", coefficient);
-													}
-												} 
-											}
-										}
-									}
-
-								} else if (args[0].type == "FieldMemberExpression") {
-									var object = args[0].value[0];
-									var fields = args[0].value[1];
-									var r_vs = varMap.get(object);
-
-									if (object instanceof Array) {
-										var field = [];
-										while (object instanceof Array) {
-											var obj = varMap.get(object[0]);
-											field = field.concat(object[1]);
-											object = object[0];
-										}
-										try {
-											for (var ii = field.length-1; ii >=0;ii--){
-												var objIndex = field[ii].value;
-												if (obj !== undefined) {
-													if (obj[0].type == "ObjectExpression") {
-														obj = obj[0].value[objIndex];
 													} else {
-														obj = obj[0].value[objIndex][1];
+														ref_values = ref_values.concat(r_vs[r].value[field.value]);
 													}
 												}
 											}
-										} catch (err) {
-											if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnReference]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + ASTUtils.getCode(astNode._node.body[i]));
-											updateResultMap(resultMap, "FuncCallOnUnkonwnReference", coefficient);
 										}
-										r_vs = obj;
-									} 
-
-									var ref_values = [];
-									for (var f in fields) {
-										const field = fields[f];
-										for (var r in r_vs){
-											if (r_vs[r].type == "ObjectExpression" && field !== undefined) {
-												if (r_vs[r].value[field.value] === undefined) {
-													if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnReference]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + ASTUtils.getCode(astNode._node.body[i]));
-													updateResultMap(resultMap, "FuncCallOnUnkonwnReference", coefficient);
-												} else {
-													ref_values = ref_values.concat(r_vs[r].value[field.value]);
-												}
-											}
+										
+									} else {
+										/* args[0].type == "Identifier" 
+										 * we assume the parameter passed in can be type String */
+										var ref_values = varMap.get(arg.value, verbose);
+										if (ref_values === undefined) {
+											ref_values = [ { type: 'String', value: 'UNKNOWN' } ];
 										}
 									}
-									
+
+									if (ref_values.length == 0)  {
+										// console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", args[0])
+										continue;
+									}
+
+									// ref_values are all possible values for one variable, e.g. {key:a, value:["Str1",0,"Str2"]}
+									for (var ref in ref_values) {
+										if (ref_values[ref] && ref_values[ref].type == "String") {
+											if (verbose>0) console.log("FEATURE[FuncCallOnStringVariable]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(Object->STRING) => [" + arg.value + "] ==> "+funcName+"(" + ref_values[ref].value + ")");
+											updateResultMap(resultMap, "FuncCallOnStringVariable", coefficient);
+										} else if (ref_values[ref] && ref_values[ref].type == "Expression") {
+											if (verbose>0) console.log("FEATURE[FuncCallOnStringVariable]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(Expr) => [" + arg.value + "] ==> "+funcName+"(" + ref_values[ref].value + ")");
+											updateResultMap(resultMap, "FuncCallOnStringVariable", coefficient);
+										}
+									}							
+								} else if (arg.type == "BinaryExpression") {
+									if (verbose>0) console.log("FEATURE[FuncCallOnBinaryExpr]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(" + arg.type + ") => "+funcName+"(" + arg.value + ")");
+									updateResultMap(resultMap, "FuncCallOnBinaryExpr", coefficient);
+								} else if (arg.type == "UnaryExpression") {
+									if (verbose>0) console.log("FEATURE[FuncCallOnUnaryExpr]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(" + arg.type + ") => "+funcName+"(" + arg.value + ")");
+									updateResultMap(resultMap, "FuncCallOnUnaryExpr", coefficient);
+								} else if (arg.type == "CallExpression") {
+									if (verbose>0) console.log("FEATURE[FuncCallOnCallExpr]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(" + arg.type + ") => "+ ASTUtils.getCode(astNode._node.body[i]));
+									updateResultMap(resultMap, "FuncCallOnCallExpr", coefficient);
 								} else {
-									/* args[0].type == "Identifier" 
-									 * we assume the parameter passed in can be type String */
-									var ref_values = varMap.get(args[0].value, verbose);
-									if (ref_values === undefined) {
-										ref_values = [ { type: 'String', value: 'UNKNOWN' } ];
-									}
+									// args[0].type == "Numeric"
 								}
-
-								if (ref_values.length == 0)  {
-									// console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", args[0])
-									continue;
-								}
-
-								// ref_values are all possible values for one variable, e.g. {key:a, value:["Str1",0,"Str2"]}
-								for (var ref in ref_values) {
-									if (ref_values[ref] && ref_values[ref].type == "String") {
-										if (verbose>0) console.log("FEATURE[FuncCallOnStringVariable]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(Object->STRING) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[ref].value + ")");
-										updateResultMap(resultMap, "FuncCallOnStringVariable", coefficient);
-									} else if (ref_values[ref] && ref_values[ref].type == "Expression") {
-										if (verbose>0) console.log("FEATURE[FuncCallOnStringVariable]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(Expr) => [" + args[0].value + "] ==> "+funcName+"(" + ref_values[ref].value + ")");
-										updateResultMap(resultMap, "FuncCallOnStringVariable", coefficient);
-									}
-								}							
-							} else if (args[0].type == "BinaryExpression") {
-								if (verbose>0) console.log("FEATURE[FuncCallOnBinaryExpr]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(" + args[0].type + ") => "+funcName+"(" + args[0].value + ")");
-								updateResultMap(resultMap, "FuncCallOnBinaryExpr", coefficient);
-							} else if (args[0].type == "UnaryExpression") {
-								if (verbose>0) console.log("FEATURE[FuncCallOnUnaryExpr]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(" + args[0].type + ") => "+funcName+"(" + args[0].value + ")");
-								updateResultMap(resultMap, "FuncCallOnUnaryExpr", coefficient);
-							} else if (args[0].type == "CallExpression") {
-								if (verbose>0) console.log("FEATURE[FuncCallOnCallExpr]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+funcName+"(" + args[0].type + ") => "+ ASTUtils.getCode(astNode._node.body[i]));
-								updateResultMap(resultMap, "FuncCallOnCallExpr", coefficient);
-							} else {
-								// args[0].type == "Numeric"
 							}
 						}
 					}
@@ -1201,6 +1239,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 			diffMap.multipleUpdate(varMap);
 		}
 
+
+
 		if (coefficient.length == 1) {
 			// try to execute eval to get the hidden code if possible
 			var inEval = false;
@@ -1252,12 +1292,12 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						if (calleeName == "eval") {
 							var rawCodeList = [];
 
-								// console.log(node.arguments)
+							// console.log(node.arguments)
 							if (node.arguments[0].type == "Identifier") {
 								var types = varMap.get(node.arguments[0].name);
 								if (types !== undefined) {
 									for (var t of types) {
-										if (t.type == "String") {
+										if (t.value !== undefined) {
 											rawCodeList.push(t.value);
 										}
 									}
@@ -1289,11 +1329,13 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 														if (func.type == "user_Function" && !fastMode){
 															var returnVal;
 															var args = astNode.getFunctionArguments(v.value, varMap);
-															var rVal = parseFuncBody(astNode, func, args, funcName, scope, coefficient, varMap, verbose);
-															if (rVal !== undefined) {
-																for (var v of rVal) {
-																	if (v.type == "String" || v.type == "Numeric"){
-																		rawCodeList.push(v.value);
+															var rVals = parseFuncBody(astNode, func, args, funcName, scope, coefficient, varMap, verbose);
+															if (rVals !== undefined) {
+																for (var rVal of rVals){
+																	for (var v of rVal) {
+																		if (v.type == "String" || v.type == "Numeric"){
+																			rawCodeList.push(v.value);
+																		}
 																	}
 																}
 															}
@@ -1308,7 +1350,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 								var values = parent.getVariableInitValue("", node.arguments[0], varMap, verbose)[1];
 								if (values !== undefined) {
 									for (var v of values) {
-										if (v.type == "String"){
+										if (v.value !== undefined) {
 											rawCodeList.push(v.value);
 										}
 									}
@@ -1325,7 +1367,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					}
 				});
 				hiddenStringFromEvalList = HiddenString;
-
 				if (hiddenStringFromEvalList.length != 0) {
 					inEval = true;
 					for (var hiddenStringFromEval of hiddenStringFromEvalList){
@@ -1373,8 +1414,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 			if (stringConcat !== undefined && stringConcat.length > 0) {
 				for (var sc of stringConcat) {
 					var featureContext = sc[0];
-					if (verbose>0) console.log("FEATURE[StringConcatation]:" + featureContext[featureContext.length-1] + ":"+scope+":" +sc[1]);
-					updateResultMap(resultMap, "StringConcatation", coefficient);
+					if (verbose>0) console.log("FEATURE[StringConcatenation]:" + featureContext[featureContext.length-1] + ":"+scope+":" +sc[1]);
+					updateResultMap(resultMap, "StringConcatenation", coefficient);
 				}
 			}
 

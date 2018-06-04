@@ -348,7 +348,7 @@ AST.prototype.checkStringConcatnation=function(index, varMap, verbose=false) {
 									for (var tt of ts) {
 										if (tt.type == "String") {
 											rhs_str = tt.value;
-											longString = token.value + "+=" + rhs_token.value +  " ==> " + token.value + "+=" + rhs_str;
+											longString = token.value + "+=" + rhs_token.value +  " ==> " +token.value + "+="+ rhs_str;
 											break;
 										}
 									}
@@ -470,11 +470,20 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 			return [identifier, [{ type: 'SpreadElement', value: args }]];
 		}
 	} else if (initExpr.type == "UnaryExpression"){
+		if (initExpr.operator == "~") {
+			return [identifier, [{type: 'Numeric', value: eval(args)}]];
+		}
+
+		if (initExpr.operator == "!") {
+			return [identifier, [{type: 'Boolean', value: eval(args)}]];
+		}
+
 		if (initExpr.operator == "-") {
 			return [identifier, [{ type: 'Numeric', value: args }]];
-		} else {
-			return [identifier, [{ type: 'UnaryExpression', value: args }]];
-		}
+		} 
+
+
+		return [identifier, [{ type: 'UnaryExpression', value: args }]];
 	} else if (initExpr.type == "NewExpression"){
 		var parentNode = this;
 		var trueVal;
@@ -507,6 +516,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 
 		ASTUtils.traverse(initExpr, function(node){
 			if (node.type == "CallExpression" && trueVal === undefined){
+				// console.log(node)
 				var object;
 				var operation;
 				if (node.callee !== undefined && node.callee.type == "MemberExpression") {
@@ -534,7 +544,13 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					object = node.callee.object;
 					operation = node.callee.property.name;
 				} else if (node.callee !== undefined && node.callee.type == "Identifier"){
-					if(node.callee.name == "RegExp") {
+					var CalleeName = node.callee.name;
+					var actualCallee = varMap.get(node.callee.name);
+					if (actualCallee !== undefined) {
+						CalleeName = actualCallee[0].value;
+					} 
+
+					if(CalleeName == "RegExp") {
 						valType = "RegExp";
 						if (node.arguments !== undefined) {
 							trueVal = [];
@@ -544,7 +560,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 							}
 							if (trueVal.length == 0) trueVal = undefined;
 						}
-					} else if (node.callee.name == "unescape") {
+					} else if (CalleeName == "unescape") {
 						valType = "String";
 						if (node.arguments !== undefined) {
 							var types = parentNode.getVariableInitValue(identifier, node.arguments[0], varMap, verbose)[1];
@@ -558,7 +574,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 								}
 							}
 						}
-					} else if (node.callee.name == "Array") {
+					} else if (CalleeName == "Array") {
 						valType = "ArrayExpression";
 						if (node.arguments !== undefined) {
 							trueVal = [];
@@ -567,6 +583,25 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 								if (v !== undefined) trueVal.push([arg, v]);
 							}
 							if (trueVal.length == 0) trueVal = undefined;
+						}
+					}  else if (CalleeName == "eval") {
+						if (node.arguments !== undefined) {
+							trueVal = [];
+							for (var arg in node.arguments) {
+								var v = parentNode.getVariableInitValue(identifier, node.arguments[arg], varMap, verbose)[1][0];
+								if (v !== undefined) {
+									if (v.type == "String") {
+										var preValue = varMap.get(v.value.slice(1,-1));
+										if (preValue !== undefined) {
+											valType = preValue[0].type;
+											trueVal = preValue[0].value;
+										} else {
+											valType = v.type;
+											trueVal = v.value;
+										}
+									} 
+								}
+							}
 						}
 					}
 				}
@@ -783,7 +818,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 						}
 						if (node.arguments.length == 2){
 							var v2 = parentNode.getVariableInitValue(identifier, node.arguments[1], varMap, verbose)[1][0];
-							if (v1 !== undefined && v2.type == "Numeric") {
+							if (v2 !== undefined && v2.type == "Numeric") {
 								arg2 = v2.value;
 							}
 						}
@@ -1338,11 +1373,12 @@ AST.prototype.getAssignmentLeftRight = function(expr, varMap, verbose=false) {
 			if (lhs_value.type == "String") {
 				// console.log("lhs_value.value", lhs_value.value)
 				// console.log("result[0].value", result[0].value)
-				if (result[0].value.type == "String"){
-					trueResult.push({type:lhs_value.type ,value:("'"+lhs_value.value.slice(1,-1) + result[0].value.slice(1,-1) + "'")});
+				if (result[0].type == "String"){
+					trueResult.push({type:lhs_value.type ,value:('"'+lhs_value.value.slice(1,-1) + result[0].value.slice(1,-1) + '"')});
 				} else {
 					//TODO: result[0].value-> call expression (e.g.  x+=gh())
-					trueResult.push({type:lhs_value.type ,value:("'"+lhs_value.value.slice(1,-1) + result[0].value + "'")});
+
+					trueResult.push({type:lhs_value.type ,value:('"'+lhs_value.value.slice(1,-1) + result[0].value + '"')});
 				}
 			} else if (lhs_value.type == "Numeric"){
 				trueResult.push({type:lhs_value.type ,value:(parseInt(lhs_value.value) + parseInt(result[0].value))});
@@ -1469,12 +1505,9 @@ AST.prototype.getFunctionArguments= function(expr, varMap, verbose=false) {
 	if (expression.arguments.length > 0) {
 		for (var i in expression.arguments) {
 			if (expression.arguments[i].type == "BinaryExpression") {
-				var exprArgs = new Expr(expression.arguments[i]);
-				var token = (new Expr(exprArgs._expr.left)).getToken(this._node);
-				if (token.type == "String") {
-					args.push({type: "String", value: exprArgs.getValueFromBinaryExpression(this._node, "", varMap,false,verbose)});
-				} else {
-					args.push({type: "BinaryExpression", value: exprArgs.getValueFromBinaryExpression(this._node, "", varMap,false,verbose)});
+				var value = this.getVariableInitValue("", expression.arguments[i], varMap, verbose)[1];
+				if (value !== undefined) {
+					args.push(value[0]);
 				}
 			} else if (expression.arguments[i].type == "UnaryExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);

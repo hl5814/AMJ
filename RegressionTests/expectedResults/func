@@ -12,7 +12,7 @@ FEATURE[FuncCallOnStringVariable]:in_function:testScope2:MJSA_TEST(Object->STRIN
 FEATURE[FuncCallOnStringVariable]:in_function:testScope1:MJSA_TEST(Object->STRING) => [test] ==> MJSA_TEST("inner1")
 FEATURE[FunctionObfuscation]:in_main:User_Program:[ b ] -> [ MJSA_TEST ]
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:b(STRING) => [object Object]("test2")
-FEATURE[FunctionObfuscation]:in_if:if_statements:[ a ] -> [ MJSA_TEST ]
+FEATURE[FunctionObfuscation]:in_if:User_Program:[ a ] -> [ MJSA_TEST ]
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => MJSA_TEST("test")
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => [object Object]("test")
 FEATURE[VariableWithFunctionExpression]:in_main:User_Program:Assign Variable by:a.prototype.myFunc=function(x) {

@@ -1,7 +1,6 @@
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:MJSA_TEST(STRING) => MJSA_TEST("xxx")
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:MJSA_TEST(STRING) => MJSA_TEST("helloworld")
-FEATURE[FuncCallOnBinaryExpr]:in_main:User_Program:MJSA_TEST(BinaryExpression) => MJSA_TEST(1+1)
-FEATURE[FuncCallOnCallExpr]:in_main:User_Program:MJSA_TEST(CallExpression) => MJSA_TEST([object Object])
+FEATURE[FuncCallOnCallExpr]:in_main:User_Program:MJSA_TEST(CallExpression) => MJSA_TEST(foo(1+bar()))
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:MJSA_TEST(Object->STRING) => [c] ==> MJSA_TEST("alert(b)")
 FEATURE[FunctionObfuscation]:in_main:User_Program:[ a ] -> [ MJSA_TEST ]
 FEATURE[FuncCallOnStringVariable]:in_main:User_Program:a(STRING) => MJSA_TEST("test")
