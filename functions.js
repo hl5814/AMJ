@@ -1168,7 +1168,6 @@ AST.prototype.getUpdateExpression= function(index, varMap, verbose=false) {
 
 
 AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, verbose=false) {
-
 	if (args.type == "ArrayMemberExpression") {
 		var object  = args.value[0];
 		var indices = args.value[1];
@@ -1207,16 +1206,19 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 			if (index === undefined) continue;
 			for (var r in r_vs){
 				var array_values = r_vs[r];
-				if (r_vs[r].type == "ObjectExpression" && index.type == "String") {
+				if (r_vs[r].type == "ObjectExpression" && indices[inx].type == "String") {
+
 					const field = r_vs[r].value[index.replace(/"/g,"")];
 					if (field !== undefined) {
 						r_vs[r].value[index.replace(/"/g,"")] = [newValue];
 						// ref_values = ref_values.concat(field);
+
 					} 
 					continue;
 				}
 
 				if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
+
 					if (index !== undefined) {
 						if (r_vs[r].value[index] === undefined){
 							r_vs[r].value[index] = [index, [newValue]];
@@ -1574,6 +1576,12 @@ AST.prototype.isAssignmentExpression= function(index) {
 	//assert isExpressionStatement()
 	const expression = this._node.body[index].expression;
 	return  (expression.type == "AssignmentExpression");
+};
+
+AST.prototype.isSequenceExpression= function(index) {
+	//assert isExpressionStatement()
+	const expression = this._node.body[index].expression;
+	return  (expression.type == "SequenceExpression");
 };
 
 AST.prototype.isUpdateExpression= function(index) {
