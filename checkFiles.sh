@@ -88,14 +88,14 @@ if [ -d $SOURCE ]; then
         fi
         # echo $filename
         if [ $DEBUG_MODE ]; then
-            var=$(node main.js -s $filename ${VERBOSE} -f -w | grep -E "hongtao")
+            var=$(node main.js -s $filename ${VERBOSE} -w)
             ret_code=$?
             if [ $ret_code != 0 ]; then
                 printf "Error [$ret_code] at [$curr]: $filename \n" 
                 read -p "Press enter to continue"
             fi
         else
-            node main.js -s $filename ${VERBOSE} -f -w 2>/dev/null | grep -E "hongtao"
+            node main.js -s $filename ${VERBOSE} -w 2>/dev/null | grep -E "hongtao"
         fi
 
 
