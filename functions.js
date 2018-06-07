@@ -1372,6 +1372,7 @@ AST.prototype.getAssignmentLeftRight = function(expr, varMap, verbose=false) {
 	var lhs = expr.left;
 	var rhs = expr.right;
 
+	if (lhs === undefined || rhs === undefined) return "SKIP";
 	var identifier = (new Expr(lhs)).getIdentifier(varMap);
 	var token = (new Expr(lhs)).getToken(this._node);
 	if (identifier === undefined) {
