@@ -598,7 +598,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 
 								var v = parentNode.getVariableInitValue(identifier, node.arguments[arg], varMap, verbose)[1][0];								
 								if (v !== undefined) {
-									if (v.type == "String") {										
+									if (v.type == "String") {
 										var preValue = varMap.get(v.value.slice(1,-1));
 										if (preValue !== undefined) {
 											valType = preValue[0].type;
@@ -1044,7 +1044,13 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 			if (initExpr.type == "BinaryExpression") {
 				var result = this.getBinaryExpressionValue(initExpr, varMap, verbose);
 				if (result !== undefined && result.length == 2){
-					if (result[0] == "String") {
+					if (result[0] == "Strings") {
+						var results = [];
+						for (var r of result[1]) {
+							results.push({ type: 'String', value: '"' + r + '"' })
+						}
+						return [identifier, results];
+					} else if (result[0] == "String") {
 						return [identifier, [{ type: 'String', value: '"' + result[1] + '"' }]];
 					} else if (result[0] == "Numeric"){
 						return [identifier, [{ type: 'Numeric', value: result[1] }]];
@@ -1096,7 +1102,7 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 			}
 		}
 	}
-
+	var possibleVals = ts;
 	if (ts.length >= 1) {
 		for (var n of nodesLeft) {
 			var nthExpr = this.getVariableInitValue("",n, varMap, verbose)[1];
@@ -1119,19 +1125,33 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 					}
 				}
 			}
-
 		}
 
 		if (valType == "String") {
 			try {
-				var i = 0;
-				var codeString = ts[i];
-				for (i; i < ts.length-1; i++){
-					if (operatorList[i] == "+"){
-						codeString = codeString + ts[i+1];
+				var results = [];
+				if (possibleVals !== undefined && possibleVals.length > 1) {
+					for (var pv of possibleVals) {
+						var i = possibleVals.length;
+						var codeString = pv;
+						for (i; i <= ts.length; i++){
+							if (operatorList[i-possibleVals.length] == "+"){
+								codeString = codeString + ts[i];
+							}
+						}
+						results.push(codeString);
 					}
+					return ["Strings", results]
+				} else {
+					var i = 0;
+					var codeString = ts[i];
+					for (i; i < ts.length-1; i++){
+						if (operatorList[i] == "+"){
+							codeString = codeString + ts[i+1];
+						}
+					}
+					return [type, codeString];
 				}
-				return [type, codeString];
 			} catch(err) {}
 		} 
 
@@ -1168,6 +1188,7 @@ AST.prototype.getUpdateExpression= function(index, varMap, verbose=false) {
 
 
 AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, verbose=false) {
+
 	if (args.type == "ArrayMemberExpression") {
 		var object  = args.value[0];
 		var indices = args.value[1];
@@ -1187,7 +1208,7 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 							objIndex = objIndex.replace(/"/g,"");
 							obj = obj[0].value[objIndex];
 						} else {
-							obj = obj[0].value[objIndex][1];
+							obj = obj[0].value[objIndex];
 						}
 					}
 				}
@@ -1199,13 +1220,16 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 
 		var ref_values = [];
 		for (var inx in indices){
+
 			// skip " when handling object field access aka o["f"] => o.f
 			// indices will be `"f"` instead of [{type:"Numeric", value:2}]
 			if (indices[inx] == "") continue;
 			index = indices[inx].value;
+			// console.log(indices[inx])
 			if (index === undefined) continue;
 			for (var r in r_vs){
 				var array_values = r_vs[r];
+
 				if (r_vs[r].type == "ObjectExpression" && indices[inx].type == "String") {
 
 					const field = r_vs[r].value[index.replace(/"/g,"")];
@@ -1221,9 +1245,9 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 
 					if (index !== undefined) {
 						if (r_vs[r].value[index] === undefined){
-							r_vs[r].value[index] = [index, [newValue]];
+							r_vs[r].value[index] = [newValue];
 						} else {
-							r_vs[r].value[index][1] = [newValue];
+							r_vs[r].value[index] = [newValue];
 						}
 					} 
 				}
@@ -1234,7 +1258,6 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 		var object = args.value[0];
 		var fields = args.value[1];
 		var r_vs = varMap.get(object);
-
 		if (object instanceof Array) {
 			var field = [];
 			while (object instanceof Array) {
@@ -1249,7 +1272,7 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 						if (obj[0].type == "ObjectExpression") {
 							obj = obj[0].value[objIndex];
 						} else {
-							obj = obj[0].value[objIndex][1];
+							obj = obj[0].value[objIndex];
 						}
 					}
 				}
@@ -1271,7 +1294,9 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 }
 
 AST.prototype.getTrueValueFromMemberExpression=function(args, varMap, verbose=false) {
+
 	if (args[0].type == "ArrayMemberExpression") {
+
 		var object  = args[0].value[0];
 		var indices = args[0].value[1];
 		var r_vs;
@@ -1291,7 +1316,7 @@ AST.prototype.getTrueValueFromMemberExpression=function(args, varMap, verbose=fa
 							objIndex = objIndex.replace(/"/g,"");
 							obj = obj[0].value[objIndex];
 						} else {
-							obj = obj[0].value[objIndex][1];
+							obj = obj[0].value[objIndex];
 						}
 					}
 				}
@@ -1301,16 +1326,19 @@ AST.prototype.getTrueValueFromMemberExpression=function(args, varMap, verbose=fa
 			r_vs = varMap.get(object);
 		}
 
+
 		var ref_values = [];
+
 		for (var inx in indices){
 			// skip " when handling object field access aka o["f"] => o.f
 			// indices will be `"f"` instead of [{type:"Numeric", value:2}]
 			if (indices[inx] == "") continue;
 			index = indices[inx].value;
+
 			if (index === undefined) continue;
 			for (var r in r_vs){
 				var array_values = r_vs[r];
-				if (r_vs[r].type == "ObjectExpression" && index.type == "String") {
+				if (r_vs[r].type == "ObjectExpression" && indices[inx].type == "String") {
 					const field = r_vs[r].value[index.replace(/"/g,"")];
 					if (field !== undefined) {
 						ref_values = ref_values.concat(field);
@@ -1320,12 +1348,11 @@ AST.prototype.getTrueValueFromMemberExpression=function(args, varMap, verbose=fa
 				
 				if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
 					if (index !== undefined && r_vs[r].value[index]!== undefined) {
-						ref_values = ref_values.concat(r_vs[r].value[index][1]);
+						ref_values = ref_values.concat(r_vs[r].value[index]);
 					} 
 				}
 			}
 		}
-
 	} else if (args[0].type == "FieldMemberExpression") {
 		var object = args[0].value[0];
 		var fields = args[0].value[1];
@@ -1345,7 +1372,7 @@ AST.prototype.getTrueValueFromMemberExpression=function(args, varMap, verbose=fa
 						if (obj[0].type == "ObjectExpression") {
 							obj = obj[0].value[objIndex];
 						} else {
-							obj = obj[0].value[objIndex][1];
+							obj = obj[0].value[objIndex];
 						}
 					}
 				}
@@ -1363,15 +1390,13 @@ AST.prototype.getTrueValueFromMemberExpression=function(args, varMap, verbose=fa
 			}
 		}
 	}
-
 	return ref_values;
 }
 
 
 AST.prototype.getAssignmentLeftRight = function(expr, varMap, verbose=false) {
 	var lhs = expr.left;
-	var rhs = expr.right;
-
+	var rhs = expr.right;	
 	if (lhs === undefined || rhs === undefined) return "SKIP";
 	var identifier = (new Expr(lhs)).getIdentifier(varMap);
 	var token = (new Expr(lhs)).getToken(this._node);
@@ -1393,20 +1418,15 @@ AST.prototype.getAssignmentLeftRight = function(expr, varMap, verbose=false) {
 	} else {
 		lhsValues = this.getVariableInitValue(identifier, lhs, varMap, verbose)[1];
 	}
-
 	var result = this.getVariableInitValue(identifier, rhs, varMap, verbose)[1];
 	var binaryOPs = ["+=", "-=", "|=", "&=", "*=", "/=", "%=", ">>=", "<<=", "^=", "~=", ">>>="];
 	var trueResult = [];
 	if (binaryOPs.indexOf(expr.operator) != -1 && result !== undefined && result[0] !== undefined) {
 		for (var lhs_value of lhsValues) {
 			if (lhs_value.type == "String") {
-				// console.log("lhs_value.value", lhs_value.value)
-				// console.log("result[0].value", result[0].value)
 				if (result[0].type == "String"){
 					trueResult.push({type:lhs_value.type ,value:('"'+lhs_value.value.slice(1,-1) + result[0].value.slice(1,-1) + '"')});
 				} else {
-					//TODO: result[0].value-> call expression (e.g.  x+=gh())
-
 					trueResult.push({type:lhs_value.type ,value:('"'+lhs_value.value.slice(1,-1) + result[0].value + '"')});
 				}
 			} else if (lhs_value.type == "Numeric"){
@@ -1776,7 +1796,7 @@ Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inne
 		//TODO check callee.name
 		// elem_array.push([identifier + "_" + callee.name + "["+e+"]", { type: element.type, value: val }]);
 
-		elem_array.push([e, [{ type: element.type, value: val }]]);
+		elem_array.push([{ type: element.type, value: val }]);
 	}
 	return elem_array;
 }
@@ -1797,7 +1817,7 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, in
 		}
 		var arg = new Expr(element);
 		var val = arg.getArg(node, identifier, varMap, true, verbose);
-		elem_array.push([e, [{ type: element.type, value: val }]]);
+		elem_array.push([{ type: element.type, value: val }]);
 	}
 	return elem_array;
 }
@@ -1854,8 +1874,8 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 						var vs = varMap.get(obj);
 						if (vs !== undefined) {
 							for (var v of vs) {
-								if (v.value[index] !== undefined && v.value[index][1] !== undefined) {
-									types = types.concat(v.value[index][1]);
+								if (v.value[index] !== undefined) {
+									types = types.concat(v.value[index]);
 								}		
 											
 							}
@@ -1922,7 +1942,7 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 					var arrayElements = t.value;
 					var possibleValues = [];
 					for (var e of arrayElements){
-						possibleValues = possibleValues.concat(e[1]);
+						possibleValues = possibleValues.concat(e);
 					}
 					leftValue = leftValue.concat(possibleValues);
 					varMap.setVariable(leftVar, leftValue);

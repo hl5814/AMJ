@@ -7,7 +7,7 @@ from io import StringIO
 from shutil import copyfile
 from scipy.cluster.hierarchy import cophenet
 from scipy.spatial.distance import pdist
-
+import scipy.stats, time
 # python3 Clustering/cluster.py  -f -s 2016.csv -l 10 -p 0.05 -d
 
 # Parse command line arguments
@@ -15,17 +15,18 @@ parser = argparse.ArgumentParser(description="Cluster Malicious JS files based o
 parser.add_argument("-d", "--dendrogram", action="store_true", help="draw dendrogram")
 parser.add_argument("-f", "--file", action="store_true", help="copy files into corresponding cluster")
 parser.add_argument("-n", dest='number',default=1,action='store',type=int, help="number of clusters")
+parser.add_argument("-l", dest='line',default=1,action='store',type=float, help="line")
 parser.add_argument('--verbose', '-v', action='count', default=-1,help="-v print file index for each cluster,-vv print top 3 features of each cluster")
 parser.add_argument("-p", dest='percentage', action='store',type=float, default=1, nargs='?', help="randomly pick p%%  from samples")
 parser.add_argument("-s", dest='source', required=True, action='store',type=str, help="input csv file path")
 parser.add_argument("-r", dest='result', action='store',type=str,default="cluster_result.csv", help="result file path, cluster_result.csv by default")
 
 
-
 args = parser.parse_args()
 NODES = args.number
 VERBOSE = args.verbose
 FILE = args.file
+LINE_AT = args.line
 PERCENT = args.percentage
 SOURCE = args.source
 RESULT_PATH = args.result
@@ -34,13 +35,15 @@ RESULT_PATH = args.result
 # "malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv"
 
 
-
 file_path = os.path.abspath(os.path.dirname(__file__))
 dataCSV = os.path.join(file_path, SOURCE)
 
 if (VERBOSE >= 0) : print("Reading data from: " + str(dataCSV))
-
+start_time = time.time()
 df = pd.read_csv(dataCSV)
+# elapsed_time = time.time() - start_time
+# print("read csv: ", elapsed_time)
+# start_time = time.time()
 if PERCENT >= 0 and PERCENT < 1:
     df = df.sample(frac=PERCENT) # randomly taking 10% of input samples
 fileIndex = df.ix[:,0] # get first column as File Indices
@@ -71,6 +74,8 @@ L_MATRIX = "average"
 if (VERBOSE >= 0) : print("Clustering into " + str(NODES) + " clusters . . .\n")
 Z = linkage(X, L_MATRIX)
 c, coph_dists = cophenet(Z, pdist(X))
+# print(coph_dists)
+# KL = scipy.stats.entropy(coph_dists) 
 if (VERBOSE >= 0) : print("Using :[", L_MATRIX, "] as linkage matrix\nwith cophenet value: ", c, "\n")
 
 # First define the leaf label function.
@@ -140,7 +145,7 @@ FINAL_REPORT = {    "number of files":"",
                     "topPunctuators": ""
                 }
 
-FEATURE_LIST = [    "VariableWithFunctionExpression",
+FEATURE_LIST =  [   "VariableWithFunctionExpression",
                     "VariableWithExpression",       
                     "VariableWithThisExpression",   
                     "VariableWithUnaryExpression",  
@@ -149,7 +154,7 @@ FEATURE_LIST = [    "VariableWithFunctionExpression",
                     "VariableWithLogicalExpression",
                     "VariableWithBitOperation",     
                     "FunctionObfuscation",          
-                    "StringConcatation",            
+                    "StringConcatenation",          
                     "PredefinedFuncCalls",          
                     "DOM_Operations",               
                     "WINDOW_Operations",            
@@ -164,10 +169,12 @@ FEATURE_LIST = [    "VariableWithFunctionExpression",
                     "ConditionalCompilationCode",   
                     "DotNotationInFunctionName",    
                     "LongArray",                    
-                    "LongExpression",                
+                    "LongExpression",               
                     "UnfoldEvalSuccess",            
                     "Unescape",                     
                     "UnfoldUnescapeSuccess"]        
+    
+               
 
 SCOPE_LIST = ["in_main","in_if","in_loop","in_function","in_try","in_switch","in_return","in_file"]
 
@@ -294,7 +301,7 @@ for key, value in clustdict.items():
 
     if (VERBOSE >= 0): 
         commentReport = ""
-        if (averageCommentPercentage > 40):
+        if (averageCommentPercentage > 10):
             commentReport = " => %.2f%% comment/file" % averageCommentPercentage
 
         print("Cluster[{:>5}]".format(str(key))+"  #files:{:>5}".format(len(value)) + commentReport)
@@ -307,11 +314,11 @@ NUMBER_OF_COLUMNS = max(len(f_df.columns.values), len(s_df.columns.values))
 
 if len(f_df.columns.values) != NUMBER_OF_COLUMNS:
     for i in range(len(f_df.columns.values), NUMBER_OF_COLUMNS):
-        f_df[str(i)] = 0
+        f_df[i] = 0
 
 if len(s_df.columns.values) != NUMBER_OF_COLUMNS:
     for i in range(len(s_df.columns.values), NUMBER_OF_COLUMNS):
-        s_df[str(i)] = 0
+        s_df[i] = 0
 
 
 
@@ -371,20 +378,22 @@ else:
 # draw full dendrogram
 if (args.dendrogram):
     fig = plt.figure()
-    plt.figure(figsize=(20, 8))
+    # plt.figure(figsize=(5, 4))
+    plt.figure(figsize=(10, 4))
+    # plt.figure(figsize=(20, 8))
     sys.setrecursionlimit(1500)
-    max_d = 0.5  # max_d as in max_distance for colouring sub tree
+    max_d = LINE_AT  # max_d as in max_distance for colouring sub tree
     fancy_dendrogram(
         Z,
-        # leaf_label_func=llf,
-        # truncate_mode='lastp',
-        # p=NODES,
+        leaf_label_func=llf,
+        truncate_mode='lastp',
+        p=NODES,
         # truncate_mode='level',
         # p=100,
         leaf_font_size=8.,
         show_contracted=True,
-        annotate_above=2,
-        max_d=max_d,  # plot a horizontal cut-off line
+        annotate_above=0.5,
+        # max_d=max_d,  # plot a horizontal cut-off line
     )
     if RESULT_PATH != "cluster_result.csv":
         plt.savefig(os.path.join(file_path,'t_dendrogram.png'))

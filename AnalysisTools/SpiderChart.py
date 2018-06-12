@@ -39,7 +39,10 @@ scope_headers = s_df.columns.values.tolist()
 keys = ["group"]
 
 for i in range(0, len(feature_headers)):
-	keys.append(feature_headers[i]+'\n'+scope_headers[i])
+	if scope_headers[i].isdigit():
+		keys.append('\n'+feature_headers[i]+'\n')
+	else:
+		keys.append('\n'+feature_headers[i]+'\n'+scope_headers[i])
 
 for index, row in f_df.iterrows():
 	f_values = ["FEATURE"] + f_df.loc[index].tolist()
@@ -62,7 +65,7 @@ for index, row in f_df.iterrows():
 	 
 
 	fig = plt.figure()
-	# fig.set_size_inches(6, 4)
+	fig.set_size_inches(6, 5)
 	# Initialise the spider plot
 	ax = plt.subplot(111, polar=True)
 	 
@@ -71,7 +74,10 @@ for index, row in f_df.iterrows():
 	ax.set_theta_direction(-1)
 	 
 	# Draw one axe per variable + add labels labels yet
-	plt.xticks(angles[:-1], categories)
+
+
+	plt.title("Cluster: " +str(index), fontsize=20, linespacing=5)
+	plt.xticks(angles[:-1], categories,fontsize=6)
 	 
 	# Draw ylabels
 	ax.set_rlabel_position(0)

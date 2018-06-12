@@ -225,12 +225,14 @@ Set.prototype.my_add=function(values){
 			if (values[v].type == "ArrayExpression") {
 				for (var val in values[v].value) {
 					if (item[0].value[val] === undefined) continue;
-					if (values[v].value[val][0] != item[0].value[val][0] ||
-						values[v].value[val][1] != item[0].value[val][1]) {
-						if (values[v].value[val][0] == item[0].value[val][0]) {
-							if (item[0].value[val][1] === undefined) continue;
-							item[0].value[val][1].push(values[v].value[val][1][0]);
-						}
+					// console.log("values[v].value[val]", values[v].value[val])
+					// console.log("item[0].value[val]", item[0].value[val])
+					if (values[v].value[val][0] != item[0].value[val][0]) {
+						// if (values[v].value[val][0] == item[0].value[val][0]) {
+							if (item[0].value[val][0] === undefined) continue;
+							item[0].value[val].push(values[v].value[val][0]);
+							// console.log("->item[0].value[val]", item[0].value[val])
+						// }
 						exists = false;
 						break;
 					}
@@ -258,7 +260,7 @@ Set.prototype.my_add=function(values){
 }
 var FuncDepthCount = 0;
 function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap, verbose=false){
-	if (FuncDepthCount++ > 200) return;
+	if (FuncDepthCount++ > 50) return;
 	try{
 		var eVarMap = new Functions.VariableMap(varMap._varMap);
 		var diffMap = new Functions.VariableMap(new HashMap());
@@ -504,13 +506,13 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 							parseProgram(returnS, "ReturnStatement in " + codeBody, coef, emptyVarMap, verbose);
 						}
 						updateResultMap(resultMap, "VariableWithFunctionExpression", coefficient);
-					}  else if (node.type == "BinaryExpression" && parent.type == "VariableDeclarator") {
+					}  else if (node.type == "BinaryExpression" && parent !== null && parent.type == "VariableDeclarator") {
 						var bitOperators = [">>", "<<", "|", "&", "^", "~", ">>>", ">>=", "<<=", "|=", "&=", "^=", "~=", ">>>="];
 						if (bitOperators.indexOf(node.operator) != -1) {
 							if (verbose>0) console.log("FEATURE[VariableWithBitOperation]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + ASTUtils.getCode(lastDeclaratorNode));
 							updateResultMap(resultMap, "VariableWithBitOperation", coefficient);
 						}
-					} else if (node.type == "UnaryExpression" && parent.type == "VariableDeclarator") {
+					} else if (node.type == "UnaryExpression" && parent !== null && parent.type == "VariableDeclarator") {
 						if (node.operator == "~") {
 							if (verbose>0) console.log("FEATURE[VariableWithBitOperation]:" + coefficient[coefficient.length-1] + ":" + scope + ":Init Variable by:" + ASTUtils.getCode(lastDeclaratorNode));
 							updateResultMap(resultMap, "VariableWithBitOperation", coefficient);
@@ -604,14 +606,14 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					var found = false;
 					ASTUtils.traverse(expression, function(node, parent){
 						if (node.type == "AssignmentExpression") lastAssignmentNode = node;
-						if (node.type == "SequenceExpression" && parent.type == "AssignmentExpression") {
+						if (node.type == "SequenceExpression" && parent !== null && parent.type == "AssignmentExpression") {
 							var exprs = node.expressions;
 							var codes = ASTUtils.getCode(node)
 							var startIndex = 0;
 							for (const exp of exprs) {
 								parseProgram(ASTUtils.getCode(exp), scope, coefficient, varMap, verbose);
 							}
-						} else if (node.type == "ArrayExpression" && parent.type == "AssignmentExpression"){
+						} else if (node.type == "ArrayExpression" && parent !== null && parent.type == "AssignmentExpression"){
 							if (node.elements.length > 1000){
 								if (verbose>0) console.log("FEATURE[LongArray] : " + var_values[0] + " contains " + node.elements.length + " objects");
 								updateResultMap(resultMap, "LongArray", coefficient);
@@ -619,7 +621,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						} else if (node.type == "ThisExpression"){
 							if (verbose>0) console.log("FEATURE[VariableWithThisExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + ASTUtils.getCode(lastAssignmentNode));
 							updateResultMap(resultMap, "VariableWithThisExpression", coefficient);
-						} else if (node.type == "LogicalExpression" && parent.type == "AssignmentExpression"){
+						} else if (node.type == "LogicalExpression" && parent !== null && parent.type == "AssignmentExpression"){
 							if (verbose>0) console.log("FEATURE[VariableWithLogicalExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + ASTUtils.getCode(lastAssignmentNode));
 							updateResultMap(resultMap, "VariableWithLogicalExpression", coefficient);
 						} else if (node.type == "AssignmentExpression") {
@@ -657,6 +659,25 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 												var_values[1] = rVal;
 												found = true;
 												varMap.setVariable(funcName+"_return_"+var_values[0], rVal);
+											} else {
+												if (args !== undefined){
+													try{
+														for (var a of args){
+															if (a.type == "Identifier") {
+																var a_values = varMap.get(a.value);
+																for (var a_value of a_values) {
+																	if (a_value.type == "String") {
+																		if (verbose>0) console.log("FEATURE[FuncCallOnStringVariable]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+ASTUtils.getCode(node));
+																		updateResultMap(resultMap, "FuncCallOnStringVariable", coefficient);
+																	}
+																}
+															} else if (a.type == "String") {
+																if (verbose>0) console.log("FEATURE[FuncCallOnStringVariable]:" + coefficient[coefficient.length-1] + ":" + scope + ":"+ASTUtils.getCode(node));
+																updateResultMap(resultMap, "FuncCallOnStringVariable", coefficient);
+															}
+														}
+													} catch(err){}
+												}
 											}
 										} else if (func.type == "pre_Function") {
 											if (verbose>0) console.log("FEATURE[PredefinedFuncCalls]:" + coefficient[coefficient.length-1] + ":" + scope + ":", ASTUtils.getCode(node));
@@ -665,7 +686,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 									}
 								}
 							}
-						} else if (node.type == "FunctionExpression" && parent.type == "AssignmentExpression"){
+						} else if (node.type == "FunctionExpression" && parent !== null && parent.type == "AssignmentExpression"){
 							if (verbose>0) console.log("FEATURE[VariableWithFunctionExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + ASTUtils.getCode(parent));
 								
 							var emptyVarMap = new Functions.VariableMap(varMap._varMap);
@@ -687,13 +708,13 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 							}
 							updateResultMap(resultMap, "VariableWithFunctionExpression", coefficient);
 								
-						} else if (node.type == "BinaryExpression" && parent.type == "AssignmentExpression") {
+						} else if (node.type == "BinaryExpression" && parent !== null && parent.type == "AssignmentExpression") {
 							var bitOperators = [">>", "<<", "|", "&", "^", ">>>", ">>=", "<<=", "|=", "&=", "^=", "~=", ">>>="];
 							if (bitOperators.indexOf(node.operator) != -1) {
 								if (verbose>0) console.log("FEATURE[VariableWithBitOperation]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + ASTUtils.getCode(parent));
 								updateResultMap(resultMap, "VariableWithBitOperation", coefficient);
 							}
-						} else if (node.type == "UnaryExpression" && parent.type == "AssignmentExpression") {
+						} else if (node.type == "UnaryExpression" && parent !== null && parent.type == "AssignmentExpression") {
 							if (node.operator == "~") {
 								if (verbose>0) console.log("FEATURE[VariableWithBitOperation]:" + coefficient[coefficient.length-1] + ":" + scope + ":Assign Variable by:" + ASTUtils.getCode(parent));
 								updateResultMap(resultMap, "VariableWithBitOperation", coefficient);
@@ -766,11 +787,14 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 						user_defined_funName = funcName;
 					}
 
+
 					// try to execute the function call with user defined functions
 					if (funcNames[f].type == "user_Function" && !fastMode){
+
 						// console.log("==> here")
 						var returnVal;
-						var args = astNode.getFunctionArguments(astNode._node.body[i].expression, varMap);						
+						var args = astNode.getFunctionArguments(astNode._node.body[i].expression, varMap);		
+
 						var rVal = parseFuncBody(astNode, funcNames[f], args, funcName, scope, coefficient, varMap, verbose);
 						if (rVal !== undefined) {
 							var prevReturn = varMap.get(funcName+"_return");
@@ -781,10 +805,10 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 								prevReturn.push(rVal);
 								varMap.setVariable(funcName+"_return", prevReturn);
 							}
+
 							continue;
 						}
 					}
-
 
 
 					if (funcNames[f].type == "pre_Function" || funcNames[f].type == "user_Function") {
@@ -800,10 +824,12 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 										   arg.type == "ArrayMemberExpression" || 
 										   arg.type == "FieldMemberExpression" ) {
 									// pre-processing 
+
 									if (arg.type == "ArrayMemberExpression") {
 										var object  = arg.value[0];
 										var indices = arg.value[1];
 										var r_vs;
+										
 										if (object instanceof Array) {
 											var indx = [];
 											while (object instanceof Array) {
@@ -811,6 +837,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 												indx = indx.concat(object[1]);
 												object = object[0];
 											}
+
 											try {
 												for (var ii = indx.length-1; ii >=0;ii--){
 													var objIndex = indx[ii].value;
@@ -819,7 +846,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 															objIndex = objIndex.replace(/"/g,"");
 															obj = obj[0].value[objIndex];
 														} else {
-															obj = obj[0].value[objIndex][1];
+															obj = obj[0].value[objIndex];
 														}
 													}
 												}
@@ -835,8 +862,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 												updateResultMap(resultMap, "FuncCallOnNonLocalArray", coefficient);
 											}
 										}
-
 										var ref_values = [];
+
 										for (var inx in indices){
 											// skip " when handling object field access aka o["f"] => o.f
 											// indices will be `"f"` instead of [{type:"Numeric", value:2}]
@@ -855,7 +882,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 												if (r_vs[r].type == "ArrayExpression" || r_vs[r].type == "NewExpression") {
 													if (index !== undefined) {
 														try{
-															ref_values = ref_values.concat(r_vs[r].value[index][1]);
+															ref_values = ref_values.concat(r_vs[r].value[index]);
 														}catch (err) {
 															if (verbose>0) console.log("FEATURE[FuncCallOnUnkonwnReference]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + ASTUtils.getCode(astNode._node.body[i]));
 															updateResultMap(resultMap, "FuncCallOnUnkonwnReference", coefficient);
@@ -884,7 +911,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 														if (obj[0].type == "ObjectExpression") {
 															obj = obj[0].value[objIndex];
 														} else {
-															obj = obj[0].value[objIndex][1];
+															obj = obj[0].value[objIndex];
 														}
 													}
 												}
@@ -894,7 +921,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 											}
 											r_vs = obj;
 										} 
-
 										var ref_values = [];
 										for (var f in fields) {
 											const field = fields[f];
@@ -1310,6 +1336,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 
 								if (node.arguments[0].type == "Identifier") {
 									var types = varMap.get(node.arguments[0].name);
+
 									if (types !== undefined) {
 										for (var t of types) {
 											if (t.value !== undefined) {
@@ -1372,6 +1399,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 									var values = parent.getVariableInitValue("", node.arguments[0], varMap, verbose)[1];
 									if (values !== undefined) {
 										for (var v of values) {
+
 											if (v.value !== undefined) {
 												rawCodeList.push(v.value);
 											}
@@ -1484,6 +1512,7 @@ if (showHeader) {
 	printHeader(resultMap)
 } else if (filePath !== undefined && filePath !== null) {
 	var sourcefile = fs.readFileSync(filePath, "utf8");
+	var originalfile = sourcefile;
 	FILE_LENGTH = sourcefile.length;
 	try {
 		// try to parse the program directly
@@ -1491,78 +1520,105 @@ if (showHeader) {
 	    parseProgram(sourcefile, "User_Program", ["in_main"], init_varMap, verbose);
 	}
 	catch(err) {
-		// try to extract all scattered <script>blocks</script>
-		// if input file is HTML file
-		var match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+		try{
+			// try to extract all scattered <script>blocks</script>
+			// if input file is HTML file
+			var match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
 
-		var scriptCodes = "";
-		if (match !== null) {
-			while (match !== null) {
-				const matchLength = match[0].length;
-				var scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
+			var scriptCodes = "";
+			if (match !== null) {
+				while (match !== null) {
+					const matchLength = match[0].length;
+					var scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
 
-				var htmlCommentInScriptBlock = scriptBlock.match(/<!--[\s\S]*?-->/g, "");
-				if (htmlCommentInScriptBlock !== null) {
-					if (verbose>0) console.log("FEATURE[HtmlCommentInScriptBlock]");
-					updateResultMap(resultMap, "HtmlCommentInScriptBlock", ["in_file"]);
-					// scriptBlock = scriptBlock.replace(/<!--[\s\S]*?-->/g, "")
-					scriptBlock = scriptBlock.replace(/-->/g, "")
-					scriptBlock = scriptBlock.replace(/<!--/g, "")
+					var htmlCommentInScriptBlock = scriptBlock.match(/<!--[\s\S]*?-->/g, "");
+					if (htmlCommentInScriptBlock !== null) {
+						if (verbose>0) console.log("FEATURE[HtmlCommentInScriptBlock]");
+						updateResultMap(resultMap, "HtmlCommentInScriptBlock", ["in_file"]);
+						// scriptBlock = scriptBlock.replace(/<!--[\s\S]*?-->/g, "")
+						scriptBlock = scriptBlock.replace(/-->/g, "")
+						scriptBlock = scriptBlock.replace(/<!--/g, "")
+					}
+
+					scriptCodes = scriptCodes + scriptBlock;
+					sourcefile = sourcefile.substring(matchLength+1, sourcefile.length);
+					match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+				}
+			} else {
+				scriptCodes = sourcefile;
+			}
+		    parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
+		} catch(err) {
+			try{
+				sourcefile = originalfile;
+				// try to extract all scattered <script>blocks</script>
+				// if input file is HTML file
+				var match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+
+				var scriptCodes = "";
+				if (match !== null) {
+					while (match !== null) {
+						const matchLength = match[0].length;
+						var scriptBlock = match[0].substring(match[0].indexOf(">")+1,match[0].length);
+
+						var htmlCommentInScriptBlock = scriptBlock.match(/<!--[\s\S]*?-->/g, "");
+						if (htmlCommentInScriptBlock !== null) {
+							if (verbose>0) console.log("FEATURE[HtmlCommentInScriptBlock]");
+							updateResultMap(resultMap, "HtmlCommentInScriptBlock", ["in_file"]);
+							scriptBlock = scriptBlock.replace(/<!--[\s\S]*?-->/g, "")
+						}
+
+						scriptCodes = scriptCodes + scriptBlock;
+						sourcefile = sourcefile.substring(matchLength+1, sourcefile.length);
+						match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
+					}
+				} else {
+					scriptCodes = sourcefile;
+				}
+				parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
+			} catch(err) {
+				// still encounter parsing errors
+				// try to fix some errors for compliation
+				// CASE 1: using "this" in code snippet
+			    var hasThis = scriptCodes.match(/this/);
+				if (hasThis !== null){
+					// replace this => MY_MJSA_THIS
+					// precent parsing error for some code snippet
+					scriptCodes=scriptCodes.replace(/this/g, "MY_MJSA_THIS")
+
 				}
 
-				scriptCodes = scriptCodes + scriptBlock;
-				sourcefile = sourcefile.substring(matchLength+1, sourcefile.length);
-				match = sourcefile.match('<[Ss][Cc][Rr][Ii][Pp][Tt][^>]*>(?:[^<]+|<(?!/[Ss][Cc][Rr][Ii][Pp][Tt]>))+');
-			}
-		} else {
-			scriptCodes = sourcefile;
-		}
-		
-		try {
-		    parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
-		}
-		catch(err) {
-			// still encounter parsing errors
-			// try to fix some errors for compliation
-			// CASE 1: using "this" in code snippet
-		    var hasThis = scriptCodes.match(/this/);
-			if (hasThis !== null){
-				// replace this => MY_MJSA_THIS
-				// precent parsing error for some code snippet
-				scriptCodes=scriptCodes.replace(/this/g, "MY_MJSA_THIS")
+				// CASE 2: using conditional compilation targeting IE browser
+			    var hasAt = scriptCodes.match(/@cc_on|@if|@end|@_win32|@_win64/);
+				if (hasAt !== null) {
+					scriptCodes=""
+					if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
+					updateResultMap(resultMap, "ConditionalCompilationCode", ["in_file"]);
+				}
+				// CASE 3: dot notation used in function name
+				var dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
+				if (dotFuncName !== null){
+					if (verbose>0) console.log("FEATURE[DotNotationInFunctionName]");
+					updateResultMap(resultMap, "DotNotationInFunctionName", ["in_file"]);
 
-			}
-
-			// CASE 2: using conditional compilation targeting IE browser
-		    var hasAt = scriptCodes.match(/@cc_on|@if|@end|@_win32|@_win64/);
-			if (hasAt !== null) {
-				scriptCodes=""
-				if (verbose>0) console.log("FEATURE[ConditionalCompilationCode]");
-				updateResultMap(resultMap, "ConditionalCompilationCode", ["in_file"]);
-			}
-			// CASE 3: dot notation used in function name
-			var dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
-			if (dotFuncName !== null){
-				if (verbose>0) console.log("FEATURE[DotNotationInFunctionName]");
-				updateResultMap(resultMap, "DotNotationInFunctionName", ["in_file"]);
-
-				var nCodes = ""
-			    while (dotFuncName !== null){
-			    	var start = dotFuncName.index;
-			    	var matchString = dotFuncName[0];
-			    	var replaceMatchStr = matchString.replace(/\./g, "");
-			    	replaceStr =  scriptCodes.replace(matchString, replaceMatchStr).slice(0, start+replaceMatchStr.length);
-			    	scriptCodes =  scriptCodes.replace(matchString, replaceMatchStr);
-			    	nCodes += replaceStr;
-			    	scriptCodes = scriptCodes.slice(replaceStr.length, scriptCodes.length);
-			    	dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
-			    }
-			    nCodes += scriptCodes;
-			    scriptCodes = nCodes;
-			}
-			parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
+					var nCodes = ""
+				    while (dotFuncName !== null){
+				    	var start = dotFuncName.index;
+				    	var matchString = dotFuncName[0];
+				    	var replaceMatchStr = matchString.replace(/\./g, "");
+				    	replaceStr =  scriptCodes.replace(matchString, replaceMatchStr).slice(0, start+replaceMatchStr.length);
+				    	scriptCodes =  scriptCodes.replace(matchString, replaceMatchStr);
+				    	nCodes += replaceStr;
+				    	scriptCodes = scriptCodes.slice(replaceStr.length, scriptCodes.length);
+				    	dotFuncName = scriptCodes.match(/function (.*?)\.(.*?)\(/);
+				    }
+				    nCodes += scriptCodes;
+				    scriptCodes = nCodes;
+				}
+				parseProgram(scriptCodes, "User_Program", ["in_main"], init_varMap, verbose);
 		}
 	}
+}
 	// ========================
 	if (calcualteWeight && resultMap.size > 0) showResult(resultMap);
 } 

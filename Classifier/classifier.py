@@ -4,11 +4,12 @@ import pandas as pd
 import csv, os, shutil
 from pathlib import Path
 import argparse, subprocess, math
+import time
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description="Classifier Malicious JS Code based on Clusters")
 parser.add_argument('--verbose', '-v', action='count', default=-1,help="verbose level")
-parser.add_argument("-n", dest='neighbours', action='store',type=float, default=1, nargs='?', help="number of neighbors used for classifier")
+parser.add_argument("-n", dest='neighbours', action='store',type=int, default=1, nargs='?', help="number of neighbors used for classifier")
 parser.add_argument("-s", dest='source', required=True, action='store',type=str,nargs='?',default="Clustering/cluster_result.csv", help="labled cluster csv file")
 parser.add_argument("-f", dest='file', required=True, action='store',type=str, help="JS/HTML file to be classifier")
 args = parser.parse_args()
@@ -38,10 +39,15 @@ df = pd.read_csv(cluster_data)
 X = df.drop(['cluster','header'], axis=1).as_matrix()
 y = df['cluster'].values
 
+start_time = time.time()
 neigh = KNeighborsClassifier(n_neighbors=NEIGHBORS)
 neigh.fit(X, y)
+elapsed_time = time.time() - start_time
+print(">>> KNN: ", elapsed_time)
+
+
 
 print("Input File Belongs to Cluster: ", neigh.predict([INPUT_ARRAY]))
-if (VERBOSE >= 1) : print("\nProbabilities:\n", neigh.predict_proba([INPUT_ARRAY]))
+print("\nProbabilities:\n", neigh.predict_proba([INPUT_ARRAY]))
 
 
