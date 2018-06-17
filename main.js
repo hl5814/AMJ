@@ -32,8 +32,8 @@ const sections = [
     raw: true
   },
   {
-    header: 'MJSA',
-    content: 'Malicious JavaScript Analyser'
+    header: 'AMJ',
+    content: 'Analyser for Malicious JavaScript'
   },
   {
     header: 'Options',
@@ -67,16 +67,16 @@ const sections = [
     content: [
       {
         desc: '1. Printout the capture features from {underline user.js}',
-        example: '$ node main.js -s user.js -v'
+        example: '$ node amj.js -s user.js -v'
       },
       {
         desc: '2. Printout the weighted feature array from {underline user.js} in fast mode',
-        example: '$ node main.js -s user.js -w -f'
+        example: '$ node amj.js -s user.js -w -f'
       }
     ]
   },
   {
-    content: 'Project home: {underline https://github.com/hl5814/MJSA}'
+    content: 'Project home: {underline https://github.com/hl5814/AMJ}'
   }
 ]
 const usage = commandLineUsage(sections)
@@ -230,6 +230,9 @@ Set.prototype.my_add=function(values){
 					if (values[v].value[val][0] != item[0].value[val][0]) {
 						// if (values[v].value[val][0] == item[0].value[val][0]) {
 							if (item[0].value[val][0] === undefined) continue;
+							if (item[0].type == 'Null' || item[0].type == "undefined") {
+								continue;
+							}
 							item[0].value[val].push(values[v].value[val][0]);
 							// console.log("->item[0].value[val]", item[0].value[val])
 						// }
@@ -451,13 +454,12 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 		}
 
 		var tokenLength = astNode.getRangeLengthOfExpression(i, ast);
-		if (tokenLength > 5000) {
+		if (tokenLength > 1000) {
 			if (verbose>0) console.log("FEATURE[LongExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Expression with " + tokenLength + " tokens.");
 			updateResultMap(resultMap, "LongExpression", coefficient);
 			// if (fastMode) continue;
 			continue;
 		}
-
 		/* Variable Declaration */
 		if (astNode.isVariableDeclaration(i)) {
 			ASTUtils.traverse(ast.body[i], function(node, parent){
@@ -559,6 +561,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					if (variableName_Types[v] === undefined) continue; 
 					if (variableName_Types[v].type == "ArrayExpression" || variableName_Types[v].type == "NewExpression") {
 						var numElements = astNode.getNumberOfElementsInArrayExpression(i, ast);
+						console.log(1)
 						if (numElements > 1000){
 							if (verbose>0) console.log("FEATURE[LongArray]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + variableName_Type[0] + " contains " + numElements + " objects");
 							updateResultMap(resultMap, "LongArray", coefficient);
@@ -1016,9 +1019,22 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 				ifbranchVarMapList.forEach(function(val1) {
 					// variable in @varMap
 					var var_values = varMap.get(val1.key);
-
+						// console.log(val1, var_values)
+					if (var_values === undefined) {
+						var prevValues = diffMap.get(val1.key);
+						// check if value already in @diffMap
+						if (prevValues) { 
+							prevValues.my_add(val1.value);
+							diffMap.setVariable(val1.key, prevValues);
+						} else {
+							var typeSet = new Set();
+							typeSet.my_add(val1.value);
+							diffMap.setVariable(val1.key, typeSet);
+						}
+					}
 					// value updated in if-branch OR new value created in if-branche
 					for (var v in var_values) {
+
 						if (var_values[v] != val1.value) {
 							var prevValues = diffMap.get(val1.key);
 							

@@ -95,6 +95,10 @@ if [ -d $SOURCE ]; then
                 read -p "Press enter to continue"
             fi
         else
+            # du -s -B1 $filename
+            # FSIZE=$(ls -ls $filename | awk '{print $6}')
+            # (time ( node main.js -s $filename ${VERBOSE} -w -f)) 2>&1 > /dev/null |grep real | sed -e "s|\(.*\)0m\(.*\)s|\2,${FSIZE}|"
+            
             node main.js -s $filename ${VERBOSE} -w 2>/dev/null | grep -E "hongtao"
         fi
 

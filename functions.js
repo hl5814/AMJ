@@ -637,14 +637,11 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 					if (values !== undefined) {
 						for (var v of values) {
 							if (v.type == "ArrayExpression") {
-								var count = v.value.length
-								var arrayCopy = [];
-								for (var c = count-1; c >=0; c--) {
-									arrayCopy.push([count - c - 1, v.value[c][1]])
-								}
-								valType = "ArrayExpression";
-								trueVal = arrayCopy;
-								v.value = arrayCopy;
+								try {
+									var arrayCopy = v.value.reverse()
+									valType = "ArrayExpression";
+									trueVal = arrayCopy;
+								} catch(err){}
 							}
 						}
 					}	
@@ -670,10 +667,10 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 									for (var c = 0; c < v.value.length; c++) {
 										if (v.value[c] === undefined) continue;
 										var subStr;
-										if (v.value[c][1][0].type == "String") {
-											subStr = v.value[c][1][0].value.slice(1,-1);
+										if (v.value[c][0].type == "String") {
+											subStr = v.value[c][0].value.slice(1,-1);
 										} else {
-											subStr = (new Expr(v.value[c][1][0])).getArg(node, "", varMap, true, verbose);
+											subStr = (new Expr(v.value[c][0])).getArg(node, "", varMap, true, verbose);
 										}
 										array.push(subStr);
 									}
@@ -1109,11 +1106,15 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 			if (nthExpr !== undefined) {
 				for (var v of nthExpr){
 					if (v.type == "String") {
+						type = "String";
+						valType = "String";
 						ts = ts.concat(v.value.slice(1,-1))
 					} else if (v.type == "Numeric") {
 						ts = ts.concat(v.value);
 					}else {
-						if (type == "String" || type == "Numeric") {
+						if (type == "String") {
+							ts = ts.concat(v.value);
+						} else if (type == "Numeric") {
 							if (v.type == "undefined") {
 								type = "BinaryExpression";
 							}
@@ -1126,7 +1127,6 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 				}
 			}
 		}
-
 		if (valType == "String") {
 			try {
 				var results = [];
@@ -1338,6 +1338,7 @@ AST.prototype.getTrueValueFromMemberExpression=function(args, varMap, verbose=fa
 			if (index === undefined) continue;
 			for (var r in r_vs){
 				var array_values = r_vs[r];
+				if (r_vs[r] === undefined ) continue;
 				if (r_vs[r].type == "ObjectExpression" && indices[inx].type == "String") {
 					const field = r_vs[r].value[index.replace(/"/g,"")];
 					if (field !== undefined) {
@@ -1925,6 +1926,7 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=false) {
 	// for in statements, e.g. for(var x in list){...}
 	if (this._expr.type == "ForOfStatement") {
+		// console.log(this._expr)
 		var leftVar;
 		var leftValue = [];
 		if (this._expr.left.type == "Identifier") {
@@ -1946,6 +1948,14 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 					}
 					leftValue = leftValue.concat(possibleValues);
 					varMap.setVariable(leftVar, leftValue);
+				} else if (t.type == "String") {
+					var stringSplit = t.value.slice(1,-1).split("");
+					var possibleValues = [];
+					for (var e of stringSplit){
+						possibleValues = possibleValues.concat([{type:"String", value:e}]);
+					}
+					leftValue = leftValue.concat(possibleValues);
+					varMap.setVariable(leftVar, leftValue); 
 				}
 			}
 		}
@@ -2087,7 +2097,6 @@ Expr.prototype.hasElseExpr=function(node) {
 Expr.prototype.parseIfStatementExpr=function(node, varMap, blockRanges,verbose=false) {
 	var ifBranch = new Expr(this._expr.consequent);
 	var elseBranch = new Expr(this._expr.alternate);
-
 	var ifBranchBlocks = ifBranch.parseIfBranches(node, varMap, [], verbose);
 	for (var i = 0; i < ifBranchBlocks.length; i++){
 		blockRanges.push(ifBranchBlocks[i]);

@@ -310,6 +310,7 @@ if (VERBOSE >= 0): print("--------------------------------------------------\nTo
     
 f_df = f_df.loc[:, (f_df != 0).any(axis=0)]
 s_df = s_df.loc[:, (s_df != 0).any(axis=0)]
+
 NUMBER_OF_COLUMNS = max(len(f_df.columns.values), len(s_df.columns.values))
 
 if len(f_df.columns.values) != NUMBER_OF_COLUMNS:

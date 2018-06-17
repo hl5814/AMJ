@@ -39,10 +39,17 @@ scope_headers = s_df.columns.values.tolist()
 keys = ["group"]
 
 for i in range(0, len(feature_headers)):
+	# if feature_headers[i] == "DOM_Operations":
+	# 	keys.append('\n/\n'+"DOCUMENT_Operations")
+	# else:
+	# 	keys.append('\n/\n'+feature_headers[i])
 	if scope_headers[i].isdigit():
-		keys.append('\n'+feature_headers[i]+'\n')
+		if feature_headers[i] == "DOM_Operations":
+			keys.append('\n'+"DOCUMENT_Operations")
+		else:
+			keys.append('\n'+feature_headers[i].replace("Variable", "Var").replace("Expression", "Expr").replace("Function", "Func").replace("StringConcatenation", "StrConcat"))
 	else:
-		keys.append('\n'+feature_headers[i]+'\n'+scope_headers[i])
+		keys.append('\n'+feature_headers[i].replace("Variable", "Var").replace("Expression", "Expr").replace("Function", "Func")+'\n---\n'+scope_headers[i])
 
 for index, row in f_df.iterrows():
 	f_values = ["FEATURE"] + f_df.loc[index].tolist()
@@ -77,7 +84,7 @@ for index, row in f_df.iterrows():
 
 
 	plt.title("Cluster: " +str(index), fontsize=20, linespacing=5)
-	plt.xticks(angles[:-1], categories,fontsize=6)
+	plt.xticks(angles[:-1], categories,fontsize=9)
 	 
 	# Draw ylabels
 	ax.set_rlabel_position(0)
@@ -99,6 +106,7 @@ for index, row in f_df.iterrows():
 	# Ind2
 	values=df.loc[1].drop('group').values.flatten().tolist()
 	values += values[:1]
+	print(values)
 	ax.plot(angles, values, linewidth=1, linestyle='solid', label="context")
 	ax.fill(angles, values, 'r', alpha=0.3)
 	 
