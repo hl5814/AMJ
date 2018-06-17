@@ -107,7 +107,7 @@ const FEATURES = [	"VariableWithFunctionExpression",	// x = function(){};
 					"FunctionObfuscation",				// x = eval;
 					"StringConcatenation",				// "a"+"b"
 					"PredefinedFuncCalls", 				// String.fromCharCode(65)
-					"DOM_Operations",					// document.write(..)
+					"DOCUMENT_Operations",					// document.write(..)
 					"WINDOW_Operations",				// window.btoa(..)
 					"FuncCallOnBinaryExpr",				// foo(x+y)
 					"FuncCallOnUnaryExpr",				// bar(-x)
@@ -457,8 +457,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 		if (tokenLength > 1000) {
 			if (verbose>0) console.log("FEATURE[LongExpression]:" + coefficient[coefficient.length-1] + ":" + scope + ":Expression with " + tokenLength + " tokens.");
 			updateResultMap(resultMap, "LongExpression", coefficient);
-			// if (fastMode) continue;
-			continue;
+			if (fastMode) continue;
 		}
 		/* Variable Declaration */
 		if (astNode.isVariableDeclaration(i)) {
@@ -561,7 +560,6 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					if (variableName_Types[v] === undefined) continue; 
 					if (variableName_Types[v].type == "ArrayExpression" || variableName_Types[v].type == "NewExpression") {
 						var numElements = astNode.getNumberOfElementsInArrayExpression(i, ast);
-						console.log(1)
 						if (numElements > 1000){
 							if (verbose>0) console.log("FEATURE[LongArray]:" + coefficient[coefficient.length-1] + ":" + scope + ":" + variableName_Type[0] + " contains " + numElements + " objects");
 							updateResultMap(resultMap, "LongArray", coefficient);
