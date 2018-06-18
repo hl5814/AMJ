@@ -233,6 +233,7 @@ Set.prototype.my_add=function(values){
 							if (item[0].type == 'Null' || item[0].type == "undefined") {
 								continue;
 							}
+
 							item[0].value[val].push(values[v].value[val][0]);
 							// console.log("->item[0].value[val]", item[0].value[val])
 						// }
@@ -263,6 +264,7 @@ Set.prototype.my_add=function(values){
 }
 var FuncDepthCount = 0;
 function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap, verbose=false){
+
 	if (FuncDepthCount++ > 50) return;
 	try{
 		var eVarMap = new Functions.VariableMap(varMap._varMap);
@@ -271,6 +273,7 @@ function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap
 		if (args !== undefined) {
 			for (var a of args) {
 				if (a.type == "CallExpression") {
+
 					// console.log("arg is CallExpression:")
 					var fName = a.value.callee.name;
 					if (fName === undefined) {
@@ -327,11 +330,23 @@ function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap
 			if (funcArguments !== undefined) {
 				for (var a in funcArguments) {
 					var arg = funcArguments[a];
+					if (arg !== undefined && arg.type == "ArrayMemberExpression") {
+						var elementValue = thisAST.getTrueValueFromMemberExpression([arg], varMap, verbose)[0];
+
+						if (parameters[a] !== undefined) {
+							if (parameters[a].type == "Identifier") {
+								parameterList.push(parameters[a].name);
+								assignString += ("var " + parameters[a].name + " = " + elementValue.value + ";"); 
+							} else if (parameters[a].type == "AssignmentPattern") {
+								// TODO:  parameter with default value
+							}
+						}
+					}
 					if (arg !== undefined && arg.type == "Numeric" || arg.type == "String") {
 						if (parameters[a] !== undefined) {
 							if (parameters[a].type == "Identifier") {
 								parameterList.push(parameters[a].name);
-								assignString += (parameters[a].name + " = " + arg.value + ";"); 
+								assignString += ("var " + parameters[a].name + " = " + arg.value + ";"); 
 							} else if (parameters[a].type == "AssignmentPattern") {
 								// TODO:  parameter with default value
 							}
@@ -346,7 +361,7 @@ function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap
 									argMap[parameters[a].name] = arg.value;
 									eVarMap.setVariable(parameters[a].name, globalValue);
 								} else {
-									assignString += (parameters[a].name + " = " + arg.value + ";"); 
+									assignString += ("var " + parameters[a].name + " = " + arg.value + ";"); 
 								}
 							} else if (parameters[a].type == "AssignmentPattern") {
 								// TODO:  parameter with default value
@@ -358,19 +373,24 @@ function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap
 			}
 			// console.log(argMap)
 			codeBody = assignString + codeBody;
+
+
 			const funcBodyVarMapList = parseProgram(codeBody, funcName, coefficient, eVarMap, verbose);
+				
+
 			var rVal = []; 
 			var hasReturnValue = eVarMap.get(funcName+"_return");
 			if (hasReturnValue !== undefined && hasReturnValue.length >0) {
 				rVal = hasReturnValue.pop();
 			} else {
 				ASTUtils.traverse(func.value, function(node){
-					if (node.type == "ReturnStatement" && node.argument !== null){		
+					if (node.type == "ReturnStatement" && node.argument !== null){	
 						rVal.push(thisAST.getVariableInitValue("", node.argument, eVarMap, verbose)[1]);
 					}
 				});
 				funcBodyVarMapList.forEach(function(val1) {
 					var prevVal = varMap.get(val1.key);
+
 					if (prevVal !== undefined && (parameterList.indexOf(val1.key) == -1)) {
 						var typeSet = new Set();
 						typeSet.my_add(val1.value);
@@ -387,7 +407,6 @@ function parseFuncBody(thisAST, func, args, funcName, scope, coefficient, varMap
 			}
 		
 		}
-		// console.log("rVal:", rVal);
 		// console.log("!! out !!")
 		var validReturn = [];
 		if (rVal !== undefined && rVal.length >0) {
@@ -980,13 +999,17 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 				}
 			} 
 		} else if (astNode.isFunctionDeclaration(i)) {
+
+
 			// if node type is FunctionDeclaration, it must has function Name
 			var funcName = astNode.getFunctionName(i);
 			var funcBody = ASTUtils.getCode(ast.body[i]);
 			varMap.setVariable(funcName, [{ type: 'user_Function', value: ast.body[i] }]);
 
 			var emptyVarMap = new Functions.VariableMap(varMap._varMap);
-
+			// 						emptyVarMap._varMap.forEach(function(value, key){
+			// 	if (key == "arr") console.log(key, ":", value[0].value);
+			// });
 			// assume all function parameters might be String type when parsing function body
 			astNode.updateFunctionParams(i, emptyVarMap);
 
@@ -996,7 +1019,14 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 			// parse function body
 			var coef = coefficient.slice();
 			coef.push("in_function")
+
 			parseProgram(ASTUtils.getCode(ast.body[i].body).slice(1, -1), funcName, coef, emptyVarMap, verbose);
+
+
+
+
+
+
 			coef.push("in_return")
 			for (var returnS of returnStatement) {
 				// parse return statement
@@ -1364,6 +1394,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 									}
 								} else if (node.arguments[0].type == "CallExpression"){
 									var calleeResult = parent.getVariableInitValue("", node.arguments[0], varMap, verbose)[1];
+
 									if (calleeResult !== undefined) {
 										for (var v of calleeResult) {
 											if (v.type == "String"){
@@ -1446,7 +1477,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 								hiddenStringFromEval[1] = eval("payload="+evalBody);
 							} catch(err){}
 						}
-						if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess]:" + featureContext[featureContext.length-1] + ": hidden codes:\n" + hiddenStringFromEval[1]);
+						if (verbose>0) console.log("FEATURE[UnfoldEvalSuccess]:" + featureContext[featureContext.length-1] + ": hidden codes:\n" + evalBody);
 						updateResultMap(resultMap, "UnfoldEvalSuccess", featureContext);
 
 						if (hiddenStringFromEval[1] !== undefined) {

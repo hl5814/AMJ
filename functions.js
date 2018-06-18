@@ -992,6 +992,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 	} else if (initExpr.type == "ObjectExpression") {
 		return [identifier, [{type:"ObjectExpression", value:args}]];
 	} else if (initExpr.type == "MemberExpression") {
+
 		const object = (new Expr(initExpr)).getValueFromMemberExpression(this._node, identifier, varMap, false, verbose);
 		const object_name = object[0];
 		const field_name  = object[1];
@@ -1010,13 +1011,15 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 							if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name]);
 						}
 					} else if (f.type == "ArrayExpression") {
+
 						for (const fn of field_name) {
 							if (fn.type == "keyword" && fn.value == "length") {
 								values.concat([{ type: 'Numeric', value: f.value.length }]);
 							} else {
 								var f_name = (new Expr(fn)).getArg(this._node, identifier, varMap, false, verbose);
 
-								if (f.value[f_name] !== undefined && f.value[f_name][1] !== undefined) values = values.concat(f.value[f_name][1]);
+
+								if (f.value[f_name] !== undefined) values = values.concat(f.value[f_name]);
 							}
 						}
 					}
@@ -1025,6 +1028,7 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		} catch(err) {
 			return [identifier, [ { type: 'String', value: 'UNKNOWN' } ]]
 		}
+
 		return [identifier, values];
 	} else {
 		// check if is pre-defined functions, e.g. eval, atob, etc.
@@ -1071,7 +1075,6 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 
 AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 	var operatorList = [];
-
 	// extract all parts in binary expression
 	var nodesLeft = [];
 	while (expr.left.type == "BinaryExpression") {
@@ -1100,6 +1103,7 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 		}
 	}
 	var possibleVals = ts;
+
 	if (ts.length >= 1) {
 		for (var n of nodesLeft) {
 			var nthExpr = this.getVariableInitValue("",n, varMap, verbose)[1];
@@ -1171,6 +1175,7 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 					codeString = codeString + operatorList[i] + ts[i+1];
 				}
 				var result = eval(codeString);
+
 				return [type, result];
 			} catch(err){
 				var result = "UNKONWN";
@@ -1294,7 +1299,6 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 }
 
 AST.prototype.getTrueValueFromMemberExpression=function(args, varMap, verbose=false) {
-
 	if (args[0].type == "ArrayMemberExpression") {
 
 		var object  = args[0].value[0];
@@ -1824,7 +1828,6 @@ Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, in
 }
 
 Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, inner, verbose=false) {
-	// console.log(this._expr)
 	var identifier;
 	if (this._expr.object.type == "MemberExpression") {
 		var val = (new Expr(this._expr.object)).getValueFromMemberExpression(node, identifier, varMap, true, verbose);
@@ -2216,14 +2219,16 @@ function VariableMap(varMap) {
 				continue;
 			} else if (value[v].type == "ArrayExpression" || value[v].type == "NewExpression") {
 				var newList = [];
+				var index = 0;
 				for (const l of value[v].value) {
+
 					if (l === undefined) {
 						newList.push(undefined);
 						continue;
 					}
-					var index = l[0];
-					var values = l[1];
-					newList.push([index, values]);
+					var values = l[0];
+
+					newList.push([values]);
 				}
 				vals.push({type:"ArrayExpression", value:newList});
 				continue;
