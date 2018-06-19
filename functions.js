@@ -1409,9 +1409,9 @@ AST.prototype.getAssignmentLeftRight = function(expr, varMap, verbose=false) {
 		varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
 		identifier = token.value;
 	}
-
 	var lhsValues;
 	if (lhs.type == "MemberExpression") {
+
 		var lhs_obj = (new Expr(lhs)).getValueFromMemberExpression(this._node, "", varMap, false,verbose);
 		var args = [];
 		if (lhs.computed) {
@@ -1443,8 +1443,10 @@ AST.prototype.getAssignmentLeftRight = function(expr, varMap, verbose=false) {
 	}
 
 	if (trueResult.length > 0) result = trueResult;
+
 	if (lhs.type == "MemberExpression" && result !== undefined && result.length > 0) {
 		var lhs_obj = (new Expr(lhs)).getValueFromMemberExpression(this._node, "", varMap, false,verbose);
+
 		var args;
 		if (lhs.computed) {
 			args = {type: "ArrayMemberExpression", value: lhs_obj};
