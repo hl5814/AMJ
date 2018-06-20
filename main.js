@@ -14,7 +14,7 @@ const optionDefinitions = [
   { name: 'weight',	 	  	alias: 'w', type: Boolean},
   { name: 'src', 		  	alias: 's', type: String },
   { name: 'header',		   	alias: 'a', type: Boolean},
-  { name: 'testMode',		alias: 't', type: Boolean},
+  { name: 'inplaceMode',		alias: 'i', type: Boolean},
   { name: 'fastMode',		alias: 'f', type: Boolean},
   { name: 'help',			alias: 'h', type: Boolean}
 ]
@@ -24,7 +24,7 @@ const calcualteWeight = options.weight;
 const verbose = (options.verbose === undefined) ? 0 : (options.verbose === null)? 1 : 2;
 const showHeader = options.header;
 const filePath = options.src;
-const testMode = options.testMode;
+const inplaceMode = options.inplaceMode;
 const fastMode = options.fastMode;
 const sections = [
   {
@@ -55,7 +55,7 @@ const sections = [
         name: 'weight', alias: 'w', description: 'Print weighted feature arrays',
       },
       {
-        name: 'testMode', alias: 't', description: 'When this flag is set, MJSA will not try to unpack {underline eval()}',
+        name: 'inplaceMode', alias: 'i', description: 'When this flag is set, MJSA will unpack {underline eval()} inplace',
       },
       {
         name: 'fastMode', alias: 'f', description: 'When this flag is set, MJSA will only parse at most 100 elements any objects and skip long instructions',
@@ -1334,7 +1334,7 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 		if (coefficient.length == 1) {
 			// try to execute eval to get the hidden code if possible
 			var inEval = false;
-			if (testMode === undefined) {
+			// if (testMode === undefined) {
 				// var hiddenStringFromEvalList = astNode.checkEvalCalls(i,varMap);
 
 
@@ -1505,18 +1505,20 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 							}
 						}
 						// Extract Payloads but not parsing them now
-						// try{
-						// 	parseProgram(hiddenStringFromEval[1].slice(1,-1), "Payload", ["in_main"], varMap, verbose, hidden_depth);
-						// } catch(err){
-						// 	try{
-						// 		parseProgram(hiddenStringFromEval[1], "Payload", ["in_main"], varMap, verbose, hidden_depth);
-						// 	} catch(err){}
-						// }
+						if (inplaceMode !== undefined) {
+							try{
+								parseProgram(hiddenStringFromEval[1].slice(1,-1), "Payload", ["in_main"], varMap, verbose, hidden_depth);
+							} catch(err){
+								try{
+									parseProgram(hiddenStringFromEval[1], "Payload", ["in_main"], varMap, verbose, hidden_depth);
+								} catch(err){}
+							}
+						}
 					}
 				}
-			}
+			// }
 			// try to decode unescape to get the hidden code if possible
-			if (testMode === undefined && !inEval) {
+			if (!inEval) {
 				var hiddenStringFromUnescapeList = astNode.checkUnescapeCalls(i,varMap);
 				if (hiddenStringFromUnescapeList.length > 0) {
 					for (var hiddenStringFromUnescape of hiddenStringFromUnescapeList){

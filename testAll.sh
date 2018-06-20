@@ -32,7 +32,7 @@ if [ -d $SOURCE_DIR ]; then
 			continue
 		fi
 
-		node main.js -s $filename -v -t > ${RESULT_DIR}/temp_result
+		node main.js -s $filename -v  > ${RESULT_DIR}/temp_result
 		diff ${RESULT_DIR}/${s%.*} ${RESULT_DIR}/temp_result > ${RESULT_DIR}/temp_diff
 
 		if [ $? -ne 0 ] ; 
