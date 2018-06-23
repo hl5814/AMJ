@@ -296,106 +296,13 @@ In JavaScript, SequenceExpression will be executed from left to right, and if th
 	x = (y=1, z=2) // x=2,y=1,z=2
 
 
-# TODO & ISSUES:
-## (1)Clustering
-```
-[	"in_main",
-	"in_if",
-	"in_loop",
-	"in_function",
-	"in_try",
-	"in_switch",
-	"in_return",
-	"in_file" 		]
-```
-
-	if () {
-		if () {
-			feature here
-		}
-	}
-	FEATURE A: [in_if, in_if]
-
-	function () {
-		for () {
-			feature here
-		}
-	}
-	FEATURE B: [in_function, in_loop]
-
-## (2)Implement nested Array/Field Objects
-	var a = new Array([{a:"a",b:"b"},"2"]);
-	eval(a[0].b)
-## (3)
-	// ScriptFragment: "<script[^>]*>([\\S\\s]*?)<\/script>",
-	
-## Analysis from number_of_tokens/length_of_file
-	var x = "1"+"2"+"3"+"4"+"5"+"6"+"7"+"8"+"9"+"0"
-	// ast.tokens.length 22
-	// file length 47
-	// 46.81%
-
-	var x = "1234567890"
-	// ast.tokens.length 4
-	// file length 21
-	// 19.05%
-	
-	var x = ["1","2","3","4","5","6","7","8","9","0"]
-	// ast.tokens.length 24
-	// file length 49
-	// 48.98%
-the higher the percentage of number_of_tokens/length_of_file, implies the code tend to split string into small pieces
-
-However, the low percentage might caused by long unused comments, which increase the length of the file (comments are not tokens), so the cluster also report high percentage comments
-# PLAN
-```
-Week 3 	(14	15	16	17	18) 
-Week 4 	(21	22	23	24	25) <- evaluation & start writing report
-Week 5	(28	29	30	31	1 )
-Week 6 	(4	5	6	7	8 ) <- finish Draft Report & extensions
-=> make change based on report-feedbacks/suggestions
-```
-
-# Problematic Samples
-	11: 	error equal sign
-	44: 	dot notation in function name
-	1890: 	dash in variable name
-	/Users/hongtao/javascript-malware-collection/2016//20160311_3950b9c5d81a393495053382ef607cc9.js
-	5957:	double quote in double quoted string
-	6695:	conditional compilation @cc_on @if 
-				Conditional compilation is not supported in Internet Explorer 11 Standards mode and Windows 8.x Store apps. Conditional compilation is supported in Internet Explorer 10 Standards mode and in all earlier versions.
-	9696:	python file
-	12301:	function declaration without identifier function(xxx){...}
-	17092:	missing ending back tick at EOF (human error)
-	==> assign to this, i.e. try { this =  ... }
-	6968: /Users/hongtao/javascript-malware-collection//20160421_7693d1d7c6eeb845f7576b1b9b7aa2ed.js
-	6973: /Users/hongtao/javascript-malware-collection//20160421_e0cf41e3d0176a98680fe9006162f623.js
-
 # Other:
 // https://github.com/facebook/flow
 //==> dynamically stage, profiling on the code
 // unsupervised clustering
 
 # Install Script
-1) download nodeJS
-2) update npm to the latest version
-	sudo npm i -g npm 
-3) install related nodeJS libraries
-	npm i hashmap
-	npm i esprima
-	npm i esprima-ast-utils
-	npm i command-line-args
-	npm i fs
-4) install python3
-5) install related python libraries
-	pip3 install scipy
-	pip3 install -U scikit-learn
-	pip3 install pandas
-	pip3 install matplotlib
-
-
-
-
+`./instalAMJ.sh`
 
 
 

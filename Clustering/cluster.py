@@ -32,18 +32,12 @@ SOURCE = args.source
 RESULT_PATH = args.result
 
 # read input data csv file
-# "malwareforum.csv", "2015.csv", "2016.csv", "2017.csv", "javascript-malware-collection.csv"
-
-
 file_path = os.path.abspath(os.path.dirname(__file__))
 dataCSV = os.path.join(file_path, SOURCE)
 
 if (VERBOSE >= 0) : print("Reading data from: " + str(dataCSV))
 start_time = time.time()
 df = pd.read_csv(dataCSV)
-# elapsed_time = time.time() - start_time
-# print("read csv: ", elapsed_time)
-# start_time = time.time()
 if PERCENT >= 0 and PERCENT < 1:
     df = df.sample(frac=PERCENT) # randomly taking 10% of input samples
 fileIndex = df.ix[:,0] # get first column as File Indices
@@ -69,13 +63,9 @@ L_MATRIX = "average"
 #         L_MATRIX = L
 # Z = linkage(X, L_MATRIX)
 
-# L_MATRIX = "single"
-# L_MATRIX = "ward"
 if (VERBOSE >= 0) : print("Clustering into " + str(NODES) + " clusters . . .\n")
 Z = linkage(X, L_MATRIX)
 c, coph_dists = cophenet(Z, pdist(X))
-# print(coph_dists)
-# KL = scipy.stats.entropy(coph_dists) 
 if (VERBOSE >= 0) : print("Using :[", L_MATRIX, "] as linkage matrix\nwith cophenet value: ", c, "\n")
 
 # First define the leaf label function.
@@ -91,7 +81,6 @@ def fancy_dendrogram(*args, **kwargs):
 
     ddata = dendrogram(*args, **kwargs)
     if not kwargs.get('no_plot', False):
-        # plt.title('Hierarchical Clustering Dendrogram (truncated)')
         plt.title('Hierarchical Clustering Dendrogram(' + L_MATRIX+")")
         plt.xlabel('cluster index')
         plt.ylabel('distance')
@@ -379,7 +368,6 @@ else:
 # draw full dendrogram
 if (args.dendrogram):
     fig = plt.figure()
-    # plt.figure(figsize=(5, 4))
     plt.figure(figsize=(10, 4))
     # plt.figure(figsize=(20, 8))
     sys.setrecursionlimit(1500)

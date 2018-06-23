@@ -119,7 +119,6 @@ AST.prototype.getReturnInstructions=function(index, varMap, ast) {
 				returnStatements.push(ASTUtils.getCode(node.argument));
 			} else {
 				// skip
-				// console.log(node.argument.callee)
 			}
 		}
 	});
@@ -522,7 +521,6 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 		var valType;
 		ASTUtils.traverse(initExpr, function(node){
 			if (node.type == "CallExpression" && trueVal === undefined){
-				// console.log(node)
 				var object;
 				var operation;
 				if (node.callee !== undefined && node.callee.type == "MemberExpression") {
@@ -591,7 +589,6 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 							if (trueVal.length == 0) trueVal = undefined;
 						}
 					}  else if (CalleeName == "eval") {
-						// console.log(initExpr)
 						if (node.arguments !== undefined) {
 							trueVal = [];
 							for (var arg in node.arguments) {
@@ -1033,42 +1030,38 @@ AST.prototype.getVariableInitValue=function(identifier, initExpr, varMap, verbos
 	} else {
 		// check if is pre-defined functions, e.g. eval, atob, etc.
 		var var_value = varMap.get(args, verbose);
-
-			// console.log(">>", var_value)
 		if (var_value != undefined){
 			return [identifier, var_value];
 		} 
-		// else {
-			var token = (new Expr(initExpr)).getToken(this._node);
-			//undefined variable, we set the init value to undefined and update varMap
-			
-			if (initExpr.type == "BinaryExpression") {
-				var result = this.getBinaryExpressionValue(initExpr, varMap, verbose);
-				if (result !== undefined && result.length == 2){
-					if (result[0] == "Strings") {
-						var results = [];
-						for (var r of result[1]) {
-							results.push({ type: 'String', value: '"' + r + '"' })
-						}
-						return [identifier, results];
-					} else if (result[0] == "String") {
-						return [identifier, [{ type: 'String', value: '"' + result[1] + '"' }]];
-					} else if (result[0] == "Numeric"){
-						return [identifier, [{ type: 'Numeric', value: result[1] }]];
+		var token = (new Expr(initExpr)).getToken(this._node);
+		//undefined variable, we set the init value to undefined and update varMap
+		
+		if (initExpr.type == "BinaryExpression") {
+			var result = this.getBinaryExpressionValue(initExpr, varMap, verbose);
+			if (result !== undefined && result.length == 2){
+				if (result[0] == "Strings") {
+					var results = [];
+					for (var r of result[1]) {
+						results.push({ type: 'String', value: '"' + r + '"' })
 					}
-				} 
-				return [identifier, [{ type: 'BinaryExpression', value: args }]];
-			} else if (initExpr.type == "LogicalExpression") {
-				return [identifier, [{ type: 'LogicalExpression', value: args }]];
-			} else {
-				if (token === undefined) return [identifier, [{ type: 'null', value: 'null' }]];
-				if (token.type == "Identifier" && !varMap.get(token.value, verbose)){
-					varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
-					return [identifier, [{ type: 'undefined', value: 'undefined' }]];
+					return [identifier, results];
+				} else if (result[0] == "String") {
+					return [identifier, [{ type: 'String', value: '"' + result[1] + '"' }]];
+				} else if (result[0] == "Numeric"){
+					return [identifier, [{ type: 'Numeric', value: result[1] }]];
 				}
-				return [identifier, [{ type: 'Expression', value: args }]];
+			} 
+			return [identifier, [{ type: 'BinaryExpression', value: args }]];
+		} else if (initExpr.type == "LogicalExpression") {
+			return [identifier, [{ type: 'LogicalExpression', value: args }]];
+		} else {
+			if (token === undefined) return [identifier, [{ type: 'null', value: 'null' }]];
+			if (token.type == "Identifier" && !varMap.get(token.value, verbose)){
+				varMap.setVariable(token.value, [{ type: 'undefined', value: 'undefined' }]);
+				return [identifier, [{ type: 'undefined', value: 'undefined' }]];
 			}
-		// }
+			return [identifier, [{ type: 'Expression', value: args }]];
+		}
 	}
 }
 
@@ -1186,7 +1179,6 @@ AST.prototype.getBinaryExpressionValue=function(expr,varMap,verbose=false) {
 }
 
 
-
 AST.prototype.getUpdateExpression= function(index, varMap, verbose=false) {
 	if (verbose>1)console.log("update Expression: e.g. ++ -- operations")
 }
@@ -1230,7 +1222,6 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 			// indices will be `"f"` instead of [{type:"Numeric", value:2}]
 			if (indices[inx] == "") continue;
 			index = indices[inx].value;
-			// console.log(indices[inx])
 			if (index === undefined) continue;
 			for (var r in r_vs){
 				var array_values = r_vs[r];
@@ -1240,8 +1231,6 @@ AST.prototype.updateValueFromMemberExpression=function(args, newValue, varMap, v
 					const field = r_vs[r].value[index.replace(/"/g,"")];
 					if (field !== undefined) {
 						r_vs[r].value[index.replace(/"/g,"")] = [newValue];
-						// ref_values = ref_values.concat(field);
-
 					} 
 					continue;
 				}
@@ -1579,7 +1568,6 @@ AST.prototype.getFunctionArguments= function(expr, varMap, verbose=false) {
 			} else if (expression.arguments[i].type == "MemberExpression") {
 				var exprArgs = new Expr(expression.arguments[i]);
 				var object_index = exprArgs.getValueFromMemberExpression(this._node, "", varMap, false,verbose);
-				// console.log("object_index:", object_index)
 				if (exprArgs._expr.computed) {
 					args.push({type: "ArrayMemberExpression", value: object_index});
 				} else {
@@ -1749,7 +1737,6 @@ Expr.prototype.getValueFromObjectExpression=function(node, identifier, varMap, i
 
 	var object = {};
 	for (var r of results) {
-		// console.log(">", r)
 		object[r[0]] = r[1]
 	}
 	return object;
@@ -1800,9 +1787,6 @@ Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inne
 		var val = element_expr.getArg(node, identifier, varMap, true, verbose);
 		var token = element_expr.getToken(node);
 		if (token.type == "String") element.type = "String";
-		//TODO check callee.name
-		// elem_array.push([identifier + "_" + callee.name + "["+e+"]", { type: element.type, value: val }]);
-
 		elem_array.push([{ type: element.type, value: val }]);
 	}
 	return elem_array;
@@ -1811,8 +1795,6 @@ Expr.prototype.getValueFromNewExpression=function(node, identifier, varMap, inne
 
 Expr.prototype.getValueFromArrayExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	// TODO: fast mode
-	// only track for first 100 elements in array, prevent program hangs due to large size array
 	const elements = this._expr.elements;
 	var elem_array = [];
 	for (var e in elements) {
@@ -1931,7 +1913,6 @@ Expr.prototype.getValueFromMemberExpression=function(node, identifier, varMap, i
 Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=false) {
 	// for in statements, e.g. for(var x in list){...}
 	if (this._expr.type == "ForOfStatement") {
-		// console.log(this._expr)
 		var leftVar;
 		var leftValue = [];
 		if (this._expr.left.type == "Identifier") {
@@ -2002,7 +1983,6 @@ Expr.prototype.parseForStatementExpr=function(node, varMap, blockRanges,verbose=
 }
 
 Expr.prototype.parseSwitchStatementExpr=function(ast, node, varMap, blockRanges, verbose=false) {
-	// console.log(this._expr)
 	var discriminant = this._expr.discriminant;
 	var d_code = ASTUtils.getCode(discriminant);
 	blockRanges.push(d_code);
@@ -2134,8 +2114,6 @@ Expr.prototype.parseIfBranches=function(node, varMap, blockRanges, verbose=false
 
 Expr.prototype.getValueFromBinaryExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	
-
 	const fstExpr = new Expr(this._expr.left);
 	const sndExpr = new Expr(this._expr.right);
 
@@ -2173,9 +2151,6 @@ Expr.prototype.getValueFromUnaryExpression=function(node, identifier, varMap, in
 
 Expr.prototype.getValueFromCallExpression=function(node, identifier, varMap, inner, verbose=false) {
 	//assert isExpressionStatement()
-	// console.log("CallExpression:\n", this._expr, "\n");
-
-
 	if (this._expr.value !== undefined) {
 		return this._expr.value;
 	}
@@ -2301,13 +2276,6 @@ VariableMap.prototype.copyTo = function(destinationVarMap) {
 }
 
 VariableMap.prototype.deleteObjects = function(objectNameList) {
-	// var deleteList = objectNameList;
-	// this._varMap.forEach(function(value, key){
-	// 	if (key.endsWith("_return")){
-	// 		deleteList.push(key);
-	// 	}
-	// });
-
 	for (var objectName of objectNameList) {
 		if (this._varMap.has(objectName)) {
 			this._varMap.remove(objectName); 
@@ -2318,9 +2286,5 @@ VariableMap.prototype.deleteObjects = function(objectNameList) {
 
 
 module.exports = {AST, Expr, VariableMap};
-
-
-
-
 
 
