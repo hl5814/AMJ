@@ -107,7 +107,7 @@ const FEATURES = [	"VariableWithFunctionExpression",	// x = function(){};
 					"FunctionObfuscation",				// x = eval;
 					"StringConcatenation",				// "a"+"b"
 					"PredefinedFuncCalls", 				// String.fromCharCode(65)
-					"DOCUMENT_Operations",					// document.write(..)
+					"DOCUMENT_Operations",				// document.write(..)
 					"WINDOW_Operations",				// window.btoa(..)
 					"FuncCallOnBinaryExpr",				// foo(x+y)
 					"FuncCallOnUnaryExpr",				// bar(-x)
@@ -181,6 +181,7 @@ function showResult(resultMap) {
 		resultMap.set("CommentPerFile", (COMMENT_LENGTH/FILE_LENGTH).toFixed(4));
 	}
 	resultMap.forEach(function(value, key){
+		console.log(value,key)
 		if (KEYWORDS.indexOf(key) > -1) {
 			var val = (value > 0) ? (value/KEYWORD_TOTAL).toFixed(4) : 0;
 		} else if (PUNCTUATORS.indexOf(key) > -1) {
@@ -1515,8 +1516,8 @@ function parseProgram(program, scope, coefficient, varMap, verbose, depth=0){
 					var type = d[0];
 					var featureContext = d[1];
 					if (type == "document") {
-						if (verbose>0) console.log("FEATURE[DOM_Operations]:" + featureContext[featureContext.length-1] + ":"+scope+":" +d[2]);
-						updateResultMap(resultMap, "DOM_Operations", coefficient);
+						if (verbose>0) console.log("FEATURE[DOCUMENT_Operations]:" + featureContext[featureContext.length-1] + ":"+scope+":" +d[2]);
+						updateResultMap(resultMap, "DOCUMENT_Operations", coefficient);
 					} else if (type == "window") {
 						if (verbose>0) console.log("FEATURE[WINDOW_Operations]:" + featureContext[featureContext.length-1] + ":"+scope+":" +d[2]);
 						updateResultMap(resultMap, "WINDOW_Operations", coefficient);
